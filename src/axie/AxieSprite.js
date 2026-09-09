@@ -4,69 +4,80 @@ import { CLASS_COLORS } from './palette.js'
 /**
  * The seam between gameplay and however an Axie is drawn.
  *
- * Still greybox in the sense that no official art is loaded yet — but built as
- * a layered, procedurally animated creature so the silhouette, lighting and
- * motion are real. Later these same layers are fed by the mixer's
- * exportAvatarLayers (static images, no Spine runtime — see README), and
- * gameplay code never notices: it only calls the methods at the bottom.
+ * Draws official Axie art: flat layers from the mixer's exportAvatarLayers,
+ * assembled and animated procedurally. No Spine runtime ships — see README.
+ *
+ * The mixer's art faces LEFT natively, so facing right flips the rig.
  */
 export default class AxieSprite {
-  constructor(scene, x, y, { axieClass = 'beast', radius = 20 } = {}) {
+  constructor(scene, x, y, { build, axieClass = 'beast' } = {}) {
     this.scene = scene
-    this.radius = radius
     this.axieClass = axieClass
-
-    const c = CLASS_COLORS[axieClass] ?? CLASS_COLORS.beast
-    this.colors = c
+    this.colors = CLASS_COLORS[axieClass] ?? CLASS_COLORS.beast
+    this.build = build
 
     this.root = scene.add.container(x, y)
-    this.rig = scene.add.container(0, 0)
 
-    const r = radius
+    // Shadow sits outside the animated rig so it stays planted on the ground.
+    this.shadow = scene.add.ellipse(0, 0, 1, 1, 0x000000, 0.4)
+    this.glow = scene.add.ellipse(0, 0, 1, 1, this.colors.body, 0.12)
 
-    // Ground contact. Sold separately from the body so it can stay put while
-    // the body bobs — that gap is what makes the bob read as a jump.
-    this.shadow = scene.add.ellipse(0, r * 0.95, r * 2.1, r * 0.62, 0x000000, 0.38)
+    this.facingWrap = scene.add.container(0, 0)
+    this.anim = scene.add.container(0, 0)
+    this.facingWrap.add(this.anim)
+    this.root.add([this.glow, this.shadow, this.facingWrap])
 
-    // Soft light pooling under the creature, tinted to its class.
-    this.glow = scene.add.ellipse(0, r * 0.7, r * 3.4, r * 1.5, c.body, 0.13)
+    this.parts = { legFront: [], legBack: [], tail: [], earLeft: [], earRight: [], head: [], body: [] }
+    this.images = []
 
-    this.tail = scene.add.ellipse(-r * 1.05, r * 0.15, r * 1.15, r * 0.5, c.shade)
-    this.legs = [
-      scene.add.ellipse(-r * 0.5, r * 0.78, r * 0.46, r * 0.5, c.shade),
-      scene.add.ellipse(r * 0.42, r * 0.78, r * 0.46, r * 0.5, c.shade),
-    ]
+    this.assemble()
 
-    this.earL = scene.add.ellipse(-r * 0.28, -r * 0.82, r * 0.5, r * 0.72, c.shade)
-    this.earR = scene.add.ellipse(r * 0.34, -r * 0.86, r * 0.44, r * 0.64, c.shade)
-
-    this.body = scene.add.ellipse(0, 0, r * 2, r * 1.78, c.body)
-    // Shading sits low, rim light sits high-left: cheap two-point lighting.
-    this.shade = scene.add.ellipse(0, r * 0.34, r * 1.82, r * 1.1, c.shade, 0.5)
-    this.rim = scene.add.ellipse(-r * 0.22, -r * 0.44, r * 1.35, r * 0.72, c.rim, 0.32)
-
-    this.snout = scene.add.ellipse(r * 0.82, r * 0.1, r * 0.82, r * 0.66, c.body)
-    this.snoutRim = scene.add.ellipse(r * 0.78, -r * 0.06, r * 0.5, r * 0.3, c.rim, 0.28)
-
-    this.eyeWhite = scene.add.ellipse(r * 0.42, -r * 0.3, r * 0.42, r * 0.46, 0xfdfbff)
-    this.pupil = scene.add.ellipse(r * 0.48, -r * 0.28, r * 0.2, r * 0.26, 0x140f26)
-    this.spark = scene.add.circle(r * 0.54, -r * 0.38, r * 0.07, 0xffffff, 0.9)
-
-    this.rig.add([
-      this.glow, this.shadow,
-      this.tail, this.legs[0], this.legs[1],
-      this.earL, this.earR,
-      this.body, this.shade, this.rim,
-      this.snout, this.snoutRim,
-      this.eyeWhite, this.pupil, this.spark,
-    ])
-    this.root.add(this.rig)
-
-    this.facing = 1
+    this.facing = -1
     this.runPhase = 0
     this.blinkAt = scene.time.now + Phaser.Math.Between(1200, 4000)
-    this.blinking = false
-    this.squash = 1
+  }
+
+  assemble() {
+    const { layers, scale } = this.build
+    const scene = this.scene
+
+    // Measure first, so the rig is centred on the body and stands on its feet
+    // rather than floating from the mixer's own canvas origin.
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+    for (const l of layers) {
+      minX = Math.min(minX, l.px)
+      maxX = Math.max(maxX, l.px + l.w)
+      minY = Math.min(minY, l.py)
+      maxY = Math.max(maxY, l.py + l.h)
+    }
+
+    const cx = (minX + maxX) / 2
+    const cy = maxY
+
+    for (const l of layers) {
+      // Pivot per part: limbs swing from where they meet the body.
+      const [ox, oy] = PIVOTS[l.part] ?? [0.5, 0.5]
+      const img = scene.add.image(0, 0, l.imagePath)
+        .setOrigin(ox, oy)
+        .setDisplaySize(l.w, l.h)
+        .setPosition(l.px - cx + l.w * ox, l.py - cy + l.h * oy)
+
+      img.baseX = img.x
+      img.baseY = img.y
+      img.baseScaleY = img.scaleY
+      this.anim.add(img)
+      this.images.push(img)
+
+      const bucket = HEAD_PARTS.has(l.part) ? 'head' : (this.parts[l.part] ? l.part : 'body')
+      this.parts[bucket].push(img)
+    }
+
+    this.height = maxY - minY
+    this.width = maxX - minX
+
+    // Ground furniture is sized from the assembled body, not guessed at.
+    this.shadow.setSize(this.width * 0.66, this.width * 0.2)
+    this.glow.setSize(this.width * 1.5, this.width * 0.5)
   }
 
   get x() { return this.root.x }
@@ -74,123 +85,106 @@ export default class AxieSprite {
 
   setPosition(x, y) {
     this.root.setPosition(x, y)
-    // Overlap sorts by depth so the arena reads with a sense of ground.
     this.root.setDepth(y)
   }
 
-  /** dir < 0 faces left, dir > 0 faces right. Mixer art faces left natively. */
+  /** dir < 0 faces left (the art's native direction), dir > 0 faces right. */
   setFacing(dir) {
     if (dir === 0) return
     const next = dir < 0 ? -1 : 1
     if (next === this.facing) return
     this.facing = next
-    // Flip the rig, never the root, so shadows and effects stay put.
     this.scene.tweens.add({
-      targets: this.rig,
-      scaleX: this.facing,
+      targets: this.facingWrap,
+      scaleX: -this.facing,
       duration: 110,
       ease: 'Quad.easeOut',
     })
   }
 
   update(delta, speed) {
-    const r = this.radius
-    const t = this.scene.time.now
     const moving = speed > 8
-    const gait = Phaser.Math.Clamp(speed / 210, 0, 1.4)
+    const gait = Phaser.Math.Clamp(speed / 215, 0, 1.3)
 
-    if (moving) {
-      this.runPhase += (delta / 1000) * (9 + gait * 5)
-    } else {
-      this.runPhase += (delta / 1000) * 2.2
-    }
-
+    this.runPhase += (delta / 1000) * (moving ? 9 + gait * 6 : 2.4)
     const p = this.runPhase
-    const amp = moving ? 1 : 0.22
-    const bob = Math.sin(p * 2) * r * 0.13 * amp
-    const lean = moving ? Math.sin(p) * 0.04 + gait * 0.06 : 0
+    const amp = moving ? 1 : 0.25
 
-    // Body squash follows the bob: compressed at the bottom of the arc.
-    const squash = 1 + Math.sin(p * 2 + Math.PI) * 0.07 * amp
-    this.squash = Phaser.Math.Linear(this.squash, squash, 0.35)
+    // Whole-body bob, and a squash that compresses at the bottom of the arc.
+    const bob = Math.sin(p * 2) * 7 * amp
+    const squash = 1 + Math.sin(p * 2 + Math.PI) * 0.05 * amp
+    this.anim.setY(bob)
+    this.anim.setScale(2 - squash, squash)
+    this.anim.rotation = Phaser.Math.Linear(
+      this.anim.rotation, moving ? -0.05 * gait : 0, 0.12,
+    )
 
-    this.body.setY(bob)
-    this.body.setScale(2 - this.squash, this.squash)
-    this.shade.setY(r * 0.34 + bob)
-    this.rim.setY(-r * 0.44 + bob * 1.1)
-    this.snout.setY(r * 0.1 + bob * 1.15)
-    this.snoutRim.setY(-r * 0.06 + bob * 1.15)
+    // Legs alternate; the pair on each side is half a cycle out of phase.
+    const stride = moving ? 9 : 0
+    this.parts.legFront.forEach((img, i) => {
+      img.y = img.baseY - Math.max(0, Math.sin(p + i * Math.PI)) * stride
+      img.rotation = Math.sin(p + i * Math.PI) * 0.18 * amp
+    })
+    this.parts.legBack.forEach((img, i) => {
+      img.y = img.baseY - Math.max(0, Math.sin(p + Math.PI + i * Math.PI)) * stride
+      img.rotation = Math.sin(p + Math.PI + i * Math.PI) * 0.18 * amp
+    })
 
-    // Ears lag the body — the overlap is what makes it feel alive.
-    this.earL.setY(-r * 0.82 + bob * 1.5)
-    this.earR.setY(-r * 0.86 + bob * 1.6)
-    this.earL.rotation = Math.sin(p - 0.6) * 0.16 * amp
-    this.earR.rotation = Math.sin(p - 0.9) * 0.2 * amp
+    // Ears and tail lag the body — the overlap is what makes it read as alive.
+    this.parts.tail.forEach(img => { img.rotation = Math.sin(p * 1.4 - 0.5) * 0.16 * amp })
+    this.parts.earLeft.forEach(img => { img.rotation = Math.sin(p - 0.7) * 0.13 * amp })
+    this.parts.earRight.forEach(img => { img.rotation = Math.sin(p - 0.9) * 0.15 * amp })
 
-    this.tail.setY(r * 0.15 + bob * 0.6)
-    this.tail.rotation = Math.sin(p * 1.5) * 0.3 * amp
+    // Shadow tightens as the body lifts.
+    const lift = 1 - Math.abs(bob) / (7 * Math.max(amp, 0.01))
+    this.shadow.setScale(0.88 + lift * 0.16).setAlpha(0.24 + lift * 0.18)
+    this.glow.setScale(0.95 + lift * 0.1)
 
-    // Legs alternate; when idle they settle.
-    this.legs[0].setY(r * 0.78 - (moving ? Math.max(0, Math.sin(p)) * r * 0.32 : 0))
-    this.legs[1].setY(r * 0.78 - (moving ? Math.max(0, Math.sin(p + Math.PI)) * r * 0.32 : 0))
-
-    this.rig.rotation = Phaser.Math.Linear(this.rig.rotation, lean, 0.15)
-
-    // Shadow tightens and darkens as the body rises.
-    const lift = 1 - Math.abs(bob) / (r * 0.16)
-    this.shadow.setScale(0.86 + lift * 0.2)
-    this.shadow.setAlpha(0.22 + lift * 0.18)
-
-    this.eyeWhite.setY(-r * 0.3 + bob * 1.15)
-    this.pupil.setY(-r * 0.28 + bob * 1.15)
-    this.spark.setY(-r * 0.38 + bob * 1.15)
-
-    this.updateBlink(t)
+    this.updateBlink()
   }
 
-  updateBlink(t) {
-    if (!this.blinking && t >= this.blinkAt) {
-      this.blinking = true
-      this.eyeWhite.setScale(1, 0.12)
-      this.pupil.setScale(1, 0.12)
-      this.spark.setAlpha(0)
-      this.scene.time.delayedCall(90, () => {
-        this.eyeWhite.setScale(1, 1)
-        this.pupil.setScale(1, 1)
-        this.spark.setAlpha(0.9)
-        this.blinking = false
-        this.blinkAt = t + Phaser.Math.Between(1600, 5000)
-      })
-    }
+  updateBlink() {
+    const t = this.scene.time.now
+    if (t < this.blinkAt || this.blinking) return
+    this.blinking = true
+    const eyes = this.parts.head.filter(i => i.texture.key.includes('eyes'))
+    eyes.forEach(e => e.setScale(e.scaleX, e.baseScaleY * 0.1))
+    this.scene.time.delayedCall(95, () => {
+      eyes.forEach(e => e.setScale(e.scaleX, e.baseScaleY))
+      this.blinking = false
+      this.blinkAt = t + Phaser.Math.Between(1800, 5200)
+    })
   }
 
-  /** Wind-up then lunge. Reads as an attack without any skeletal animation. */
+  /** Wind-up then lunge, in the direction the Axie faces. */
   playAttack(onConnect) {
     this.scene.tweens.chain({
-      targets: this.rig,
+      targets: this.anim,
       tweens: [
-        { x: -this.radius * 0.45, scaleY: 0.9, duration: 90, ease: 'Quad.easeOut' },
-        { x: this.radius * 0.7, scaleY: 1.1, duration: 70, ease: 'Back.easeOut',
-          onComplete: () => onConnect?.() },
-        { x: 0, scaleY: 1, duration: 180, ease: 'Quad.easeOut' },
+        { x: 14, duration: 95, ease: 'Quad.easeOut' },
+        { x: -22, duration: 70, ease: 'Back.easeOut', onComplete: () => onConnect?.() },
+        { x: 0, duration: 190, ease: 'Quad.easeOut' },
       ],
     })
   }
 
-  flash(color, ms = 120) {
-    const parts = [this.body, this.snout, this.tail, this.earL, this.earR, ...this.legs]
-    parts.forEach(p => p.setFillStyle(color))
-    this.scene.time.delayedCall(ms, () => {
-      this.body.setFillStyle(this.colors.body)
-      this.snout.setFillStyle(this.colors.body)
-      this.tail.setFillStyle(this.colors.shade)
-      this.earL.setFillStyle(this.colors.shade)
-      this.earR.setFillStyle(this.colors.shade)
-      this.legs.forEach(l => l.setFillStyle(this.colors.shade))
-    })
+  flash(color, ms = 110) {
+    this.images.forEach(i => i.setTintFill(color))
+    this.scene.time.delayedCall(ms, () => this.images.forEach(i => i.clearTint()))
   }
 
   destroy() {
     this.root.destroy()
   }
+}
+
+const HEAD_PARTS = new Set(['eyes', 'mouth', 'horn'])
+
+/** Origin per part, so rotation happens at the joint rather than the corner. */
+const PIVOTS = {
+  legFront: [0.5, 0.1],
+  legBack: [0.5, 0.1],
+  tail: [0.1, 0.5],
+  earLeft: [0.5, 0.9],
+  earRight: [0.5, 0.9],
 }

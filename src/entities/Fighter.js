@@ -8,7 +8,7 @@ import { impact, damageNumber, hitStop, dustEmitter } from '../fx/Juice.js'
  * source of `intent` differs, so anything that works for one works for both.
  */
 export default class Fighter {
-  constructor(scene, x, y, { axieClass = 'beast', isPlayer = false, name = 'axie' } = {}) {
+  constructor(scene, x, y, { axieClass = 'beast', build, isPlayer = false, name = 'axie' } = {}) {
     this.scene = scene
     this.isPlayer = isPlayer
     this.name = name
@@ -23,7 +23,7 @@ export default class Fighter {
     this.lastAttack = 0
     this.alive = true
 
-    this.sprite = new AxieSprite(scene, x, y, { axieClass, radius: isPlayer ? 21 : 19 })
+    this.sprite = new AxieSprite(scene, x, y, { axieClass, build })
     this.pos = new Phaser.Math.Vector2(x, y)
     this.vel = new Phaser.Math.Vector2(0, 0)
     this.intent = new Phaser.Math.Vector2(0, 0)

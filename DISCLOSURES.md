@@ -20,15 +20,22 @@ No code copied verbatim so far.
 | --- | --- | --- |
 | phaser ^3.90 | MIT | game engine |
 | vite ^6 | MIT | dev server, build |
+| @axieinfinity/mixer ^1.4.9 | MIT | builds Axie bodies from part combos |
 
 ## Axie assets
 
-None yet. Planned:
+**In use.** Axie bodies are composed with `@axieinfinity/mixer` (MIT) via
+`exportAvatarLayers`, and their textures are fetched at runtime from the
+official Axie CDN (`axiecdn.axieinfinity.com/mixer-stuffs/v6/`). No Axie art is
+copied into or redistributed from this repository.
 
-- `@axieinfinity/mixer` (MIT) — Axie bodies via `exportAvatarLayers`.
-- Axie Origins Battle Kit, pinned to the revision licensed by Official Rules §5:
-  `069a59b772e54633d04a3d9d12ecde73b3e4be5d`. Not open source; use limited to
-  Vibeathon. `LICENSE.md` and `Third Party Notices.md` travel with any copy.
+Axie characters and art are Sky Mavis / Axie Infinity IP, used here for an Axie
+Vibeathon entry.
+
+**Planned:** Axie Origins Battle Kit, pinned to the revision licensed by
+Official Rules §5: `069a59b772e54633d04a3d9d12ecde73b3e4be5d`. Not open source;
+use limited to Vibeathon. `LICENSE.md` and `Third Party Notices.md` travel with
+any copy.
 
 **No Spine runtime code is shipped** — see README.
 

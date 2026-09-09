@@ -1,15 +1,18 @@
 import Phaser from 'phaser'
 import Fighter from '../entities/Fighter.js'
 import BotBrain from '../ai/BotBrain.js'
-import { ARENA_PALETTE, CLASS_NAMES } from '../axie/palette.js'
+import { ARENA_PALETTE } from '../axie/palette.js'
 import { createFxTextures, ambientMotes } from '../fx/Juice.js'
 
 const ARENA = { width: 1700, height: 1300 }
-const BOT_CLASSES = ['aquatic', 'plant', 'bird', 'bug', 'reptile']
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super({ key: 'GameScene' })
+  }
+
+  init(data) {
+    this.builds = data.builds
   }
 
   create() {
@@ -23,16 +26,19 @@ export default class GameScene extends Phaser.Scene {
     createFxTextures(this)
     this.drawArena()
 
+    const available = Object.keys(this.builds)
+    const playerClass = available.includes('beast') ? 'beast' : available[0]
+
     this.player = new Fighter(this, ARENA.width / 2, ARENA.height / 2, {
-      axieClass: 'beast', isPlayer: true, name: 'you',
+      axieClass: playerClass, build: this.builds[playerClass], isPlayer: true, name: 'you',
     })
 
-    this.bots = BOT_CLASSES.map((axieClass, i) => {
+    this.bots = available.filter(c => c !== playerClass).map((axieClass, i) => {
       const bot = new Fighter(
         this,
         Phaser.Math.Between(this.arenaBounds.left, this.arenaBounds.right),
         Phaser.Math.Between(this.arenaBounds.top, this.arenaBounds.bottom),
-        { axieClass, name: `${axieClass}-${i + 1}` },
+        { axieClass, build: this.builds[axieClass], name: `${axieClass}-${i + 1}` },
       )
       bot.brain = new BotBrain(bot)
       return bot

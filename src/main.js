@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import BootScene from './scenes/BootScene.js'
 import GameScene from './scenes/GameScene.js'
 import UIScene from './scenes/UIScene.js'
 
@@ -11,7 +12,7 @@ const game = new Phaser.Game({
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   render: { pixelArt: false, antialias: true },
-  scene: [GameScene, UIScene],
+  scene: [BootScene, GameScene, UIScene],
 })
 
 // Dev-only handle for poking at the running game from the console.

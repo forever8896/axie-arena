@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@axieinfinity/mixer": "^1.4.9",
     "phaser": "^3.90.0"
   },
   "devDependencies": {
