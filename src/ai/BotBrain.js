@@ -40,7 +40,7 @@ export default class BotBrain {
 
       case 'strike':
         me.intent.set(0, 0)
-        if (me.attack(target, now)) {
+        if (me.swing(target, now)) {
           this.state = 'backoff'
           this.stateUntil = now + this.backoffTime
         } else if (dist > me.attackRange) {
