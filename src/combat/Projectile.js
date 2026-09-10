@@ -59,6 +59,8 @@ export default class Projectile {
       }
     }
 
+    if (this.scene.arena?.wallAt(this.pos.x, this.pos.y)) return this.destroy(true)
+
     const b = this.scene.arenaBounds
     const out = this.pos.x < b.left || this.pos.x > b.right || this.pos.y < b.top || this.pos.y > b.bottom
     if (this.travelled >= this.range || out) this.destroy(false)

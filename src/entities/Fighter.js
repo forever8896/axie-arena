@@ -32,6 +32,7 @@ export default class Fighter {
     this.lastAttack = 0
     this.lastSpecial = -Infinity
     this.alive = true
+    this.bodyRadius = 30
 
     // Status effects.
     this.slowUntil = 0
@@ -117,6 +118,7 @@ export default class Fighter {
     const speed = this.vel.length()
     // Facing follows the aim, not the movement, so strafing reads correctly.
     this.sprite.setFacing(Math.cos(this.aim) < 0 ? -1 : 1)
+    this.sprite.setAlpha(this.hidden ? 0.45 : 1)
     this.sprite.setPosition(this.pos.x, this.pos.y)
     this.sprite.update(delta, speed)
 
@@ -128,6 +130,12 @@ export default class Fighter {
     const b = this.scene.arenaBounds
     this.pos.x = Phaser.Math.Clamp(this.pos.x, b.left, b.right)
     this.pos.y = Phaser.Math.Clamp(this.pos.y, b.top, b.bottom)
+    this.scene.arena?.resolveCircle(this.pos, this.bodyRadius)
+  }
+
+  /** True while standing in foliage: harder to see, harder for bots to spot. */
+  get hidden() {
+    return Boolean(this.scene.arena?.inBush(this.pos.x, this.pos.y))
   }
 
   canAttack(now) {

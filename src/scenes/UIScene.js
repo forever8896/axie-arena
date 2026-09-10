@@ -1,4 +1,7 @@
 import Phaser from 'phaser'
+import { WORLD } from '../arena/Arena.js'
+
+const MINIMAP = { size: 186, pad: 22 }
 
 const MONO = 'ui-monospace, monospace'
 const hex = v => `#${v.toString(16).padStart(6, '0')}`
@@ -22,13 +25,13 @@ export default class UIScene extends Phaser.Scene {
       fontFamily: MONO, fontSize: '11px', color: '#6f6892',
     })
 
-    this.status = this.add.text(this.scale.width - 34, 34, '', {
+    this.status = this.add.text(this.scale.width - 34, MINIMAP.size + 34, '', {
       fontFamily: MONO, fontSize: '15px', color: '#e8e4f5',
-    }).setOrigin(1, 0)
+    }).setOrigin(1, 0).setDepth(500)
 
-    this.statusSub = this.add.text(this.scale.width - 34, 56, 'RIVALS REMAIN', {
+    this.statusSub = this.add.text(this.scale.width - 34, MINIMAP.size + 56, 'RIVALS REMAIN', {
       fontFamily: MONO, fontSize: '11px', color: '#6f6892',
-    }).setOrigin(1, 0)
+    }).setOrigin(1, 0).setDepth(500)
 
     // Dash cooldown, read at a glance next to the health pips.
     this.dashBg = this.add.rectangle(34, 92, 130, 5, 0x2a2440).setOrigin(0, 0.5)
@@ -49,13 +52,91 @@ export default class UIScene extends Phaser.Scene {
         fontFamily: MONO, fontSize: '12px', color: '#6f6892',
       })
 
+    this.buildMinimap()
+
     this.scale.on('resize', this.layout, this)
   }
 
+  /**
+   * Top-right minimap. Cover and foliage are painted once; only the dots and
+   * the viewport box are redrawn each frame.
+   */
+  buildMinimap() {
+    const game = this.game_
+    if (!game?.arena) return
+
+    this.mmScale = MINIMAP.size / Math.max(WORLD.width, WORLD.height)
+    this.mmW = WORLD.width * this.mmScale
+    this.mmH = WORLD.height * this.mmScale
+
+    this.mmRoot = this.add.container(0, 0).setDepth(500)
+
+    const bg = this.add.graphics()
+    bg.fillStyle(0x0b0918, 0.82)
+    bg.fillRoundedRect(0, 0, this.mmW, this.mmH, 10)
+    bg.lineStyle(1, 0x3d2f7a, 0.9)
+    bg.strokeRoundedRect(0, 0, this.mmW, this.mmH, 10)
+
+    const terrain = this.add.graphics()
+    for (const b of game.arena.bushes) {
+      terrain.fillStyle(0x2f8a52, 0.5)
+      terrain.fillEllipse(b.x * this.mmScale, b.y * this.mmScale,
+        b.rx * 2 * this.mmScale, b.ry * 2 * this.mmScale)
+    }
+    for (const w of game.arena.walls) {
+      terrain.fillStyle(0x6c5fb8, 0.75)
+      terrain.fillRect(w.left * this.mmScale, w.top * this.mmScale,
+        w.w * this.mmScale, w.h * this.mmScale)
+    }
+
+    this.mmViewport = this.add.graphics()
+    this.mmDots = this.add.graphics()
+
+    this.mmRoot.add([bg, terrain, this.mmViewport, this.mmDots])
+    this.layoutMinimap()
+  }
+
+  layoutMinimap() {
+    if (!this.mmRoot) return
+    this.mmRoot.setPosition(this.scale.width - this.mmW - MINIMAP.pad, MINIMAP.pad)
+  }
+
+  drawMinimap() {
+    const game = this.game_
+    if (!this.mmDots || !game?.player) return
+
+    const s = this.mmScale
+    const cam = game.cameras.main
+
+    this.mmViewport.clear()
+    this.mmViewport.lineStyle(1, 0xb9b2d4, 0.55)
+    this.mmViewport.strokeRect(
+      cam.worldView.x * s, cam.worldView.y * s,
+      cam.worldView.width * s, cam.worldView.height * s,
+    )
+
+    this.mmDots.clear()
+    for (const bot of game.bots) {
+      if (!bot.alive) continue
+      // Hidden rivals do not show; foliage means something on the map too.
+      if (bot.hidden) continue
+      this.mmDots.fillStyle(bot.colors.body, 0.95)
+      this.mmDots.fillCircle(bot.x * s, bot.y * s, 3.2)
+    }
+
+    if (game.player.alive) {
+      this.mmDots.fillStyle(0xffffff, 0.35)
+      this.mmDots.fillCircle(game.player.x * s, game.player.y * s, 6)
+      this.mmDots.fillStyle(game.player.colors.body, 1)
+      this.mmDots.fillCircle(game.player.x * s, game.player.y * s, 3.6)
+    }
+  }
+
   layout(size) {
-    this.status?.setPosition(size.width - 34, 34)
-    this.statusSub?.setPosition(size.width - 34, 56)
+    this.status?.setPosition(size.width - 34, MINIMAP.size + 34)
+    this.statusSub?.setPosition(size.width - 34, MINIMAP.size + 56)
     this.hint?.setY(size.height - 40)
+    this.layoutMinimap()
   }
 
   buildPips(count, color) {
@@ -71,6 +152,9 @@ export default class UIScene extends Phaser.Scene {
   update() {
     const player = this.game_?.player
     if (!player || !this.specialBar) return
+
+    if (!this.mmRoot) this.buildMinimap()
+    this.drawMinimap()
 
     if (this.pips.length !== player.maxHp) this.buildPips(player.maxHp, player.colors.body)
 

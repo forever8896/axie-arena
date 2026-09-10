@@ -92,6 +92,8 @@ export default class BotBrain {
     for (const t of targets) {
       if (t === this.fighter || !t.alive) continue
       const d = Phaser.Math.Distance.Between(this.fighter.x, this.fighter.y, t.x, t.y)
+      // Foliage hides you unless you are almost on top of them.
+      if (t.hidden && d > 150) continue
       if (d < bestDist) { bestDist = d; best = t }
     }
     return best
