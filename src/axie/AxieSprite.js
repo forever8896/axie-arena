@@ -168,6 +168,38 @@ export default class AxieSprite {
     })
   }
 
+  setAlpha(a) {
+    this.facingWrap.setAlpha(a)
+  }
+
+  /** Afterimages along the dash direction. */
+  dashTrail(dir) {
+    const scene = this.scene
+    for (let i = 0; i < 4; i++) {
+      scene.time.delayedCall(i * 34, () => {
+        if (!this.root.active) return
+        const ghost = scene.add.container(this.root.x, this.root.y).setDepth(this.root.y - 2)
+        for (const img of this.images) {
+          const copy = scene.add.image(img.x, img.y, img.texture.key)
+            .setOrigin(img.originX, img.originY)
+            .setScale(img.scaleX * this.facingWrap.scaleX, img.scaleY)
+            .setRotation(img.rotation)
+            .setTintFill(this.colors.rim)
+            .setAlpha(0.4)
+          ghost.add(copy)
+        }
+        scene.tweens.add({
+          targets: ghost,
+          alpha: 0,
+          x: ghost.x - dir.x * 16,
+          y: ghost.y - dir.y * 16,
+          duration: 260,
+          onComplete: () => ghost.destroy(),
+        })
+      })
+    }
+  }
+
   flash(color, ms = 110) {
     this.images.forEach(i => i.setTintFill(color))
     this.scene.time.delayedCall(ms, () => this.images.forEach(i => i.clearTint()))

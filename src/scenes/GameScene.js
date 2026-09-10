@@ -48,8 +48,13 @@ export default class GameScene extends Phaser.Scene {
 
     ambientMotes(this, { left: 0, top: 0, right: ARENA.width, bottom: ARENA.height })
 
-    this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE')
-    this.input.keyboard.on('keydown-SPACE', () => this.playerSwing())
+    this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,SHIFT')
+    this.input.on('pointerdown', p => { if (p.leftButtonDown()) this.playerSwing() })
+    this.input.keyboard.on('keydown-SPACE', () => this.playerDash())
+    this.input.keyboard.on('keydown-SHIFT', () => this.playerDash())
+    this.input.mouse?.disableContextMenu()
+
+    this.buildReticle()
 
     const cam = this.cameras.main
     cam.setBounds(0, 0, ARENA.width, ARENA.height)
@@ -117,19 +122,50 @@ export default class GameScene extends Phaser.Scene {
     })
   }
 
-  playerSwing() {
-    const now = this.time.now
-    if (!this.player.canAttack(now)) return
+  buildReticle() {
+    // Shows exactly where the swing lands: the cone, not a crosshair.
+    // Ground level: under the fighters, above the arena floor.
+    this.reticle = this.add.graphics().setDepth(-20)
+  }
 
-    // Swing at whoever is nearest and in front; the swing plays either way.
-    let best = null
-    let bestDist = Infinity
-    for (const bot of this.bots) {
-      if (!bot.alive) continue
-      const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, bot.x, bot.y)
-      if (d < bestDist) { bestDist = d; best = bot }
-    }
-    this.player.swing(bestDist <= this.player.attackRange * 1.6 ? best : null, now)
+  drawReticle() {
+    const p = this.player
+    const g = this.reticle
+    g.clear()
+    if (!p.alive) return
+
+    const ready = p.canAttack(this.time.now)
+    const color = ready ? p.colors.rim : 0x5b5470
+    const alpha = ready ? 0.5 : 0.22
+
+    g.fillStyle(color, alpha * 0.22)
+    g.slice(p.x, p.y, p.attackRange, p.aim - p.attackArc / 2, p.aim + p.attackArc / 2)
+    g.fillPath()
+
+    g.lineStyle(2, color, alpha)
+    g.beginPath()
+    g.arc(p.x, p.y, p.attackRange, p.aim - p.attackArc / 2, p.aim + p.attackArc / 2)
+    g.strokePath()
+  }
+
+  updateAim() {
+    const pointer = this.input.activePointer
+    const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y)
+    this.player.aim = Math.atan2(world.y - this.player.y, world.x - this.player.x)
+  }
+
+  playerSwing() {
+    this.player.swing(this.bots, this.time.now)
+  }
+
+  playerDash() {
+    this.player.dash(this.player.intent, this.time.now)
+  }
+
+  /** A whiff still costs the cooldown, so the swing has to be earned. */
+  swingMiss(fighter) {
+    if (fighter !== this.player) return
+    this.cameras.main.shake(60, 0.0015)
   }
 
   onFighterDown(fighter) {
@@ -148,10 +184,13 @@ export default class GameScene extends Phaser.Scene {
         (k.D.isDown ? 1 : 0) - (k.A.isDown ? 1 : 0),
         (k.S.isDown ? 1 : 0) - (k.W.isDown ? 1 : 0),
       )
+      this.updateAim()
 
       for (const bot of this.bots) bot.brain.update(time, this.fighters)
       for (const f of this.fighters) f.update(delta)
     }
+
+    this.drawReticle()
 
   }
 }

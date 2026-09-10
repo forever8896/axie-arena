@@ -23,6 +23,8 @@ export default class BotBrain {
     const target = this.nearest(targets)
     const dist = target ? Phaser.Math.Distance.Between(me.x, me.y, target.x, target.y) : Infinity
 
+    if (target) me.aim = Math.atan2(target.y - me.y, target.x - me.x)
+
     switch (this.state) {
       case 'wander':
         this.wander(now)
@@ -35,12 +37,14 @@ export default class BotBrain {
           break
         }
         me.intent.set(target.x - me.x, target.y - me.y).normalize()
-        if (dist <= me.attackRange) this.state = 'strike'
+        // Close a big gap with a dash rather than jogging the whole way.
+        if (dist > me.attackRange * 3 && me.canDash(now)) me.dash(me.intent, now)
+        if (dist <= me.attackRange * 0.8) this.state = 'strike'
         break
 
       case 'strike':
         me.intent.set(0, 0)
-        if (me.swing(target, now)) {
+        if (me.swing(targets, now)) {
           this.state = 'backoff'
           this.stateUntil = now + this.backoffTime
         } else if (dist > me.attackRange) {

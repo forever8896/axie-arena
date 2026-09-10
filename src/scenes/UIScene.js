@@ -31,9 +31,17 @@ export default class UIScene extends Phaser.Scene {
       fontFamily: 'ui-monospace, monospace', fontSize: '11px', color: '#6f6892',
     }).setOrigin(1, 0)
 
-    this.hint = this.add.text(34, this.scale.height - 40, 'WASD  MOVE          SPACE  ATTACK', {
-      fontFamily: 'ui-monospace, monospace', fontSize: '12px', color: '#6f6892',
+    // Dash cooldown, read at a glance next to the health pips.
+    this.dashBg = this.add.rectangle(34, 92, 130, 5, 0x2a2440).setOrigin(0, 0.5)
+    this.dashBar = this.add.rectangle(34, 92, 0, 5, 0x7ce8ff).setOrigin(0, 0.5)
+    this.dashLabel = this.add.text(34, 102, 'DASH', {
+      fontFamily: 'ui-monospace, monospace', fontSize: '11px', color: '#6f6892',
     })
+
+    this.hint = this.add.text(34, this.scale.height - 40,
+      'WASD  MOVE      MOUSE  AIM      CLICK  ATTACK      SPACE  DASH', {
+        fontFamily: 'ui-monospace, monospace', fontSize: '12px', color: '#6f6892',
+      })
 
     this.scale.on('resize', this.layout, this)
   }
@@ -56,5 +64,11 @@ export default class UIScene extends Phaser.Scene {
 
     const alive = this.game_.bots.filter(b => b.alive).length
     this.status.setText(String(alive).padStart(2, '0'))
+
+    const now = this.game_.time.now
+    const charge = Phaser.Math.Clamp((now - player.lastDash) / player.dashCooldown, 0, 1)
+    this.dashBar.width = 130 * charge
+    this.dashBar.setFillStyle(charge >= 1 ? 0x7ce8ff : 0x4a4570)
+    this.dashLabel.setColor(charge >= 1 ? '#7ce8ff' : '#6f6892')
   }
 }
