@@ -18,6 +18,13 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // Reached only if the scene is started without data (a stale link, a
+    // reload mid-match). Rebuild from scratch rather than throwing.
+    if (!this.builds) {
+      this.scene.start('BootScene')
+      return
+    }
+
     this.freezeUntil = 0
     this.arenaBounds = {
       left: 90, top: 110,
@@ -64,6 +71,10 @@ export default class GameScene extends Phaser.Scene {
     this.input.mouse?.disableContextMenu()
 
     this.buildReticle()
+
+    this.matchOver = false
+    this.startedAt = this.time.now
+    this.kills = 0
 
     const cam = this.cameras.main
     cam.setBounds(0, 0, ARENA.width, ARENA.height)
@@ -164,6 +175,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   playerSwing() {
+    if (this.matchOver) return
     this.player.swing(this.fighters, this.time.now)
   }
 
@@ -173,12 +185,14 @@ export default class GameScene extends Phaser.Scene {
   }
 
   playerSpecial() {
+    if (this.matchOver) return
     const pointer = this.input.activePointer
     const aimPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y)
     this.player.special(this.fighters, this.time.now, aimPoint)
   }
 
   playerDash() {
+    if (this.matchOver) return
     this.player.dash(this.player.intent, this.time.now)
   }
 
@@ -188,10 +202,33 @@ export default class GameScene extends Phaser.Scene {
     this.cameras.main.shake(60, 0.0015)
   }
 
-  onFighterDown(fighter) {
+  onFighterDown(fighter, killer) {
+    if (this.matchOver) return
+    if (killer === this.player && fighter !== this.player) this.kills++
+
     if (fighter === this.player) {
       this.cameras.main.flash(220, 90, 10, 30)
+      return this.endMatch(false)
     }
+    if (this.bots.every(b => !b.alive)) this.endMatch(true)
+  }
+
+  /** Let the death land before the panel appears, then freeze the arena. */
+  endMatch(won) {
+    this.matchOver = true
+    this.reticle.clear()
+
+    this.time.delayedCall(won ? 700 : 900, () => {
+      this.scene.pause()
+      this.scene.stop('UIScene')
+      this.scene.launch('ResultScene', {
+        won,
+        axieClass: this.player.axieClass,
+        kills: this.kills,
+        seconds: Math.round((this.time.now - this.startedAt) / 1000),
+        builds: this.builds,
+      })
+    })
   }
 
   update(time, delta) {
@@ -201,10 +238,10 @@ export default class GameScene extends Phaser.Scene {
     if (!frozen) {
       const k = this.keys
       this.player.intent.set(
-        (k.D.isDown ? 1 : 0) - (k.A.isDown ? 1 : 0),
-        (k.S.isDown ? 1 : 0) - (k.W.isDown ? 1 : 0),
+        this.matchOver ? 0 : (k.D.isDown ? 1 : 0) - (k.A.isDown ? 1 : 0),
+        this.matchOver ? 0 : (k.S.isDown ? 1 : 0) - (k.W.isDown ? 1 : 0),
       )
-      this.updateAim()
+      if (!this.matchOver) this.updateAim()
 
       for (const bot of this.bots) bot.brain.update(time, this.fighters)
       for (const f of this.fighters) f.update(delta)
@@ -215,7 +252,7 @@ export default class GameScene extends Phaser.Scene {
       this.zones = this.zones.filter(z => !z.dead)
     }
 
-    this.drawReticle()
+    if (!this.matchOver) this.drawReticle()
 
   }
 }

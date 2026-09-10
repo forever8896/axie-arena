@@ -69,12 +69,15 @@ frame timing, which needs no runtime at all. Those are in `public/vfx/`.
 
 ## Status
 
+**The core loop is complete**: choose an Axie, fight, win or lose, play again.
+
 Working: real Axie bodies for six classes, per-part procedural animation,
 class select, six distinct kits (per-class basic and special), Origins skill
 VFX, projectiles, ground zones, poison / slow / stun, mouse aim, dash with
-invulnerability, bot AI that uses specials, hit-stop, damage numbers, HUD.
+invulnerability, bot AI that uses specials, hit-stop, damage numbers, HUD,
+win and lose states, restart.
 
-Not yet: win/lose condition, restart, audio, mobile controls, networked play.
+Not yet: audio, mobile controls, networked play.
 
 Body attack animation is hand-made rather than the authored Origins clips —
 see the rendering section above.
@@ -84,8 +87,8 @@ see the rendering section above.
 - Axie textures load from the official CDN at runtime, so first load needs a
   connection and currently takes several seconds. If the CDN cannot be reached
   the boot screen says so rather than hanging.
-- No win or lose state yet — losing all HP fades you out and the match
-  continues.
+- No audio yet.
+- Desktop only so far: no touch controls.
 
 ## Disclosures
 

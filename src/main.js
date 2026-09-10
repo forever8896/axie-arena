@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import BootScene from './scenes/BootScene.js'
 import GameScene from './scenes/GameScene.js'
 import MenuScene from './scenes/MenuScene.js'
+import ResultScene from './scenes/ResultScene.js'
 import UIScene from './scenes/UIScene.js'
 
 // Rowdies must be available before Phaser measures any text, or headings
@@ -22,7 +23,7 @@ async function start() {
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
     render: { pixelArt: false, antialias: true },
-    scene: [BootScene, MenuScene, GameScene, UIScene],
+    scene: [BootScene, MenuScene, GameScene, UIScene, ResultScene],
   })
 
   // Dev-only handle for poking at the running game from the console.
