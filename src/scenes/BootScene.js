@@ -54,7 +54,7 @@ export default class BootScene extends Phaser.Scene {
         return this.fail('Could not reach the Axie CDN', new Error('no textures loaded'))
       }
       missing.forEach(c => delete builds[c])
-      this.scene.start('GameScene', { builds })
+      this.scene.start('MenuScene', { builds })
     })
     this.load.start()
   }

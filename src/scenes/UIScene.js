@@ -12,12 +12,8 @@ export default class UIScene extends Phaser.Scene {
   create() {
     this.game_ = this.scene.get('GameScene')
 
+    // Built on first update, once the chosen class's max HP is known.
     this.pips = []
-    for (let i = 0; i < 5; i++) {
-      const pip = this.add.circle(34 + i * 26, 40, 9, 0xffb812)
-        .setStrokeStyle(3, 0x0b0918, 0.9)
-      this.pips.push(pip)
-    }
 
     this.label = this.add.text(34, 66, 'HP', {
       fontFamily: 'ui-monospace, monospace', fontSize: '11px', color: '#6f6892',
@@ -52,9 +48,21 @@ export default class UIScene extends Phaser.Scene {
     this.hint?.setY(size.height - 40)
   }
 
+  buildPips(count, color) {
+    this.pips.forEach(p => p.destroy())
+    this.pips = []
+    for (let i = 0; i < count; i++) {
+      this.pips.push(
+        this.add.circle(34 + i * 24, 40, 8, color).setStrokeStyle(3, 0x0b0918, 0.9),
+      )
+    }
+  }
+
   update() {
     const player = this.game_?.player
     if (!player) return
+
+    if (this.pips.length !== player.maxHp) this.buildPips(player.maxHp, player.colors.body)
 
     this.pips.forEach((pip, i) => {
       const on = i < player.hp

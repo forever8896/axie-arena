@@ -13,6 +13,7 @@ export default class GameScene extends Phaser.Scene {
 
   init(data) {
     this.builds = data.builds
+    this.playerClass = data.playerClass
   }
 
   create() {
@@ -27,7 +28,7 @@ export default class GameScene extends Phaser.Scene {
     this.drawArena()
 
     const available = Object.keys(this.builds)
-    const playerClass = available.includes('beast') ? 'beast' : available[0]
+    const playerClass = available.includes(this.playerClass) ? this.playerClass : available[0]
 
     this.player = new Fighter(this, ARENA.width / 2, ARENA.height / 2, {
       axieClass: playerClass, build: this.builds[playerClass], isPlayer: true, name: 'you',

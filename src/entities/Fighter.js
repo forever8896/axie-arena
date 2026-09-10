@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import AxieSprite from '../axie/AxieSprite.js'
 import { CLASS_COLORS } from '../axie/palette.js'
+import { CLASS_KITS } from '../axie/classKits.js'
 import { impact, damageNumber, hitStop, dustEmitter } from '../fx/Juice.js'
 
 /**
@@ -15,9 +16,12 @@ export default class Fighter {
     this.axieClass = axieClass
     this.colors = CLASS_COLORS[axieClass] ?? CLASS_COLORS.beast
 
-    this.maxHp = 5
+    const kit = CLASS_KITS[axieClass]
+    this.kit = kit
+    this.maxHp = kit?.hp ?? 5
     this.hp = this.maxHp
-    this.speed = isPlayer ? 235 : 165
+    // Bots move at a fraction of their class speed so they stay readable.
+    this.speed = (kit?.speed ?? 220) * (isPlayer ? 1 : 0.72)
     this.attackRange = 96
     this.attackArc = Phaser.Math.DegToRad(100)
     this.attackCooldown = 520
