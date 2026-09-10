@@ -3,6 +3,7 @@ import AxieSprite from '../axie/AxieSprite.js'
 import { CLASS_COLORS } from '../axie/palette.js'
 import { CLASS_KITS } from '../axie/classKits.js'
 import { impact, damageNumber, hitStop, dustEmitter } from '../fx/Juice.js'
+import { useBasic, useSpecial } from '../combat/abilities.js'
 
 /**
  * One Axie in the arena. The player and the bots are the same thing; only the
@@ -21,12 +22,25 @@ export default class Fighter {
     this.maxHp = kit?.hp ?? 5
     this.hp = this.maxHp
     // Bots move at a fraction of their class speed so they stay readable.
-    this.speed = (kit?.speed ?? 220) * (isPlayer ? 1 : 0.72)
-    this.attackRange = 96
-    this.attackArc = Phaser.Math.DegToRad(100)
-    this.attackCooldown = 520
+    this.baseSpeed = (kit?.speed ?? 220) * (isPlayer ? 1 : 0.72)
+
+    // Reach and timing come from the kit, so the reticle always shows the truth.
+    this.attackRange = kit?.basic?.range ?? 96
+    this.attackArc = Phaser.Math.DegToRad(kit?.basic?.arc ?? 100)
+    this.attackCooldown = kit?.basic?.cooldown ?? 520
+    this.specialCooldown = kit?.special?.cooldown ?? 7000
     this.lastAttack = 0
+    this.lastSpecial = -Infinity
     this.alive = true
+
+    // Status effects.
+    this.slowUntil = 0
+    this.slowFactor = 1
+    this.stunUntil = 0
+    this.poisonTicks = 0
+    this.poisonNext = 0
+    this.poisonSpec = null
+    this.poisonFrom = null
 
     // Aim is independent of movement: you can back off while swinging forward.
     this.aim = 0
@@ -51,11 +65,32 @@ export default class Fighter {
   get y() { return this.pos.y }
   get dashing() { return this.scene.time.now < this.dashUntil }
   get invulnerable() { return this.scene.time.now < this.invulnerableUntil }
+  get stunned() { return this.scene.time.now < this.stunUntil }
+  get speed() {
+    return this.baseSpeed * (this.scene.time.now < this.slowUntil ? this.slowFactor : 1)
+  }
 
   update(delta) {
     if (!this.alive) return
 
     const step = delta / 1000
+    this.tickPoison()
+
+    if (this.stunned) {
+      this.vel.scale(0.85)
+      this.pos.x += this.vel.x * step
+      this.pos.y += this.vel.y * step
+      this.clampToArena()
+      this.sprite.setPosition(this.pos.x, this.pos.y)
+      this.sprite.update(delta, 0)
+      return
+    }
+
+    if (this.charge) {
+      this.updateCharge(step)
+      this.sprite.update(delta, this.vel.length())
+      return
+    }
 
     if (this.dashing) {
       // A dash is committed movement — input does not steer it.
@@ -96,7 +131,74 @@ export default class Fighter {
   }
 
   canAttack(now) {
-    return this.alive && !this.dashing && now - this.lastAttack >= this.attackCooldown
+    return this.alive && !this.dashing && !this.stunned && !this.charge &&
+      now - this.lastAttack >= this.attackCooldown
+  }
+
+  canSpecial(now) {
+    return this.alive && !this.dashing && !this.stunned && !this.charge &&
+      now - this.lastSpecial >= this.specialCooldown
+  }
+
+  /** Beast's Impale: a longer, damaging dash that cannot be steered. */
+  beginCharge(dir, speed, duration, onHit, targets) {
+    this.charge = {
+      dir: dir.clone().normalize(),
+      until: this.scene.time.now + duration,
+      onHit,
+      targets,
+    }
+    this.vel.copy(this.charge.dir.clone().scale(speed))
+    this.invulnerableUntil = this.scene.time.now + duration
+    this.sprite.dashTrail(this.charge.dir)
+  }
+
+  updateCharge(step) {
+    this.pos.x += this.vel.x * step
+    this.pos.y += this.vel.y * step
+    this.clampToArena()
+    this.sprite.setPosition(this.pos.x, this.pos.y)
+
+    for (const t of this.charge.targets) {
+      if (t === this || !t.alive) continue
+      if (Phaser.Math.Distance.Between(this.x, this.y, t.x, t.y) <= 62) this.charge.onHit(t)
+    }
+
+    if (this.scene.time.now >= this.charge.until) {
+      this.charge = null
+      this.vel.scale(0.3)
+    }
+  }
+
+  applySlow({ factor, duration }) {
+    this.slowFactor = factor
+    this.slowUntil = Math.max(this.slowUntil, this.scene.time.now + duration)
+    this.sprite.flash(0x7ce8ff, 120)
+  }
+
+  applyStun(duration) {
+    this.stunUntil = Math.max(this.stunUntil, this.scene.time.now + duration)
+    this.intent.set(0, 0)
+  }
+
+  applyPoison(spec, from) {
+    this.poisonSpec = spec
+    this.poisonFrom = from
+    this.poisonTicks = spec.ticks
+    this.poisonNext = this.scene.time.now + spec.interval
+  }
+
+  tickPoison() {
+    if (this.poisonTicks <= 0) return
+    const now = this.scene.time.now
+    if (now < this.poisonNext) return
+
+    this.poisonTicks--
+    this.poisonNext = now + this.poisonSpec.interval
+    this.hp -= this.poisonSpec.damage
+    damageNumber(this.scene, this.x, this.y - 12, `-${this.poisonSpec.damage}`, '#9ff0bb')
+    this.sprite.flash(0x9a5ad4, 90)
+    if (this.hp <= 0) this.die(this.poisonFrom)
   }
 
   canDash(now) {
@@ -128,24 +230,13 @@ export default class Fighter {
     return Math.abs(Phaser.Math.Angle.Wrap(toTarget - this.aim)) <= this.attackArc / 2
   }
 
-  /**
-   * Swings at the aim direction. Resolves on impact, not on the keypress, and
-   * hits everything in the cone — so positioning matters more than target lock.
-   */
+  /** Both abilities live in combat/abilities.js, keyed by the kit. */
   swing(candidates, now) {
-    if (!this.canAttack(now)) return false
-    this.lastAttack = now
+    return useBasic(this, candidates, now)
+  }
 
-    this.sprite.playAttack(() => {
-      if (!this.alive) return
-      let connected = false
-      for (const other of candidates) {
-        if (other === this || !other.alive || other.invulnerable) continue
-        if (this.inArc(other)) { other.takeDamage(1, this); connected = true }
-      }
-      if (!connected) this.scene.swingMiss?.(this)
-    })
-    return true
+  special(candidates, now, aimPoint) {
+    return useSpecial(this, candidates, now, aimPoint)
   }
 
   inRange(target) {
@@ -153,7 +244,7 @@ export default class Fighter {
     return Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y) <= this.attackRange
   }
 
-  takeDamage(amount, from) {
+  takeDamage(amount, from, knockback = 210) {
     if (!this.alive || this.invulnerable) return
     this.hp -= amount
 
@@ -162,8 +253,8 @@ export default class Fighter {
     damageNumber(this.scene, this.x, this.y, `-${amount}`, this.isPlayer ? '#ff8098' : '#ffe08a')
     hitStop(this.scene, 70)
 
-    if (from) {
-      const away = new Phaser.Math.Vector2(this.x - from.x, this.y - from.y).normalize().scale(210)
+    if (from && knockback) {
+      const away = new Phaser.Math.Vector2(this.x - from.x, this.y - from.y).normalize().scale(knockback)
       this.vel.add(away)
     }
 

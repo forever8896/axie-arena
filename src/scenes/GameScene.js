@@ -3,6 +3,7 @@ import Fighter from '../entities/Fighter.js'
 import BotBrain from '../ai/BotBrain.js'
 import { ARENA_PALETTE } from '../axie/palette.js'
 import { createFxTextures, ambientMotes } from '../fx/Juice.js'
+import { playPlate } from '../fx/SkillVfx.js'
 
 const ARENA = { width: 1700, height: 1300 }
 
@@ -46,13 +47,20 @@ export default class GameScene extends Phaser.Scene {
     })
 
     this.fighters = [this.player, ...this.bots]
+    this.projectiles = []
+    this.zones = []
 
     ambientMotes(this, { left: 0, top: 0, right: ARENA.width, bottom: ARENA.height })
 
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,SHIFT')
-    this.input.on('pointerdown', p => { if (p.leftButtonDown()) this.playerSwing() })
+    this.input.on('pointerdown', p => {
+      if (p.leftButtonDown()) this.playerSwing()
+      else if (p.rightButtonDown()) this.playerSpecial()
+    })
     this.input.keyboard.on('keydown-SPACE', () => this.playerDash())
     this.input.keyboard.on('keydown-SHIFT', () => this.playerDash())
+    this.input.keyboard.on('keydown-E', () => this.playerSpecial())
+    this.input.keyboard.on('keydown-Q', () => this.playerSpecial())
     this.input.mouse?.disableContextMenu()
 
     this.buildReticle()
@@ -156,7 +164,18 @@ export default class GameScene extends Phaser.Scene {
   }
 
   playerSwing() {
-    this.player.swing(this.bots, this.time.now)
+    this.player.swing(this.fighters, this.time.now)
+  }
+
+  /** Called by the ability system when a special fires. */
+  playSkillVfx(fighter, spec) {
+    playPlate(this, fighter, spec)
+  }
+
+  playerSpecial() {
+    const pointer = this.input.activePointer
+    const aimPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y)
+    this.player.special(this.fighters, this.time.now, aimPoint)
   }
 
   playerDash() {
@@ -189,6 +208,11 @@ export default class GameScene extends Phaser.Scene {
 
       for (const bot of this.bots) bot.brain.update(time, this.fighters)
       for (const f of this.fighters) f.update(delta)
+
+      for (const p of this.projectiles) p.update(delta, this.fighters)
+      for (const z of this.zones) z.update(delta, this.fighters)
+      this.projectiles = this.projectiles.filter(p => !p.dead)
+      this.zones = this.zones.filter(z => !z.dead)
     }
 
     this.drawReticle()

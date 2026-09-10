@@ -32,12 +32,22 @@ copied into or redistributed from this repository.
 Axie characters and art are Sky Mavis / Axie Infinity IP, used here for an Axie
 Vibeathon entry.
 
-**Planned:** Axie Origins Battle Kit, pinned to the revision licensed by
-Official Rules §5: `069a59b772e54633d04a3d9d12ecde73b3e4be5d`. Not open source;
-use limited to Vibeathon. `LICENSE.md` and `Third Party Notices.md` travel with
-any copy.
+**Axie Origins Battle Kit — in use.** Six skill VFX plates are vendored from
+the revision licensed by Official Rules §5,
+`069a59b772e54633d04a3d9d12ecde73b3e4be5d`:
 
-**No Spine runtime code is shipped** — see README.
+`beast_gore`, `aquatic_slash`, `plant_projectile`, `bird_throw`,
+`bug_projectile`, `reptile_projectile`
+
+Each is an additive sprite sheet plus Origins' own `clip.json` timing, under
+`public/vfx/`. They are pre-rendered PNG frames — no Spine runtime is involved.
+The kit is not open source; use is limited to Vibeathon. Its `LICENSE.md` and
+`THIRD_PARTY_NOTICES.md` are kept alongside the plates in `public/vfx/`.
+
+**No Spine runtime code is shipped.** `pixi-spine` and equivalents are avoided
+deliberately: Official Rules §5 and Esoteric Software's Spine Runtimes License
+require each user integrating the runtimes to hold a Spine Editor licence. See
+README for what that costs us.
 
 ## Generated assets
 

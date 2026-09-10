@@ -31,9 +31,14 @@ export default class BotBrain {
         if (dist < this.aggroRange) this.state = 'chase'
         break
 
-      case 'chase':
+      case 'chase': {
         if (!target || dist > this.aggroRange * 1.4) {
           this.state = 'wander'
+          break
+        }
+        // Specials have their own preferred range; use one the moment it fits.
+        if (me.canSpecial(now) && dist < this.specialRange(me)) {
+          me.special(targets, now, { x: target.x, y: target.y })
           break
         }
         me.intent.set(target.x - me.x, target.y - me.y).normalize()
@@ -41,6 +46,7 @@ export default class BotBrain {
         if (dist > me.attackRange * 3 && me.canDash(now)) me.dash(me.intent, now)
         if (dist <= me.attackRange * 0.8) this.state = 'strike'
         break
+      }
 
       case 'strike':
         me.intent.set(0, 0)
@@ -57,6 +63,13 @@ export default class BotBrain {
         if (now >= this.stateUntil) this.state = dist < this.aggroRange ? 'chase' : 'wander'
         break
     }
+  }
+
+  /** How close a bot wants to be before spending its special. */
+  specialRange(me) {
+    const spec = me.kit?.special
+    if (!spec) return me.attackRange
+    return spec.projectileRange ?? spec.maxRange ?? spec.range ?? spec.radius ?? me.attackRange * 2.2
   }
 
   wander(now) {

@@ -1,6 +1,8 @@
 import Phaser from 'phaser'
 import { initMixer, buildAxie, AXIE_CDN, CLASS_PART_SETS } from '../axie/AxieFactory.js'
 import { ARENA_PALETTE } from '../axie/palette.js'
+import { CLASS_KITS } from '../axie/classKits.js'
+import { loadSkillPlates } from '../fx/SkillVfx.js'
 
 /**
  * Builds every Axie the arena needs, then pulls their textures off the Axie
@@ -39,24 +41,56 @@ export default class BootScene extends Phaser.Scene {
     }
 
     this.status.setText('LOADING AXIE PARTS')
-    this.load.setCORS('anonymous')
-    for (const path of paths) {
-      if (!this.textures.exists(path)) this.load.image(path, AXIE_CDN + path)
-    }
+    await this.loadTextures([...paths])
 
-    this.load.on('progress', v => this.setBar(v))
-    this.load.once('complete', () => {
-      const missing = []
-      for (const [axieClass, build] of Object.entries(builds)) {
-        if (build.layers.some(l => !this.textures.exists(l.imagePath))) missing.push(axieClass)
+    this.status.setText('LOADING ORIGINS EFFECTS')
+    this.setBar(0)
+    const vfxIds = [...new Set(
+      Object.values(CLASS_KITS).map(k => k.special.vfx).filter(Boolean),
+    )]
+    let vfxDone = 0
+    await loadSkillPlates(vfxIds, this, () => this.setBar(++vfxDone / vfxIds.length))
+
+    const missing = []
+    for (const [axieClass, build] of Object.entries(builds)) {
+      if (build.layers.some(l => !this.textures.exists(l.imagePath))) missing.push(axieClass)
+    }
+    if (missing.length === Object.keys(builds).length) {
+      return this.fail('Could not reach the Axie CDN', new Error('no textures loaded'))
+    }
+    missing.forEach(c => delete builds[c])
+
+    this.scene.start('MenuScene', { builds })
+  }
+
+  /**
+   * Textures are fetched directly rather than through Phaser's loader.
+   * The loader is built to run during a scene's preload phase; queueing into it
+   * afterwards stalls at its parallel-download cap and never resumes.
+   */
+  async loadTextures(paths) {
+    let done = 0
+    await Promise.all(paths.map(async path => {
+      if (!this.textures.exists(path)) await this.loadTexture(path)
+      done++
+      this.setBar(done / paths.length)
+    }))
+  }
+
+  loadTexture(path) {
+    return new Promise(resolve => {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        if (!this.textures.exists(path)) this.textures.addImage(path, img)
+        resolve(true)
       }
-      if (missing.length === Object.keys(builds).length) {
-        return this.fail('Could not reach the Axie CDN', new Error('no textures loaded'))
+      img.onerror = () => {
+        console.warn('texture failed:', path)
+        resolve(false)
       }
-      missing.forEach(c => delete builds[c])
-      this.scene.start('MenuScene', { builds })
+      img.src = AXIE_CDN + path
     })
-    this.load.start()
   }
 
   showProgress() {

@@ -57,17 +57,27 @@ Two details that matter if you touch this code:
 - The mixer's art faces **left**. Facing right flips the rig.
 
 Motion is procedural, per part: the body bobs and squashes, legs alternate,
-ears and tail lag behind, and the Axie blinks. It costs us the 46 prebuilt
-skeletal clips and keeps us unambiguously clear of §5.
+ears and tail lag behind, and the Axie blinks.
+
+**What this costs us.** The mixer's 46 authored clips — `attack/melee/horn-gore`
+and the rest — are Spine animations, so they are unavailable without a Spine
+runtime. Body motion is therefore hand-made, including attack wind-ups.
+
+**What it does not cost us.** Skill effects are the real Origins ones. The kit
+ships every skill as a pre-rendered additive sprite sheet with Origins' own
+frame timing, which needs no runtime at all. Those are in `public/vfx/`.
 
 ## Status
 
 Working: real Axie bodies for six classes, per-part procedural animation,
-movement with acceleration and knockback, bot AI, melee with wind-up and
-lunge, hit-stop, impact effects, damage numbers, death, HUD, camera follow.
+class select, six distinct kits (per-class basic and special), Origins skill
+VFX, projectiles, ground zones, poison / slow / stun, mouse aim, dash with
+invulnerability, bot AI that uses specials, hit-stop, damage numbers, HUD.
 
-Not yet: win/lose condition, restart, instructions screen, audio, mobile
-controls, networked play.
+Not yet: win/lose condition, restart, audio, mobile controls, networked play.
+
+Body attack animation is hand-made rather than the authored Origins clips —
+see the rendering section above.
 
 ## Known issues
 
