@@ -31,15 +31,17 @@ export default class MenuScene extends Phaser.Scene {
 
     this.backdrop()
 
-    this.title = this.add.text(0, 0, 'AXIE ARENA', {
-      fontFamily: HEAD, fontSize: '46px', color: '#f4f0ff',
+    this.title = this.add.text(0, 0, 'LUNACY', {
+      fontFamily: HEAD, fontSize: '46px', color: '#fff8d8',
     }).setOrigin(0.5)
 
     this.subtitle = this.add.text(0, 0, 'CHOOSE YOUR AXIE', {
       fontFamily: MONO, fontSize: '13px', color: '#8b83ad',
     }).setOrigin(0.5)
 
-    this.footer = this.add.text(0, 0, '← →  BROWSE      ENTER  FIGHT      OR CLICK A CARD', {
+    this.input.keyboard.on('keydown-ESC', () => this.scene.start('HomeScene', { builds: this.builds }))
+
+    this.footer = this.add.text(0, 0, '← →  BROWSE      ENTER  FIGHT      ESC  BACK', {
       fontFamily: MONO, fontSize: '12px', color: '#5f5980',
     }).setOrigin(0.5)
 

@@ -328,12 +328,13 @@ export default class Arena {
 }
 
 /**
- * Builds the tiling grass texture once.
+ * Builds the tiling grass texture once. Exported so the front end can stand on
+ * the same field the game is played on.
  *
  * Elements that cross an edge are drawn again on the opposite side, so the
  * tile repeats without visible seams.
  */
-function makeGrassTexture(scene) {
+export function makeGrassTexture(scene) {
   if (scene.textures.exists('field-grass')) return
 
   const size = GRASS_TILE

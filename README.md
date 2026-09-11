@@ -1,8 +1,11 @@
-# Axie Arena
+# Lunacy
 
-A browser arena prototype for **Axie Vibeathon 2026** (theme: Axie Core).
+**Six Axies. One field. Last one standing.**
 
-Greybox stage — plain shapes standing in for Axies while the core loop is built.
+A browser arena brawler for **Axie Vibeathon 2026** (theme: Axie Core).
+
+Six Axie classes, each with its own basic attack and special, fighting over a
+Lunacia meadow. Named for Lunacia, minus a letter.
 
 ## Run it
 

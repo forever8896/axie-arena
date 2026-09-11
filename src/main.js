@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import BootScene from './scenes/BootScene.js'
 import GameScene from './scenes/GameScene.js'
+import HomeScene from './scenes/HomeScene.js'
 import MenuScene from './scenes/MenuScene.js'
 import ResultScene from './scenes/ResultScene.js'
 import UIScene from './scenes/UIScene.js'
@@ -23,7 +24,7 @@ async function start() {
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
     render: { pixelArt: false, antialias: true },
-    scene: [BootScene, MenuScene, GameScene, UIScene, ResultScene],
+    scene: [BootScene, HomeScene, MenuScene, GameScene, UIScene, ResultScene],
   })
 
   // Dev-only handle for poking at the running game from the console.

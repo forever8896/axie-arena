@@ -66,7 +66,7 @@ export default class BootScene extends Phaser.Scene {
     }
     missing.forEach(c => delete builds[c])
 
-    this.scene.start('MenuScene', { builds })
+    this.scene.start('HomeScene', { builds })
   }
 
   /**
@@ -101,10 +101,11 @@ export default class BootScene extends Phaser.Scene {
 
   showProgress() {
     const { width, height } = this.scale
-    this.cameras.main.setBackgroundColor(ARENA_PALETTE.deep)
+    this.cameras.main.setBackgroundColor(0x1d2b12)
 
-    this.add.text(width / 2, height / 2 - 46, 'AXIE ARENA', {
-      fontFamily: 'ui-monospace, monospace', fontSize: '26px', color: '#e8e4f5',
+    this.add.text(width / 2, height / 2 - 46, 'LUNACY', {
+      fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif',
+      fontSize: '34px', color: '#fff8d8',
     }).setOrigin(0.5)
 
     this.status = this.add.text(width / 2, height / 2 + 34, 'STARTING', {
@@ -112,7 +113,7 @@ export default class BootScene extends Phaser.Scene {
     }).setOrigin(0.5)
 
     this.barBg = this.add.rectangle(width / 2, height / 2, 320, 4, 0x2a2440)
-    this.bar = this.add.rectangle(width / 2 - 160, height / 2, 0, 4, 0xffb812).setOrigin(0, 0.5)
+    this.bar = this.add.rectangle(width / 2 - 160, height / 2, 0, 4, 0xffc22e).setOrigin(0, 0.5)
   }
 
   setBar(v) {
