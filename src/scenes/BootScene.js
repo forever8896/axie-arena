@@ -3,6 +3,7 @@ import { initMixer, buildAxie, AXIE_CDN, CLASS_PART_SETS } from '../axie/AxieFac
 import { ARENA_PALETTE } from '../axie/palette.js'
 import { CLASS_KITS } from '../axie/classKits.js'
 import { loadSkillPlates } from '../fx/SkillVfx.js'
+import { loadSfx, SFX } from '../fx/Sfx.js'
 
 /**
  * Builds every Axie the arena needs, then pulls their textures off the Axie
@@ -50,6 +51,11 @@ export default class BootScene extends Phaser.Scene {
     )]
     let vfxDone = 0
     await loadSkillPlates(vfxIds, this, () => this.setBar(++vfxDone / vfxIds.length))
+
+    this.status.setText('LOADING BATTLE AUDIO')
+    this.setBar(0)
+    let sfxDone = 0
+    await loadSfx(this, () => this.setBar(++sfxDone / SFX.length))
 
     const missing = []
     for (const [axieClass, build] of Object.entries(builds)) {

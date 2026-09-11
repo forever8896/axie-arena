@@ -40,7 +40,12 @@ the revision licensed by Official Rules §5,
 `bug_projectile`, `reptile_projectile`
 
 Each is an additive sprite sheet plus Origins' own `clip.json` timing, under
-`public/vfx/`. They are pre-rendered PNG frames — no Spine runtime is involved.
+`public/vfx/`.
+
+**Battle audio — in use.** 19 sounds from the same licensed revision, under
+`public/sfx/`: per-class attack and impact sounds plus `poison` and `stunned`.
+Transcoded from the kit's WAV originals to mono Ogg Vorbis with ffmpeg (3.5MB
+to ~360KB); no other modification. They are pre-rendered PNG frames — no Spine runtime is involved.
 The kit is not open source; use is limited to Vibeathon. Its `LICENSE.md` and
 `THIRD_PARTY_NOTICES.md` are kept alongside the plates in `public/vfx/`.
 

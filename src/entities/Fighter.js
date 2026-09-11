@@ -4,6 +4,7 @@ import { CLASS_COLORS } from '../axie/palette.js'
 import { CLASS_KITS } from '../axie/classKits.js'
 import { impact, damageNumber, hitStop, dustEmitter } from '../fx/Juice.js'
 import { useBasic, useSpecial } from '../combat/abilities.js'
+import { play, playVaried } from '../fx/Sfx.js'
 
 /**
  * One Axie in the arena. The player and the bots are the same thing; only the
@@ -185,11 +186,13 @@ export default class Fighter {
   }
 
   applyStun(duration) {
+    play(this.scene, 'stunned', { volume: 0.5 })
     this.stunUntil = Math.max(this.stunUntil, this.scene.time.now + duration)
     this.intent.set(0, 0)
   }
 
   applyPoison(spec, from) {
+    play(this.scene, 'poison', { volume: 0.45 })
     this.poisonSpec = spec
     this.poisonFrom = from
     this.poisonTicks = spec.ticks
@@ -257,6 +260,7 @@ export default class Fighter {
     this.hp -= amount
 
     this.sprite.flash(0xffffff, 90)
+    if (from?.kit?.hitSfx) playVaried(this.scene, from.kit.hitSfx, 0.45)
     impact(this.scene, this.x, this.y - 8, from?.colors.rim ?? 0xffffff, this.isPlayer ? 1.3 : 1)
     damageNumber(this.scene, this.x, this.y, `-${amount}`, this.isPlayer ? '#ff8098' : '#ffe08a')
     hitStop(this.scene, 70)

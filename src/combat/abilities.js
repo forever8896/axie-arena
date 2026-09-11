@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import Projectile from './Projectile.js'
 import Zone from './Zone.js'
 import { impact, hitStop } from '../fx/Juice.js'
+import { playVaried, play } from '../fx/Sfx.js'
 
 /**
  * Every ability is a function of (fighter, spec, targets). They are keyed by
@@ -17,6 +18,8 @@ export function useBasic(fighter, targets, now) {
   for (let i = 0; i < hits; i++) {
     fighter.scene.time.delayedCall(i * 150, () => {
       if (!fighter.alive) return
+      if (spec.sfx) playVaried(fighter.scene, spec.sfx, 0.4)
+      swipeArc(fighter, spec)
       fighter.sprite.playAttack(() => coneHit(fighter, spec, targets))
     })
   }
@@ -32,6 +35,7 @@ export function useSpecial(fighter, targets, now, aimPoint) {
   if (!run) return false
 
   fighter.scene.playSkillVfx?.(fighter, spec)
+  if (spec.sfx) play(fighter.scene, spec.sfx, { volume: 0.6 })
   run(fighter, spec, targets, aimPoint)
   return true
 }
@@ -168,6 +172,48 @@ const SPECIALS = {
     hitStop(fighter.scene, 80)
     scene.cameras.main.shake(140, 0.006)
   },
+}
+
+/**
+ * A blade sweeping the attack cone. Gives the basic a readable shape and a
+ * direction, which the body lunge alone never had.
+ */
+function swipeArc(fighter, spec) {
+  const scene = fighter.scene
+  const arc = Phaser.Math.DegToRad(spec.arc)
+  const reach = spec.range
+  const from = fighter.aim - arc / 2
+  // Normal blending, not additive: an additive blade disappears against a
+  // sunlit field. A dark underline keeps it legible on any ground colour.
+  const g = scene.add.graphics().setDepth(fighter.y + 3)
+
+  const state = { t: 0 }
+  scene.tweens.add({
+    targets: state, t: 1, duration: 190, ease: 'Cubic.easeOut',
+    onUpdate: () => {
+      g.clear()
+      const head = from + arc * state.t
+      const segments = 8
+      const fade = 1 - state.t * state.t
+
+      for (let i = 0; i < segments; i++) {
+        const back = head - (arc * 0.34) * (i / segments)
+        if (back < from) continue
+        const r = reach * (0.8 + 0.2 * (1 - i / segments))
+        const taper = 1 - i / segments
+
+        g.lineStyle(10 * taper + 2, 0x1d2b12, fade * taper * 0.35)
+        g.beginPath(); g.arc(fighter.x, fighter.y, r, back - 0.06, back); g.strokePath()
+
+        g.lineStyle(7 * taper + 1.5, fighter.colors.rim, fade * taper * 0.95)
+        g.beginPath(); g.arc(fighter.x, fighter.y, r, back - 0.05, back); g.strokePath()
+
+        g.lineStyle(3 * taper, 0xffffff, fade * taper * 0.8)
+        g.beginPath(); g.arc(fighter.x, fighter.y, r, back - 0.035, back); g.strokePath()
+      }
+    },
+    onComplete: () => g.destroy(),
+  })
 }
 
 function waveVisual(fighter, spec) {

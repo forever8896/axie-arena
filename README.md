@@ -71,7 +71,8 @@ frame timing, which needs no runtime at all. Those are in `public/vfx/`.
 
 **The core loop is complete**: choose an Axie, fight, win or lose, play again.
 
-Working: real Axie bodies for six classes, per-part procedural animation,
+Working: a Lunacia grass field with cover, foliage and a minimap, Origins
+battle audio, real Axie bodies for six classes, per-part procedural animation,
 class select, six distinct kits (per-class basic and special), Origins skill
 VFX, projectiles, ground zones, poison / slow / stun, mouse aim, dash with
 invulnerability, bot AI that uses specials, hit-stop, damage numbers, HUD,
@@ -87,8 +88,9 @@ see the rendering section above.
 - Axie textures load from the official CDN at runtime, so first load needs a
   connection and currently takes several seconds. If the CDN cannot be reached
   the boot screen says so rather than hanging.
-- No audio yet.
 - Desktop only so far: no touch controls.
+- Audio needs a click before a browser will allow it; the class-select screen
+  provides that, so the first match is never silent.
 
 ## Disclosures
 
