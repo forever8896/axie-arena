@@ -18,43 +18,58 @@ export default class UIScene extends Phaser.Scene {
   create() {
     this.game_ = this.scene.get('GameScene')
 
+    // The field is bright, so the readouts sit on their own dark plate.
+    this.plate = this.add.graphics().setDepth(-1)
+    this.plate.fillStyle(0x16200f, 0.62)
+    this.plate.fillRoundedRect(18, 20, 190, 128, 12)
+
+    this.hintPlate = this.add.graphics().setDepth(-1)
+
     // Built on first update, once the chosen class's max HP is known.
     this.pips = []
 
     this.label = this.add.text(34, 66, 'HP', {
-      fontFamily: MONO, fontSize: '11px', color: '#6f6892',
+      fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
     })
 
     this.status = this.add.text(this.scale.width - 34, MINIMAP.size + 34, '', {
-      fontFamily: MONO, fontSize: '15px', color: '#e8e4f5',
+      fontFamily: MONO, fontSize: '15px', color: '#f4f8e8',
     }).setOrigin(1, 0).setDepth(500)
 
     this.statusSub = this.add.text(this.scale.width - 34, MINIMAP.size + 56, 'RIVALS REMAIN', {
-      fontFamily: MONO, fontSize: '11px', color: '#6f6892',
+      fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
     }).setOrigin(1, 0).setDepth(500)
 
     // Dash cooldown, read at a glance next to the health pips.
     this.dashBg = this.add.rectangle(34, 92, 130, 5, 0x2a2440).setOrigin(0, 0.5)
     this.dashBar = this.add.rectangle(34, 92, 0, 5, 0x7ce8ff).setOrigin(0, 0.5)
     this.dashLabel = this.add.text(34, 102, 'DASH', {
-      fontFamily: MONO, fontSize: '11px', color: '#6f6892',
+      fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
     })
 
     // Special charge, named so you always know what it will do.
     this.specialBg = this.add.rectangle(34, 122, 130, 5, 0x2a2440).setOrigin(0, 0.5)
     this.specialBar = this.add.rectangle(34, 122, 0, 5, 0xffb812).setOrigin(0, 0.5)
     this.specialLabel = this.add.text(34, 132, 'SPECIAL', {
-      fontFamily: MONO, fontSize: '11px', color: '#6f6892',
+      fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
     })
 
     this.hint = this.add.text(34, this.scale.height - 40,
       'WASD  MOVE      MOUSE  AIM      LEFT  ATTACK      RIGHT / E  SPECIAL      SPACE  DASH', {
-        fontFamily: MONO, fontSize: '12px', color: '#6f6892',
+        fontFamily: MONO, fontSize: '12px', color: '#b9c4a6',
       })
 
     this.buildMinimap()
 
+    this.layoutHintPlate()
     this.scale.on('resize', this.layout, this)
+  }
+
+  layoutHintPlate() {
+    if (!this.hintPlate || !this.hint) return
+    this.hintPlate.clear()
+    this.hintPlate.fillStyle(0x16200f, 0.6)
+    this.hintPlate.fillRoundedRect(18, this.hint.y - 10, this.hint.width + 32, 32, 10)
   }
 
   /**
@@ -72,19 +87,19 @@ export default class UIScene extends Phaser.Scene {
     this.mmRoot = this.add.container(0, 0).setDepth(500)
 
     const bg = this.add.graphics()
-    bg.fillStyle(0x0b0918, 0.82)
+    bg.fillStyle(0x16200f, 0.78)
     bg.fillRoundedRect(0, 0, this.mmW, this.mmH, 10)
-    bg.lineStyle(1, 0x3d2f7a, 0.9)
+    bg.lineStyle(1, 0x5f9330, 0.9)
     bg.strokeRoundedRect(0, 0, this.mmW, this.mmH, 10)
 
     const terrain = this.add.graphics()
     for (const b of game.arena.bushes) {
-      terrain.fillStyle(0x2f8a52, 0.5)
+      terrain.fillStyle(0x2f6b33, 0.75)
       terrain.fillEllipse(b.x * this.mmScale, b.y * this.mmScale,
         b.rx * 2 * this.mmScale, b.ry * 2 * this.mmScale)
     }
     for (const w of game.arena.walls) {
-      terrain.fillStyle(0x6c5fb8, 0.75)
+      terrain.fillStyle(0xd9bd85, 0.85)
       terrain.fillRect(w.left * this.mmScale, w.top * this.mmScale,
         w.w * this.mmScale, w.h * this.mmScale)
     }
@@ -136,6 +151,7 @@ export default class UIScene extends Phaser.Scene {
     this.status?.setPosition(size.width - 34, MINIMAP.size + 34)
     this.statusSub?.setPosition(size.width - 34, MINIMAP.size + 56)
     this.hint?.setY(size.height - 40)
+    this.layoutHintPlate()
     this.layoutMinimap()
   }
 

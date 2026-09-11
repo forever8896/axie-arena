@@ -1,16 +1,19 @@
 import Phaser from 'phaser'
-import { ARENA_PALETTE } from '../axie/palette.js'
+import { FIELD } from '../axie/palette.js'
 
 export const WORLD = { width: 2400, height: 1800 }
 
 // Kept dark on purpose: the camera bloom lifts these several stops, and a
 // lighter face turns every block into a pale slab.
+// Rocks sitting in a field, lit from above-left.
 const WALL = {
-  face: 0x2a2352,
-  top: 0x5a4d9e,
-  side: 0x171232,
-  edge: 0x8f7fe0,
+  face: FIELD.stoneFace,
+  top: FIELD.stoneTop,
+  side: FIELD.stoneSide,
+  edge: FIELD.stoneEdge,
 }
+
+const GRASS_TILE = 256
 
 /**
  * Cover layout. Mirrored on both axes so no spawn corner is safer than
@@ -71,59 +74,142 @@ export default class Arena {
   }
 
   drawGround() {
-    const P = ARENA_PALETTE
     const s = this.scene
-    const g = s.add.graphics().setDepth(-100)
 
-    g.fillStyle(P.deep, 1).fillRect(-500, -500, WORLD.width + 1000, WORLD.height + 1000)
+    makeGrassTexture(s)
 
-    // Lit pool in the middle, falling off to the edges.
-    const maxR = Math.max(WORLD.width, WORLD.height) * 0.6
-    for (let i = 14; i >= 0; i--) {
-      const t = i / 14
-      const c = Phaser.Display.Color.Interpolate.ColorWithColor(
-        Phaser.Display.Color.ValueToColor(P.floorLit),
-        Phaser.Display.Color.ValueToColor(P.deep),
-        14, i,
+    // One tiled sprite rather than thousands of blades in the display list.
+    s.add.tileSprite(0, 0, WORLD.width, WORLD.height, 'field-grass')
+      .setOrigin(0).setDepth(-100)
+
+    this.drawMeadowPatches()
+    this.drawTrampledCentre()
+    this.drawScatter()
+    this.drawHedgeBorder()
+  }
+
+  /** Broad colour variation so the field is not one flat green. */
+  drawMeadowPatches() {
+    const rng = new Phaser.Math.RandomDataGenerator(['lunacia-patches'])
+    const g = this.scene.add.graphics().setDepth(-99)
+
+    for (let i = 0; i < 46; i++) {
+      const x = rng.between(0, WORLD.width)
+      const y = rng.between(0, WORLD.height)
+      const rx = rng.between(150, 460)
+      const ry = rng.between(90, 300)
+      g.fillStyle(rng.pick([FIELD.grassLight, FIELD.grassDeep, FIELD.grassPale]), rng.realInRange(0.1, 0.24))
+      g.fillEllipse(x, y, rx, ry)
+    }
+  }
+
+  /** Worn dirt where the fighting happens, so the centre reads as an arena. */
+  drawTrampledCentre() {
+    const rng = new Phaser.Math.RandomDataGenerator(['lunacia-ring'])
+    const g = this.scene.add.graphics().setDepth(-98)
+
+    g.fillStyle(FIELD.dirt, 0.5)
+    g.fillEllipse(this.cx, this.cy, 760, 560)
+    g.fillStyle(FIELD.dirtDark, 0.28)
+    g.fillEllipse(this.cx, this.cy, 610, 430)
+
+    // Ragged edge, so the patch is not a clean ellipse.
+    for (let i = 0; i < 60; i++) {
+      const a = (i / 60) * Math.PI * 2
+      g.fillStyle(FIELD.dirt, rng.realInRange(0.18, 0.42))
+      g.fillEllipse(
+        this.cx + Math.cos(a) * rng.between(330, 410),
+        this.cy + Math.sin(a) * rng.between(240, 300),
+        rng.between(60, 150), rng.between(40, 100),
       )
-      g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), 1)
-      g.fillEllipse(this.cx, this.cy, maxR * 2 * t + 320, maxR * 1.5 * t + 260)
     }
 
-    const grid = this.scene.add.graphics().setDepth(-98)
-    for (let x = 0; x <= WORLD.width; x += 120) {
-      const fade = 1 - Math.abs(x - this.cx) / (WORLD.width * 0.7)
-      grid.lineStyle(1, P.ring, Math.max(0.03, fade * 0.18))
-      grid.lineBetween(x, 0, x, WORLD.height)
-    }
-    for (let y = 0; y <= WORLD.height; y += 120) {
-      const fade = 1 - Math.abs(y - this.cy) / (WORLD.height * 0.7)
-      grid.lineStyle(1, P.ring, Math.max(0.03, fade * 0.18))
-      grid.lineBetween(0, y, WORLD.width, y)
+    g.fillStyle(FIELD.dirtDark, 0.22)
+    g.fillEllipse(this.cx, this.cy, 320, 230)
+  }
+
+  /** Tufts, stones and wildflowers, baked into one texture. */
+  drawScatter() {
+    const rng = new Phaser.Math.RandomDataGenerator(['lunacia-scatter'])
+    const rt = this.scene.add.renderTexture(0, 0, WORLD.width, WORLD.height)
+      .setOrigin(0).setDepth(-97)
+    const brush = this.scene.make.graphics({ x: 0, y: 0, add: false })
+
+    for (let i = 0; i < 900; i++) {
+      const x = rng.between(20, WORLD.width - 20)
+      const y = rng.between(20, WORLD.height - 20)
+      if (this.wallAt(x, y, 26)) continue
+
+      brush.clear()
+      const roll = rng.frac()
+
+      if (roll < 0.62) {
+        // Grass tuft: a few blades fanning from one point.
+        const dark = rng.frac() < 0.45
+        brush.lineStyle(2, dark ? FIELD.grassShadow : FIELD.grassPale, rng.realInRange(0.35, 0.7))
+        const blades = rng.between(3, 5)
+        for (let b = 0; b < blades; b++) {
+          const lean = rng.realInRange(-7, 7)
+          const h = rng.between(7, 15)
+          brush.beginPath()
+          brush.moveTo(20 + b * 3 - blades, 20)
+          brush.lineTo(20 + b * 3 - blades + lean, 20 - h)
+          brush.strokePath()
+        }
+      } else if (roll < 0.82) {
+        // Wildflower.
+        const c = rng.pick([FIELD.bloomWhite, FIELD.bloomGold, FIELD.bloomPink])
+        brush.lineStyle(1, FIELD.grassShadow, 0.5)
+        brush.lineBetween(20, 20, 20, 14)
+        brush.fillStyle(c, 0.9)
+        for (let p = 0; p < 5; p++) {
+          const a = (p / 5) * Math.PI * 2
+          brush.fillCircle(20 + Math.cos(a) * 2.2, 13 + Math.sin(a) * 2.2, 1.5)
+        }
+        brush.fillStyle(FIELD.bloomGold, 1).fillCircle(20, 13, 1.2)
+      } else {
+        // Small stone.
+        const r = rng.between(3, 7)
+        brush.fillStyle(0x000000, 0.18).fillEllipse(20, 22, r * 2.2, r)
+        brush.fillStyle(FIELD.stoneFace, 0.95).fillEllipse(20, 20, r * 2, r * 1.4)
+        brush.fillStyle(FIELD.stoneTop, 0.8).fillEllipse(20, 19, r * 1.2, r * 0.7)
+      }
+
+      rt.draw(brush, x - 20, y - 20)
     }
 
-    // Scattered ground detail so the floor is never a flat plane.
-    const rng = new Phaser.Math.RandomDataGenerator(['axie-arena'])
-    const decor = this.scene.add.graphics().setDepth(-97)
-    for (let i = 0; i < 190; i++) {
-      const x = rng.between(60, WORLD.width - 60)
-      const y = rng.between(60, WORLD.height - 60)
-      if (this.wallAt(x, y)) continue
-      const r = rng.between(2, 6)
-      decor.fillStyle(rng.pick([P.ring, P.floorLit, 0x4a3a86]), rng.realInRange(0.12, 0.3))
-      decor.fillEllipse(x, y, r * 2.4, r * 1.3)
+    brush.destroy()
+  }
+
+  /** A hedge ring instead of a glowing line: the field has an edge you can see. */
+  drawHedgeBorder() {
+    const rng = new Phaser.Math.RandomDataGenerator(['lunacia-hedge'])
+    const g = this.scene.add.graphics().setDepth(-96)
+    const b = this.bounds
+    const inset = 36
+
+    const ring = []
+    const stepX = 74
+    const stepY = 74
+    for (let x = b.left - inset; x <= b.right + inset; x += stepX) {
+      ring.push({ x, y: b.top - inset })
+      ring.push({ x, y: b.bottom + inset })
+    }
+    for (let y = b.top - inset; y <= b.bottom + inset; y += stepY) {
+      ring.push({ x: b.left - inset, y })
+      ring.push({ x: b.right + inset, y })
     }
 
-    // Boundary.
-    const ring = this.scene.add.graphics().setDepth(-96)
-    ring.lineStyle(8, P.glow, 0.13)
-    ring.strokeRoundedRect(40, 62, WORLD.width - 80, WORLD.height - 102, 100)
-    ring.lineStyle(2, P.glow, 0.45)
-    ring.strokeRoundedRect(46, 68, WORLD.width - 92, WORLD.height - 114, 96)
-
-    const mark = this.scene.add.graphics().setDepth(-97)
-    mark.lineStyle(2, P.glow, 0.12).strokeCircle(this.cx, this.cy, 190)
-    mark.lineStyle(1, P.glow, 0.08).strokeCircle(this.cx, this.cy, 280)
+    for (const p of ring) {
+      const w = rng.between(78, 118)
+      const h = rng.between(56, 84)
+      g.fillStyle(0x000000, 0.22)
+      g.fillEllipse(p.x + 5, p.y + 12, w, h * 0.7)
+      g.fillStyle(FIELD.hedge, 1)
+      g.fillEllipse(p.x, p.y, w, h)
+      g.fillStyle(FIELD.hedgeLight, 0.55)
+      g.fillEllipse(p.x - w * 0.12, p.y - h * 0.2, w * 0.6, h * 0.45)
+    }
   }
 
   /**
@@ -168,8 +254,8 @@ export default class Arena {
   drawBushBases() {
     const g = this.scene.add.graphics().setDepth(-20)
     for (const b of this.bushes) {
-      g.fillStyle(0x1d5c3a, 0.5)
-      g.fillEllipse(b.x, b.y + 8, b.rx * 2, b.ry * 2)
+      g.fillStyle(0x000000, 0.2)
+      g.fillEllipse(b.x + 6, b.y + 14, b.rx * 2, b.ry * 1.5)
     }
   }
 
@@ -178,12 +264,12 @@ export default class Arena {
     const rng = new Phaser.Math.RandomDataGenerator(['axie-bush'])
     for (const b of this.bushes) {
       const g = this.scene.add.graphics().setDepth(b.y + b.ry + 40)
-      g.fillStyle(0x2f8a52, 0.62)
+      g.fillStyle(FIELD.hedge, 0.72)
       g.fillEllipse(b.x, b.y, b.rx * 2, b.ry * 2)
-      for (let i = 0; i < 14; i++) {
+      for (let i = 0; i < 18; i++) {
         const a = rng.realInRange(0, Math.PI * 2)
         const d = rng.realInRange(0.25, 0.95)
-        g.fillStyle(rng.pick([0x3cb86a, 0x2a7a4a, 0x49d67f]), 0.55)
+        g.fillStyle(rng.pick([FIELD.hedgeLight, FIELD.hedge, 0x63b356]), 0.6)
         g.fillEllipse(
           b.x + Math.cos(a) * b.rx * d,
           b.y + Math.sin(a) * b.ry * d,
@@ -239,4 +325,55 @@ export default class Arena {
       pos.y = nearestY + (dy / dist) * radius
     }
   }
+}
+
+/**
+ * Builds the tiling grass texture once.
+ *
+ * Elements that cross an edge are drawn again on the opposite side, so the
+ * tile repeats without visible seams.
+ */
+function makeGrassTexture(scene) {
+  if (scene.textures.exists('field-grass')) return
+
+  const size = GRASS_TILE
+  const rng = new Phaser.Math.RandomDataGenerator(['lunacia-grass'])
+  const g = scene.make.graphics({ x: 0, y: 0, add: false })
+
+  g.fillStyle(FIELD.grassBase, 1).fillRect(0, 0, size, size)
+
+  const wrapped = (x, y, draw) => {
+    for (const dx of [0, -size, size]) {
+      for (const dy of [0, -size, size]) draw(x + dx, y + dy)
+    }
+  }
+
+  // Mottling, so the base is never a flat colour.
+  for (let i = 0; i < 150; i++) {
+    const x = rng.between(0, size)
+    const y = rng.between(0, size)
+    const rx = rng.between(26, 90)
+    const ry = rng.between(18, 60)
+    const c = rng.pick([FIELD.grassLight, FIELD.grassDeep, FIELD.grassPale, FIELD.grassShadow])
+    g.fillStyle(c, rng.realInRange(0.06, 0.16))
+    wrapped(x, y, (px, py) => g.fillEllipse(px, py, rx, ry))
+  }
+
+  // Fine blades for texture at close range.
+  for (let i = 0; i < 520; i++) {
+    const x = rng.between(0, size)
+    const y = rng.between(0, size)
+    const h = rng.between(4, 9)
+    const lean = rng.realInRange(-3, 3)
+    g.lineStyle(1, rng.pick([FIELD.grassDeep, FIELD.grassPale, FIELD.grassShadow]), rng.realInRange(0.2, 0.45))
+    wrapped(x, y, (px, py) => {
+      g.beginPath()
+      g.moveTo(px, py)
+      g.lineTo(px + lean, py - h)
+      g.strokePath()
+    })
+  }
+
+  g.generateTexture('field-grass', size, size)
+  g.destroy()
 }

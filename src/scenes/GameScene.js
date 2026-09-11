@@ -53,6 +53,7 @@ export default class GameScene extends Phaser.Scene {
     this.zones = []
 
     ambientMotes(this, { left: 0, top: 0, right: WORLD.width, bottom: WORLD.height })
+    this.cameras.main.setBackgroundColor(0x24401c)
 
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,SHIFT')
     this.input.on('pointerdown', p => {
@@ -80,8 +81,11 @@ export default class GameScene extends Phaser.Scene {
 
     // Guarded: postFX needs WebGL. Falls back to a clean flat look on canvas.
     if (cam.postFX) {
-      cam.postFX.addVignette(0.5, 0.5, 0.78, 0.42)
-      cam.postFX.addBloom(0xffffff, 1, 1, 1.05, 1.15)
+      // Heavier vignette, far less bloom: a sunlit field blows out otherwise,
+      // and the HUD has to stay readable against it.
+      // Just enough falloff to seat the HUD; the field should stay sunlit.
+      cam.postFX.addVignette(0.5, 0.5, 0.95, 0.2)
+      cam.postFX.addBloom(0xffffff, 0.9, 0.9, 0.5, 1.02)
     }
 
     this.scene.launch('UIScene')

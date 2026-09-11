@@ -73,7 +73,7 @@ export function dustEmitter(scene, follow) {
     alpha: { start: 0.5, end: 0 },
     lifespan: 480,
     frequency: 70,
-    tint: 0xb9a9e8,
+    tint: 0xd9c9a0,
     emitting: false,
   })
 }
@@ -89,7 +89,7 @@ export function ambientMotes(scene, bounds) {
     alpha: { start: 0, end: 0.5, ease: 'Sine.easeInOut' },
     lifespan: 6000,
     frequency: 240,
-    tint: [0xffb0e0, 0x9fd8ff, 0xd9c2ff],
+    tint: [0xfdf6e3, 0xffd964, 0xc0d890],
     blendMode: 'ADD',
   }).setDepth(-5)
 }
