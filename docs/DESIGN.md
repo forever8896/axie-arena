@@ -175,3 +175,37 @@ had been pulled back.
 
 **Pass 2.** Beast: Impale 700 → 520, health 3400 → 3150. Aquatic, which fell
 without being touched as everyone else moved: two-hit basic 125 → 140.
+
+| Pass 2 | 120 | 0 | 79.7s | 12.5% | 12.5% | 10.8% | **35.0%** | 12.5% | 16.7% |
+| Pass 3 | 120 | 0 | 75.8s | 25.0% | 15.0% | 10.0% | 21.7% | **4.2%** | 24.2% |
+
+**Pass 2 result.** Beast fell from 35.6% to 12.5% and five of six classes landed
+inside two sigma. Bird jumped from 16.7% to 35.0% without being touched.
+
+That was the most useful result of the exercise: **beast was bird's only real
+counter.** Impale is the one tool that closes the gap through bird's reach, so
+weakening it freed bird. Pass 1's "bird is balanced" had really been "beast was
+suppressing bird". These classes form a rock-paper-scissors web; they are not
+six independent dials.
+
+**Pass 3.** Bird was the fastest class *and* had the longest reach, which made it
+uncatchable by anything chasing it. It keeps both titles by smaller margins:
+speed 265 → 255, reach 152 → 138, health 2050 → 1900. Result: bird 21.7%,
+inside the band.
+
+**A mechanical bug the data exposed.** Bug stayed last through two buffs, which
+looked wrong for a numbers problem. It was not one. Bug bites every 540ms and
+poison ticked 900ms after each application, and every bite reset that timer —
+so **poison dealt no damage at all while bug was actually fighting.** Reapplying
+now refreshes remaining ticks without pushing back a scheduled one. Verified by
+running the shipped `applyPoison`/`tickPoison` against a fake clock on bug's real
+bite rhythm: 0 damage over 4.5s before the fix, 480 after.
+
+Poison had been raised 90 → 120 in pass 1 to compensate for damage that was
+never landing; with the mechanic fixed that would overshoot, so it is back at 90.
+
+**Beast (+8.3pt) and reptile (+7.5pt)** sit just past two sigma in pass 3. That is
+close enough to noise that neither was changed; a longer run should decide.
+
+**Not yet measured:** the poison fix. The next simulation run is the first one
+where bug fights as designed.

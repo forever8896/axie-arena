@@ -251,10 +251,15 @@ export default class Fighter {
 
   applyPoison(spec, from) {
     play(this.scene, 'poison', { volume: 0.45 })
+    // Reapplying refreshes the remaining ticks but must not push back a tick
+    // that is already scheduled. It used to: bug bites every 540ms and poison
+    // ticks every 900ms, so every bite reset the timer and poison dealt no
+    // damage at all while bug was actually fighting. Found through the
+    // balance simulation, where bug stayed last despite two poison buffs.
+    if (this.poisonTicks <= 0) this.poisonNext = this.scene.time.now + spec.interval
     this.poisonSpec = spec
     this.poisonFrom = from
     this.poisonTicks = spec.ticks
-    this.poisonNext = this.scene.time.now + spec.interval
   }
 
   tickPoison() {
