@@ -13,9 +13,13 @@ import { damageNumber } from '../fx/Juice.js'
  * capped there, since here most rivals are bots that should still get a fight.
  */
 export const CLOSE = {
-  startsAt: 30000,
+  // Showdown starts its gas at 20s. At 30s, a 60-match simulation averaged
+  // 132s per match with most fighters surviving until the field forced it.
+  startsAt: 20000,
+  // Closes all the way. A 280u floor let several fighters survive inside
+  // indefinitely: half of a 60-match simulation ended in a stalemate.
   duration: 70000,
-  minRadius: 280,
+  minRadius: 0,
   tickMs: 500,
   baseFrac: 0.04,        // of max health per second, on first stepping out
   growthPerSec: 0.025,   // added per second spent outside

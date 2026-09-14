@@ -125,3 +125,53 @@ taking it.
 ### The Wilds close in
 From 30 seconds, the safe field shrinks toward the centre. Outside it, damage
 starts low and escalates, so the match always ends.
+
+---
+
+## 4. Measured balance
+
+Balance is checked with a headless simulation, following the shape of Riot's
+framework: judge by measured win rate against a band, not by feel.
+
+**Run it:** start the dev server and open `http://localhost:5173/?sim=120`.
+It plays bot-only free-for-alls with update-only stepping, rotates which class
+takes the centre spawn, and reports win rate, average placement, match length,
+and the noise level for that sample size.
+
+**Reading it:** a fair class wins 1 in 6 (16.7%). At 90 matches one standard
+deviation is about ±3.9 points; the report only flags a class beyond two.
+Bots chase in straight lines and ignore foliage, which flatters long reach, so
+treat results as a check for gross imbalance rather than human-vs-human truth.
+That said, a match is you against five bots, so bot balance is the experience.
+
+### History
+
+**Harness bugs, found before any class change was trusted.** The first three
+runs were invalid. Game time was restarted from `performance.now()` each match,
+which put a new match's clock behind the scene's existing one and stalled it:
+the closing field never activated in five of every six matches. A second edge
+then had the field born fully closed after each yield, producing 8-second
+matches. The harness now uses one monotonic clock, re-stamps the field start,
+and throws if the field never activates or a match ends under 15 seconds.
+
+**Pacing, from research rather than from the invalid runs.** The field's 280u
+floor could never force an end, so it now closes fully; it starts at 20s,
+matching Showdown's gas. Bot aggro rose from 320u to 480u for a 2400u field.
+
+| Run | Matches | Draws | Avg length | Beast | Aquatic | Plant | Bird | Bug | Reptile |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Baseline | 90 | 0 | 76.8s | 26.7% | 18.9% | 7.8% | **32.2%** | 6.7% | 7.8% |
+| Pass 1 | 90 | 0 | 76.7s | **35.6%** | 7.8% | 13.3% | 16.7% | 11.1% | 15.6% |
+
+**Pass 1.** Bird (+15.6pt) lost 150 HP and 25 basic damage; its reach is its
+identity, so reach stayed. Beast lost 40 basic damage. Plant — slowest and
+shortest reach, so it was kited — gained 15 speed, 12 reach and 40 zone tick
+damage. Reptile, which placed well but rarely closed out, gained 40 damage.
+Bug gained 30 bite, 30 poison per tick and 10 speed.
+
+Result: bird, reptile and plant landed in the band. Beast rose to +18.9pt,
+about five sigma, because the basic nerf missed the source and its main rival
+had been pulled back.
+
+**Pass 2.** Beast: Impale 700 → 520, health 3400 → 3150. Aquatic, which fell
+without being touched as everyone else moved: two-hit basic 125 → 140.

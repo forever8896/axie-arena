@@ -66,6 +66,14 @@ export default class BootScene extends Phaser.Scene {
     }
     missing.forEach(c => delete builds[c])
 
+    // Dev-only balance tool: /?sim=60 runs bot-only matches and reports.
+    const sim = import.meta.env.DEV && new URLSearchParams(location.search).get('sim')
+    if (sim) {
+      const { runBalanceSim } = await import('../dev/balanceSim.js')
+      runBalanceSim(this.game, builds, Math.max(6, parseInt(sim, 10) || 60))
+      return
+    }
+
     this.scene.start('HomeScene', { builds })
   }
 

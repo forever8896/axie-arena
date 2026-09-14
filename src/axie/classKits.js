@@ -25,16 +25,16 @@ export const CLASS_KITS = {
   beast: {
     title: 'Beast',
     tagline: 'Closes the gap and hits like a truck',
-    hp: 3400, speed: 225,
+    hp: 3150, speed: 225,
     hitSfx: 'beast_projectile_hit',
     basic: {
       name: 'Horn Swipe', desc: 'Slow, wide, heavy',
-      kind: 'cone', range: 112, arc: 115, damage: 400, cooldown: 720, knockback: 260,
+      kind: 'cone', range: 112, arc: 115, damage: 360, cooldown: 720, knockback: 260,
       sfx: 'beast_bite_attack',
     },
     special: {
       name: 'Impale', desc: 'Charge forward, goring everything you pass through',
-      kind: 'charge', damage: 700, speed: 700, duration: 300,
+      kind: 'charge', damage: 520, speed: 700, duration: 300,
       vfx: 'beast_gore', sfx: 'beast_gore_attack',
     },
   },
@@ -45,7 +45,7 @@ export const CLASS_KITS = {
     hitSfx: 'aquatic_projectile_hit',
     basic: {
       name: 'Tidal Slash', desc: 'Quick two-hit swipe',
-      kind: 'cone', range: 94, arc: 95, damage: 125, cooldown: 460, knockback: 150, hits: 2,
+      kind: 'cone', range: 94, arc: 95, damage: 140, cooldown: 460, knockback: 150, hits: 2,
       sfx: 'aquatic_slash_attack',
     },
     special: {
@@ -58,28 +58,28 @@ export const CLASS_KITS = {
   plant: {
     title: 'Plant',
     tagline: 'Denies ground and outlasts',
-    hp: 3800, speed: 205,
+    hp: 3800, speed: 220,
     hitSfx: 'plant_projectile_hit',
     basic: {
       name: 'Chomp', desc: 'Short reach, steady damage',
-      kind: 'cone', range: 80, arc: 75, damage: 330, cooldown: 600, knockback: 130,
+      kind: 'cone', range: 92, arc: 75, damage: 330, cooldown: 600, knockback: 130,
       sfx: 'plant_bite_attack',
     },
     special: {
       name: 'Sporeburst', desc: 'Lob a seed that leaves a damaging patch',
       kind: 'lob', maxRange: 340, radius: 96,
-      zoneDuration: 3200, tickDamage: 180, tickRate: 620,
+      zoneDuration: 3200, tickDamage: 220, tickRate: 620,
       vfx: 'plant_projectile', sfx: 'plant_projectile_attack',
     },
   },
   bird: {
     title: 'Bird',
     tagline: 'Fastest and longest reach, thinnest skin',
-    hp: 2200, speed: 265,
+    hp: 2050, speed: 265,
     hitSfx: 'bird_throw_hit',
     basic: {
       name: 'Peck', desc: 'Rapid jabs at range',
-      kind: 'cone', range: 152, arc: 42, damage: 180, cooldown: 320, knockback: 90,
+      kind: 'cone', range: 152, arc: 42, damage: 155, cooldown: 320, knockback: 90,
       sfx: 'bird_bite_attack',
     },
     special: {
@@ -94,12 +94,12 @@ export const CLASS_KITS = {
   bug: {
     title: 'Bug',
     tagline: 'Wears rivals down and interrupts them',
-    hp: 2800, speed: 230,
+    hp: 2800, speed: 240,
     hitSfx: 'bug_projectile_hit',
     basic: {
       name: 'Venom Bite', desc: 'Leaves poison behind',
-      kind: 'cone', range: 90, arc: 80, damage: 220, cooldown: 540, knockback: 120,
-      poison: { damage: 90, ticks: 3, interval: 900 },
+      kind: 'cone', range: 90, arc: 80, damage: 250, cooldown: 540, knockback: 120,
+      poison: { damage: 120, ticks: 3, interval: 900 },
       sfx: 'bug_bite_attack',
     },
     special: {
@@ -116,7 +116,7 @@ export const CLASS_KITS = {
     hitSfx: 'reptile_projectile_hit',
     basic: {
       name: 'Tail Whip', desc: 'Sweeps a wide arc',
-      kind: 'cone', range: 98, arc: 205, damage: 300, cooldown: 660, knockback: 170,
+      kind: 'cone', range: 98, arc: 205, damage: 340, cooldown: 660, knockback: 170,
       sfx: 'reptile_slash_attack',
     },
     special: {

@@ -6,7 +6,9 @@ import Phaser from 'phaser'
  * state maps onto an Axie animation we can play once real art is in.
  */
 export default class BotBrain {
-  constructor(fighter, { aggroRange = 320, backoffTime = 900 } = {}) {
+  // 320 was too short for a 2400u field: bots rarely found each other before
+  // the closing field did the work.
+  constructor(fighter, { aggroRange = 480, backoffTime = 900 } = {}) {
     this.fighter = fighter
     this.aggroRange = aggroRange
     this.backoffTime = backoffTime
@@ -85,9 +87,17 @@ export default class BotBrain {
     if (!this.wanderTarget || now >= this.stateUntil ||
         Phaser.Math.Distance.Between(me.x, me.y, this.wanderTarget.x, this.wanderTarget.y) < 30) {
       const b = me.scene.arenaBounds
-      this.wanderTarget = {
-        x: Phaser.Math.Between(b.left, b.right),
-        y: Phaser.Math.Between(b.top, b.bottom),
+      const field = me.scene.field
+      if (field?.active) {
+        // Wander inside the safe field, never toward the edge of it.
+        const a = Math.random() * Math.PI * 2
+        const r = Math.random() * field.radius * 0.7
+        this.wanderTarget = { x: field.cx + Math.cos(a) * r, y: field.cy + Math.sin(a) * r }
+      } else {
+        this.wanderTarget = {
+          x: Phaser.Math.Between(b.left, b.right),
+          y: Phaser.Math.Between(b.top, b.bottom),
+        }
       }
       this.stateUntil = now + Phaser.Math.Between(2000, 4500)
     }
