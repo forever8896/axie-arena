@@ -35,7 +35,7 @@ export default class Zone {
       for (const t of targets) {
         if (t === this.owner || !t.alive || t.invulnerable) continue
         if (Phaser.Math.Distance.Between(this.x, this.y, t.x, t.y) <= this.radius) {
-          t.takeDamage(this.tickDamage, this.owner)
+          t.takeDamage(this.tickDamage, this.owner, 0, { projectile: true })
         }
       }
     }

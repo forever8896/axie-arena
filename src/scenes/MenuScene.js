@@ -22,6 +22,8 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   create() {
+    // Scene instances are reused: a revisit must not inherit the last exit.
+    this.leaving = false
     const P = ARENA_PALETTE
     this.cameras.main.setBackgroundColor(P.deep)
 
@@ -105,7 +107,7 @@ export default class MenuScene extends Phaser.Scene {
       align: 'center', lineSpacing: 3, wordWrap: { width: CARD.w - 44 },
     }).setOrigin(0.5, 0)
 
-    const stats = this.add.text(0, 4, `HP  ${'●'.repeat(kit.hp)}\nSPD ${speedBar(kit.speed)}`, {
+    const stats = this.add.text(0, 4, `HP  ${hpBar(kit.hp)}  ${kit.hp}\nSPD ${speedBar(kit.speed)}`, {
       fontFamily: MONO, fontSize: '12px', color: '#b9b2d4', align: 'center', lineSpacing: 5,
     }).setOrigin(0.5, 0)
 
@@ -236,6 +238,12 @@ export default class MenuScene extends Phaser.Scene {
 }
 
 const hex = v => `#${v.toString(16).padStart(6, '0')}`
+
+/** Health on a 2000–4000 scale, as five blocks. */
+function hpBar(hp) {
+  const filled = Math.round(Phaser.Math.Clamp((hp - 1800) / 2000, 0, 1) * 5)
+  return '▮'.repeat(filled) + '▯'.repeat(5 - filled)
+}
 
 function speedBar(speed) {
   const filled = Math.round(Phaser.Math.Clamp((speed - 190) / 90, 0, 1) * 5)

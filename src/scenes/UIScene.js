@@ -18,6 +18,13 @@ export default class UIScene extends Phaser.Scene {
   create() {
     this.game_ = this.scene.get('GameScene')
 
+    // Scene instances are reused across matches. Anything built lazily in
+    // update() must be forgotten here, or a restarted match reuses objects
+    // destroyed with the previous one.
+    this.fieldText = null
+    this.mmRoot = null
+    this.mmDots = null
+
     // The field is bright, so the readouts sit on their own dark plate.
     this.plate = this.add.graphics().setDepth(-1)
     this.plate.fillStyle(0x16200f, 0.62)
@@ -25,8 +32,11 @@ export default class UIScene extends Phaser.Scene {
 
     this.hintPlate = this.add.graphics().setDepth(-1)
 
-    // Built on first update, once the chosen class's max HP is known.
-    this.pips = []
+    this.hpBg = this.add.rectangle(34, 40, 170, 14, 0x0b0f07, 0.8).setOrigin(0, 0.5)
+    this.hpBar = this.add.rectangle(34, 40, 170, 14, 0x7ce85a).setOrigin(0, 0.5)
+    this.hpText = this.add.text(119, 40, '', {
+      fontFamily: MONO, fontSize: '11px', color: '#ffffff',
+    }).setOrigin(0.5)
 
     this.label = this.add.text(34, 66, 'HP', {
       fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
@@ -40,7 +50,7 @@ export default class UIScene extends Phaser.Scene {
       fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
     }).setOrigin(1, 0).setDepth(500)
 
-    // Dash cooldown, read at a glance next to the health pips.
+    // Dash cooldown, read at a glance under the health bar.
     this.dashBg = this.add.rectangle(34, 92, 130, 5, 0x2a2440).setOrigin(0, 0.5)
     this.dashBar = this.add.rectangle(34, 92, 0, 5, 0x7ce8ff).setOrigin(0, 0.5)
     this.dashLabel = this.add.text(34, 102, 'DASH', {
@@ -131,6 +141,13 @@ export default class UIScene extends Phaser.Scene {
     )
 
     this.mmDots.clear()
+
+    // The safe field, once it starts closing.
+    if (game.field?.active) {
+      this.mmDots.lineStyle(1.5, 0xd9c2ff, 0.9)
+      this.mmDots.strokeCircle(game.field.cx * s, game.field.cy * s, game.field.radius * s)
+    }
+
     for (const bot of game.bots) {
       if (!bot.alive) continue
       // Hidden rivals do not show; foliage means something on the map too.
@@ -155,16 +172,6 @@ export default class UIScene extends Phaser.Scene {
     this.layoutMinimap()
   }
 
-  buildPips(count, color) {
-    this.pips.forEach(p => p.destroy())
-    this.pips = []
-    for (let i = 0; i < count; i++) {
-      this.pips.push(
-        this.add.circle(34 + i * 24, 40, 8, color).setStrokeStyle(3, 0x0b0918, 0.9),
-      )
-    }
-  }
-
   update() {
     const player = this.game_?.player
     if (!player || !this.specialBar) return
@@ -172,13 +179,32 @@ export default class UIScene extends Phaser.Scene {
     if (!this.mmRoot) this.buildMinimap()
     this.drawMinimap()
 
-    if (this.pips.length !== player.maxHp) this.buildPips(player.maxHp, player.colors.body)
+    const hpFrac = Phaser.Math.Clamp(player.hp / player.maxHp, 0, 1)
+    this.hpBar.width = 170 * hpFrac
+    this.hpBar.setFillStyle(hpFrac > 0.35 ? 0x7ce85a : 0xff6b6b)
+    this.hpText.setText(`${Math.max(0, Math.round(player.hp))} / ${player.maxHp}`)
 
-    this.pips.forEach((pip, i) => {
-      const on = i < player.hp
-      pip.setFillStyle(on ? player.colors.body : 0x2a2440)
-      pip.setScale(on ? 1 : 0.68)
-    })
+    const field = this.game_.field
+    if (field) {
+      if (!this.fieldText) {
+        this.fieldText = this.add.text(this.scale.width / 2, 30, '', {
+          fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif',
+          fontSize: '18px', color: '#f4f8e8',
+        }).setOrigin(0.5).setDepth(600)
+        this.fieldText.setShadow(0, 2, 'rgba(22,32,15,0.8)', 4, false, true)
+      }
+      this.fieldText.setX(this.scale.width / 2)
+      if (!field.active) {
+        this.fieldText.setText(`THE WILDS CLOSE IN ${field.secondsUntil}`).setColor('#f4f8e8')
+      } else if (field.progress < 1) {
+        this.fieldText.setText('THE WILDS ARE CLOSING').setColor('#d9c2ff')
+      } else {
+        this.fieldText.setText('')
+      }
+      if (field.outside(player.x, player.y) && field.active) {
+        this.fieldText.setText('GET BACK INSIDE').setColor('#ff8098')
+      }
+    }
 
     const alive = this.game_.bots.filter(b => b.alive).length
     this.status.setText(String(alive).padStart(2, '0'))
@@ -189,11 +215,14 @@ export default class UIScene extends Phaser.Scene {
     this.dashBar.setFillStyle(charge >= 1 ? 0x7ce8ff : 0x4a4570)
     this.dashLabel.setColor(charge >= 1 ? '#7ce8ff' : '#6f6892')
 
-    const sp = Phaser.Math.Clamp((now - player.lastSpecial) / player.specialCooldown, 0, 1)
+    // Charge, not cooldown: it fills fastest when you are landing hits.
+    const sp = Phaser.Math.Clamp(player.charge, 0, 1)
+    const ready = sp >= 1
     this.specialBar.width = 130 * sp
-    this.specialBar.setFillStyle(sp >= 1 ? player.colors.body : 0x4a4570)
+    this.specialBar.setFillStyle(ready ? player.colors.body : 0x6d7a5a)
+    const name = player.kit?.special?.name?.toUpperCase() ?? 'SPECIAL'
     this.specialLabel
-      .setText(player.kit?.special?.name?.toUpperCase() ?? 'SPECIAL')
-      .setColor(sp >= 1 ? hex(player.colors.body) : '#6f6892')
+      .setText(ready ? `${name}  READY` : name)
+      .setColor(ready ? hex(player.colors.body) : '#b9c4a6')
   }
 }

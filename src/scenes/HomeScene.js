@@ -23,6 +23,8 @@ export default class HomeScene extends Phaser.Scene {
   }
 
   create() {
+    // Scene instances are reused: a revisit must not inherit the last exit.
+    this.leaving = false
     this.aboutOpen = false
     this.wanderers = []
 

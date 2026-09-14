@@ -1,7 +1,8 @@
 import Phaser from 'phaser'
 import Projectile from './Projectile.js'
 import Zone from './Zone.js'
-import { impact, hitStop } from '../fx/Juice.js'
+import { impact } from '../fx/Juice.js'
+import { CHARGE_PER_HIT, TELEGRAPH_MS } from '../axie/classKits.js'
 import { playVaried, play } from '../fx/Sfx.js'
 
 /**
@@ -26,18 +27,100 @@ export function useBasic(fighter, targets, now) {
   return true
 }
 
+/**
+ * Specials spend a full charge, then wind up behind a ground telegraph before
+ * firing. The wind-up is sized to the ~250ms human reaction window, so a
+ * special can be seen coming and answered (docs/DESIGN.md).
+ */
 export function useSpecial(fighter, targets, now, aimPoint) {
   const spec = fighter.kit?.special
   if (!spec || !fighter.canSpecial(now)) return false
-  fighter.lastSpecial = now
 
   const run = SPECIALS[spec.kind]
   if (!run) return false
 
-  fighter.scene.playSkillVfx?.(fighter, spec)
-  if (spec.sfx) play(fighter.scene, spec.sfx, { volume: 0.6 })
-  run(fighter, spec, targets, aimPoint)
+  fighter.charge = 0
+  fighter.lastSpecial = now
+  fighter.casting = true
+
+  // Aim locks when the cast starts: committing to a direction is the risk.
+  const lockedAim = fighter.aim
+  const lockedPoint = { x: aimPoint.x, y: aimPoint.y }
+  telegraph(fighter, spec, lockedAim, lockedPoint)
+
+  fighter.scene.time.delayedCall(TELEGRAPH_MS, () => {
+    fighter.casting = false
+    if (!fighter.alive || fighter.stunned) return
+    fighter.aim = lockedAim
+    fighter.scene.playSkillVfx?.(fighter, spec)
+    if (spec.sfx) play(fighter.scene, spec.sfx, { volume: 0.6 })
+    run(fighter, spec, targets, lockedPoint)
+  })
   return true
+}
+
+/** Where the special will land, drawn on the ground for the wind-up. */
+function telegraph(fighter, spec, aim, point) {
+  const scene = fighter.scene
+  const g = scene.add.graphics().setDepth(-15)
+  const color = fighter.colors.rim
+  const state = { t: 0 }
+
+  const draw = () => {
+    g.clear()
+    const a = 0.2 + state.t * 0.35
+    g.fillStyle(color, a * 0.45)
+    g.lineStyle(3, color, a + 0.25)
+
+    switch (spec.kind) {
+      case 'charge': {
+        const len = spec.speed * (spec.duration / 1000)
+        const ex = fighter.x + Math.cos(aim) * len
+        const ey = fighter.y + Math.sin(aim) * len
+        g.lineStyle(46 * state.t + 8, color, a * 0.5)
+        g.lineBetween(fighter.x, fighter.y, ex, ey)
+        break
+      }
+      case 'wave':
+        g.slice(fighter.x, fighter.y, spec.range,
+          aim - Phaser.Math.DegToRad(spec.arc) / 2, aim + Phaser.Math.DegToRad(spec.arc) / 2)
+        g.fillPath(); g.strokePath()
+        break
+      case 'lob': {
+        const d = Math.min(spec.maxRange, Phaser.Math.Distance.Between(fighter.x, fighter.y, point.x, point.y))
+        const lx = fighter.x + Math.cos(aim) * d
+        const ly = fighter.y + Math.sin(aim) * d
+        g.fillCircle(lx, ly, spec.radius * (0.4 + 0.6 * state.t))
+        g.strokeCircle(lx, ly, spec.radius)
+        break
+      }
+      case 'spread': {
+        const spread = Phaser.Math.DegToRad(spec.spread)
+        for (let i = 0; i < spec.count; i++) {
+          const ang = aim - spread / 2 + spread * (i / (spec.count - 1))
+          g.lineBetween(fighter.x, fighter.y,
+            fighter.x + Math.cos(ang) * spec.projectileRange * 0.6 * state.t,
+            fighter.y + Math.sin(ang) * spec.projectileRange * 0.6 * state.t)
+        }
+        break
+      }
+      case 'seeker':
+        g.lineBetween(fighter.x, fighter.y,
+          fighter.x + Math.cos(aim) * 160 * state.t, fighter.y + Math.sin(aim) * 160 * state.t)
+        g.strokeCircle(fighter.x, fighter.y, 40 * state.t + 10)
+        break
+      case 'radial':
+        g.fillCircle(fighter.x, fighter.y, spec.radius * state.t)
+        g.strokeCircle(fighter.x, fighter.y, spec.radius)
+        break
+    }
+  }
+
+  scene.tweens.add({
+    targets: state, t: 1, duration: TELEGRAPH_MS, ease: 'Sine.easeIn',
+    onUpdate: draw,
+    onComplete: () => g.destroy(),
+  })
 }
 
 /** Shared cone resolution — the basic for every class, tuned per kit. */
@@ -54,6 +137,10 @@ function coneHit(fighter, spec, targets) {
     if (spec.poison) other.applyPoison(spec.poison, fighter)
     connected = true
   }
+
+  // Charge once per swing that connects, not per target: cleaving a crowd
+  // should not fill the meter instantly.
+  if (connected) fighter.addCharge(CHARGE_PER_HIT)
 
   if (!connected) fighter.scene.swingMiss?.(fighter)
 }
@@ -76,7 +163,6 @@ const SPECIALS = {
       if (alreadyHit.has(t)) return
       alreadyHit.add(t)
       t.takeDamage(spec.damage, fighter, 320)
-      hitStop(fighter.scene, 60)
     }, targets)
   },
 
@@ -91,7 +177,6 @@ const SPECIALS = {
       other.takeDamage(spec.damage, fighter, spec.knockback)
       other.applySlow(spec.slow)
     }
-    hitStop(fighter.scene, 60)
   },
 
   /** Plant: lob a seed to the aim point; it leaves a patch where it lands. */
@@ -169,7 +254,6 @@ const SPECIALS = {
       if (Phaser.Math.Distance.Between(fighter.x, fighter.y, other.x, other.y) > spec.radius) continue
       other.takeDamage(spec.damage, fighter, spec.knockback)
     }
-    hitStop(fighter.scene, 80)
     scene.cameras.main.shake(140, 0.006)
   },
 }

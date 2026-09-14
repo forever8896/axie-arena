@@ -25,6 +25,14 @@ export default class BotBrain {
 
     if (target) me.aim = Math.atan2(target.y - me.y, target.x - me.x)
 
+    // Getting caught outside the closing field is worse than any fight.
+    const field = me.scene.field
+    if (field?.active && field.outside(me.x, me.y, 80)) {
+      me.intent.set(field.cx - me.x, field.cy - me.y).normalize()
+      if (me.canDash(now)) me.dash(me.intent, now)
+      return
+    }
+
     switch (this.state) {
       case 'wander':
         this.wander(now)

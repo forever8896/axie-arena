@@ -1,8 +1,8 @@
 import Phaser from 'phaser'
 import AxieSprite from '../axie/AxieSprite.js'
 import { CLASS_COLORS } from '../axie/palette.js'
-import { CLASS_KITS } from '../axie/classKits.js'
-import { impact, damageNumber, hitStop, dustEmitter } from '../fx/Juice.js'
+import { CLASS_KITS, CHARGE_PER_SECOND } from '../axie/classKits.js'
+import { impact, damageNumber, hitStopFor, dustEmitter } from '../fx/Juice.js'
 import { useBasic, useSpecial } from '../combat/abilities.js'
 import { play, playVaried } from '../fx/Sfx.js'
 
@@ -29,9 +29,11 @@ export default class Fighter {
     this.attackRange = kit?.basic?.range ?? 96
     this.attackArc = Phaser.Math.DegToRad(kit?.basic?.arc ?? 100)
     this.attackCooldown = kit?.basic?.cooldown ?? 520
-    this.specialCooldown = kit?.special?.cooldown ?? 7000
     this.lastAttack = 0
     this.lastSpecial = -Infinity
+
+    // Specials charge from landing hits plus a slow trickle (docs/DESIGN.md).
+    this.charge = 0
     this.alive = true
     this.bodyRadius = 30
 
@@ -39,6 +41,13 @@ export default class Fighter {
     this.slowUntil = 0
     this.slowFactor = 1
     this.stunUntil = 0
+    // After a stun ends, further stuns are ignored for a while: a stun is a
+    // punish, not a lockdown.
+    this.stunImmuneUntil = 0
+
+    // Hit-stop is per fighter. Freezing the whole arena in a six-way
+    // free-for-all is exactly what Sakurai warns against.
+    this.frozenUntil = 0
     this.poisonTicks = 0
     this.poisonNext = 0
     this.poisonSpec = null
@@ -61,6 +70,8 @@ export default class Fighter {
 
     this.dust = dustEmitter(scene, this.sprite.root)
     this.dust.setDepth(y - 1)
+
+    this.healthBar = scene.add.graphics().setDepth(9000)
   }
 
   get x() { return this.pos.x }
@@ -69,14 +80,34 @@ export default class Fighter {
   get invulnerable() { return this.scene.time.now < this.invulnerableUntil }
   get stunned() { return this.scene.time.now < this.stunUntil }
   get speed() {
-    return this.baseSpeed * (this.scene.time.now < this.slowUntil ? this.slowFactor : 1)
+    const slowed = this.scene.time.now < this.slowUntil ? this.slowFactor : 1
+    return this.baseSpeed * slowed * (this.casting ? 0.35 : 1)
+  }
+
+  get frozen() { return this.scene.time.now < this.frozenUntil }
+  get specialReady() { return this.charge >= 1 }
+
+  addCharge(amount) {
+    this.charge = Math.min(1, this.charge + amount)
+  }
+
+  /** Local hit-stop: only the fighters involved stop. */
+  freeze(ms) {
+    this.frozenUntil = Math.max(this.frozenUntil, this.scene.time.now + ms)
   }
 
   update(delta) {
     if (!this.alive) return
 
     const step = delta / 1000
+    this.addCharge(CHARGE_PER_SECOND * step)
     this.tickPoison()
+    this.drawHealthBar()
+
+    if (this.frozen) {
+      this.sprite.setPosition(this.pos.x, this.pos.y)
+      return
+    }
 
     if (this.stunned) {
       this.vel.scale(0.85)
@@ -88,7 +119,7 @@ export default class Fighter {
       return
     }
 
-    if (this.charge) {
+    if (this.chargeState) {
       this.updateCharge(step)
       this.sprite.update(delta, this.vel.length())
       return
@@ -127,6 +158,30 @@ export default class Fighter {
     this.dust.setDepth(this.pos.y - 1)
   }
 
+  drawHealthBar() {
+    const g = this.healthBar
+    g.clear()
+    if (!this.alive) return
+
+    const w = 56
+    const h = 7
+    const x = this.pos.x - w / 2
+    const y = this.pos.y - 78
+    const frac = Phaser.Math.Clamp(this.hp / this.maxHp, 0, 1)
+
+    g.fillStyle(0x16200f, 0.7).fillRoundedRect(x - 2, y - 2, w + 4, h + 4, 4)
+    const color = this.isPlayer ? 0x7ce85a : (frac > 0.35 ? 0xffd964 : 0xff6b6b)
+    g.fillStyle(color, 1).fillRoundedRect(x, y, Math.max(2, w * frac), h, 3)
+
+    // A thin charge line under your own bar, so the special is readable in the fight.
+    if (this.isPlayer) {
+      g.fillStyle(0x16200f, 0.6).fillRect(x, y + h + 3, w, 3)
+      g.fillStyle(this.specialReady ? 0xffffff : this.colors.body, 1)
+      g.fillRect(x, y + h + 3, w * this.charge, 3)
+    }
+    g.setDepth(this.pos.y + 60)
+  }
+
   clampToArena() {
     const b = this.scene.arenaBounds
     this.pos.x = Phaser.Math.Clamp(this.pos.x, b.left, b.right)
@@ -140,26 +195,26 @@ export default class Fighter {
   }
 
   canAttack(now) {
-    return this.alive && !this.dashing && !this.stunned && !this.charge &&
+    return this.alive && !this.dashing && !this.stunned && !this.chargeState && !this.casting &&
       now - this.lastAttack >= this.attackCooldown
   }
 
-  canSpecial(now) {
-    return this.alive && !this.dashing && !this.stunned && !this.charge &&
-      now - this.lastSpecial >= this.specialCooldown
+  canSpecial() {
+    return this.alive && this.specialReady && !this.dashing && !this.stunned && !this.chargeState && !this.casting
   }
 
   /** Beast's Impale: a longer, damaging dash that cannot be steered. */
   beginCharge(dir, speed, duration, onHit, targets) {
-    this.charge = {
+    this.chargeState = {
       dir: dir.clone().normalize(),
       until: this.scene.time.now + duration,
       onHit,
       targets,
     }
-    this.vel.copy(this.charge.dir.clone().scale(speed))
-    this.invulnerableUntil = this.scene.time.now + duration
-    this.sprite.dashTrail(this.charge.dir)
+    this.vel.copy(this.chargeState.dir.clone().scale(speed))
+    // Deliberately not invulnerable. Offensive movement should be answerable;
+    // Stunlock rejected i-frames on Raigon's engage for the same reason.
+    this.sprite.dashTrail(this.chargeState.dir)
   }
 
   updateCharge(step) {
@@ -168,13 +223,13 @@ export default class Fighter {
     this.clampToArena()
     this.sprite.setPosition(this.pos.x, this.pos.y)
 
-    for (const t of this.charge.targets) {
+    for (const t of this.chargeState.targets) {
       if (t === this || !t.alive) continue
-      if (Phaser.Math.Distance.Between(this.x, this.y, t.x, t.y) <= 62) this.charge.onHit(t)
+      if (Phaser.Math.Distance.Between(this.x, this.y, t.x, t.y) <= 62) this.chargeState.onHit(t)
     }
 
-    if (this.scene.time.now >= this.charge.until) {
-      this.charge = null
+    if (this.scene.time.now >= this.chargeState.until) {
+      this.chargeState = null
       this.vel.scale(0.3)
     }
   }
@@ -186,8 +241,11 @@ export default class Fighter {
   }
 
   applyStun(duration) {
+    const now = this.scene.time.now
+    if (now < this.stunImmuneUntil) return
     play(this.scene, 'stunned', { volume: 0.5 })
-    this.stunUntil = Math.max(this.stunUntil, this.scene.time.now + duration)
+    this.stunUntil = Math.max(this.stunUntil, now + duration)
+    this.stunImmuneUntil = this.stunUntil + 1500
     this.intent.set(0, 0)
   }
 
@@ -207,7 +265,7 @@ export default class Fighter {
     this.poisonTicks--
     this.poisonNext = now + this.poisonSpec.interval
     this.hp -= this.poisonSpec.damage
-    damageNumber(this.scene, this.x, this.y - 12, `-${this.poisonSpec.damage}`, '#9ff0bb')
+    damageNumber(this.scene, this.x, this.y - 12, String(this.poisonSpec.damage), '#9ff0bb', this.poisonSpec.damage)
     this.sprite.flash(0x9a5ad4, 90)
     if (this.hp <= 0) this.die(this.poisonFrom)
   }
@@ -255,15 +313,20 @@ export default class Fighter {
     return Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y) <= this.attackRange
   }
 
-  takeDamage(amount, from, knockback = 210) {
+  /**
+   * `projectile` halves hit-stop, per Sakurai: ranged hits get less freeze than
+   * blows landed up close.
+   */
+  takeDamage(amount, from, knockback = 210, { projectile = false } = {}) {
     if (!this.alive || this.invulnerable) return
     this.hp -= amount
 
     this.sprite.flash(0xffffff, 90)
     if (from?.kit?.hitSfx) playVaried(this.scene, from.kit.hitSfx, 0.45)
-    impact(this.scene, this.x, this.y - 8, from?.colors.rim ?? 0xffffff, this.isPlayer ? 1.3 : 1)
-    damageNumber(this.scene, this.x, this.y, `-${amount}`, this.isPlayer ? '#ff8098' : '#ffe08a')
-    hitStop(this.scene, 70)
+    const power = Phaser.Math.Clamp(amount / 400, 0.6, 1.8)
+    impact(this.scene, this.x, this.y - 8, from?.colors.rim ?? 0xffffff, power)
+    damageNumber(this.scene, this.x, this.y, String(Math.round(amount)), this.isPlayer ? '#ff8098' : '#ffe08a', amount)
+    hitStopFor([this, from], amount, projectile)
 
     if (from && knockback) {
       const away = new Phaser.Math.Vector2(this.x - from.x, this.y - from.y).normalize().scale(knockback)
@@ -277,7 +340,7 @@ export default class Fighter {
     this.alive = false
     this.dust.emitting = false
     impact(this.scene, this.x, this.y - 8, this.colors.body, 1.8)
-    hitStop(this.scene, 110)
+    this.healthBar.destroy()
 
     this.scene.tweens.add({
       targets: this.sprite.root,

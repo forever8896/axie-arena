@@ -94,27 +94,36 @@ export function ambientMotes(scene, bounds) {
   }).setDepth(-5)
 }
 
-export function damageNumber(scene, x, y, text, color = '#ffffff') {
-  const label = scene.add.text(x, y - 24, text, {
-    fontFamily: 'ui-monospace, monospace',
-    fontSize: '20px',
+export function damageNumber(scene, x, y, text, color = '#ffffff', amount = 0) {
+  // Bigger hits get bigger numbers, so a special reads as a special.
+  const size = Math.round(Phaser.Math.Clamp(16 + amount / 40, 16, 34))
+  const label = scene.add.text(x + Phaser.Math.Between(-10, 10), y - 30, text, {
+    fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif',
+    fontSize: `${size}px`,
     color,
-    stroke: '#0b0918',
-    strokeThickness: 4,
+    stroke: '#16200f',
+    strokeThickness: 5,
   }).setOrigin(0.5).setDepth(10000)
 
   scene.tweens.add({
     targets: label,
-    y: y - 68,
+    y: y - 80,
     alpha: 0,
-    scale: { from: 1.35, to: 0.9 },
-    duration: 620,
+    scale: { from: 1.4, to: 0.9 },
+    duration: 700,
     ease: 'Quad.easeOut',
     onComplete: () => label.destroy(),
   })
 }
 
-/** Brief freeze on a hit. The single cheapest way to make combat feel heavy. */
-export function hitStop(scene, ms = 70) {
-  scene.freezeUntil = Math.max(scene.freezeUntil ?? 0, scene.time.now + ms)
+/**
+ * Local hit-stop, after Sakurai: scales with damage, capped, the same length for
+ * attacker and defender, halved for projectiles. Only the fighters involved
+ * stop — in a six-way free-for-all, freezing the arena lets a third party
+ * walk in and punish someone else's freeze.
+ */
+export function hitStopFor(fighters, damage, projectile = false) {
+  let ms = Phaser.Math.Clamp(35 + damage / 9, 35, 115)
+  if (projectile) ms *= 0.5
+  for (const f of fighters) f?.freeze?.(ms)
 }

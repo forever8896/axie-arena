@@ -53,7 +53,7 @@ export default class Projectile {
     for (const t of targets) {
       if (t === this.owner || !t.alive || t.invulnerable) continue
       if (Phaser.Math.Distance.Between(this.pos.x, this.pos.y, t.x, t.y) <= this.radius + 26) {
-        t.takeDamage(this.damage, this.owner)
+        t.takeDamage(this.damage, this.owner, 150, { projectile: true })
         if (this.stun) t.applyStun(this.stun)
         return this.destroy(true)
       }

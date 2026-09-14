@@ -3,6 +3,7 @@ import Fighter from '../entities/Fighter.js'
 import BotBrain from '../ai/BotBrain.js'
 import { ARENA_PALETTE } from '../axie/palette.js'
 import Arena, { WORLD } from '../arena/Arena.js'
+import ClosingField from '../arena/ClosingField.js'
 import { createFxTextures, ambientMotes } from '../fx/Juice.js'
 import { playPlate } from '../fx/SkillVfx.js'
 
@@ -25,7 +26,6 @@ export default class GameScene extends Phaser.Scene {
       return
     }
 
-    this.freezeUntil = 0
     createFxTextures(this)
 
     this.arena = new Arena(this)
@@ -71,6 +71,7 @@ export default class GameScene extends Phaser.Scene {
     this.matchOver = false
     this.startedAt = this.time.now
     this.kills = 0
+    this.field = new ClosingField(this)
 
     const cam = this.cameras.main
     cam.setBounds(0, 0, WORLD.width, WORLD.height)
@@ -195,10 +196,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update(time, delta) {
-    // Hit-stop: freeze movement, let tweens and particles keep playing.
-    const frozen = time < this.freezeUntil
-
-    if (!frozen) {
+    // Hit-stop is per fighter now (Fighter.freeze), so the loop always runs.
+    {
       const k = this.keys
       this.player.intent.set(
         this.matchOver ? 0 : (k.D.isDown ? 1 : 0) - (k.A.isDown ? 1 : 0),
@@ -217,6 +216,7 @@ export default class GameScene extends Phaser.Scene {
 
       for (const bot of this.bots) bot.brain.update(time, this.fighters)
       for (const f of this.fighters) f.update(delta)
+      if (!this.matchOver) this.field.update(this.fighters)
 
       for (const p of this.projectiles) p.update(delta, this.fighters)
       for (const z of this.zones) z.update(delta, this.fighters)
