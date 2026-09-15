@@ -4,6 +4,7 @@ import Zone from './Zone.js'
 import { impact } from '../fx/Juice.js'
 import { CHARGE_PER_HIT, TELEGRAPH_MS } from '../axie/classKits.js'
 import { playVaried, play } from '../fx/Sfx.js'
+import { CONNECT_MS } from '../axie/AxieSprite.js'
 
 /**
  * Every ability is a function of (fighter, spec, targets). They are keyed by
@@ -18,10 +19,14 @@ export function useBasic(fighter, targets, now) {
   const hits = spec.hits ?? 1
   const strike = i => {
     if (!fighter.alive || fighter.stunned) return
+    // The direction is fixed when the blow starts. Resolving the hit against
+    // the live aim 165ms later let a moving mouse put the damage somewhere the
+    // swing was never drawn.
+    const aim = fighter.aim
+    fighter.lockFacing(aim, CONNECT_MS + 60)
     if (spec.sfx) playVaried(fighter.scene, spec.sfx, 0.4)
-    strikeShape(fighter, spec, i)
-    fighter.scene.playBasicVfx?.(fighter, spec)
-    fighter.sprite.playAttack(() => coneHit(fighter, spec, targets), spec.anim)
+    strikeShape(fighter, spec, i, aim)
+    fighter.sprite.playAttack(() => coneHit(fighter, spec, targets, aim), spec.anim)
   }
   // The first hit starts now. A zero-delay timer would defer it a whole frame,
   // silently adding a frame to the 165ms connect the game is balanced on.
@@ -131,20 +136,29 @@ function telegraph(fighter, spec, aim, point) {
   })
 }
 
-/** Shared cone resolution — the basic for every class, tuned per kit. */
-function coneHit(fighter, spec, targets) {
+/**
+ * Shared cone resolution — the basic for every class, tuned per kit.
+ *
+ * What you see is what was tested: the zone flash draws the exact cone checked
+ * here, from where the attacker stands at contact, along the aim locked when
+ * the swing began, and each Origins impact plays on the fighter it hit.
+ */
+function coneHit(fighter, spec, targets, aim = fighter.aim) {
   // A parry earlier in a multi-hit swing staggers you out of the rest of it.
   if (!fighter.alive || fighter.stunned) return
   const arc = Phaser.Math.DegToRad(spec.arc)
+  const scene = fighter.scene
   let connected = false
+  zoneFlash(fighter, spec.range, arc, aim)
 
   for (const other of targets) {
     if (other === fighter || !other.alive || other.invulnerable) continue
-    if (!inCone(fighter, other, spec.range, arc)) continue
+    if (!inCone(fighter, other, spec.range, arc, aim)) continue
     if (other.tryParry(fighter)) return
 
     other.takeDamage(spec.damage, fighter, spec.knockback)
     if (spec.poison) other.applyPoison(spec.poison, fighter)
+    scene.playImpactVfx?.(fighter, spec, other.x, other.y - 26, aim)
     connected = true
   }
 
@@ -152,15 +166,55 @@ function coneHit(fighter, spec, targets) {
   // should not fill the meter instantly.
   if (connected) fighter.addCharge(CHARGE_PER_HIT)
 
-  if (!connected) fighter.scene.swingMiss?.(fighter)
+  if (!connected) {
+    // A whiff still shows where the blow went: a smaller burst at the cone's
+    // sweet spot, so a miss reads as a miss rather than as nothing.
+    const r = spec.range * 0.72
+    scene.playImpactVfx?.(fighter, spec, fighter.x + Math.cos(aim) * r, fighter.y - 20 + Math.sin(aim) * r, aim, { whiff: true })
+    scene.swingMiss?.(fighter)
+  }
 }
 
-export function inCone(fighter, target, range, arc) {
+/**
+ * True when any part of the target's body is inside the cone. Testing only the
+ * centre point missed blows the art clearly landed: a rival with half its body
+ * inside the drawn edge took nothing.
+ */
+export function inCone(fighter, target, range, arc, aim = fighter.aim) {
+  const pad = (target.bodyRadius ?? 0) * 0.5
   const d = Phaser.Math.Distance.Between(fighter.x, fighter.y, target.x, target.y)
-  if (d > range) return false
-  if (arc >= Math.PI * 2) return true
+  if (d - pad > range) return false
+  if (arc >= Math.PI * 2 || d < 1) return true
   const toTarget = Math.atan2(target.y - fighter.y, target.x - fighter.x)
-  return Math.abs(Phaser.Math.Angle.Wrap(toTarget - fighter.aim)) <= arc / 2
+  const widen = Math.asin(Math.min(1, pad / d))
+  return Math.abs(Phaser.Math.Angle.Wrap(toTarget - aim)) <= arc / 2 + widen
+}
+
+/** The exact area just tested, flashed on the ground for a beat. */
+function zoneFlash(fighter, range, arc, aim) {
+  const scene = fighter.scene
+  const g = scene.add.graphics().setDepth(-19)
+  const x = fighter.x
+  const y = fighter.y
+  const color = fighter.colors.rim
+  const state = { a: 1 }
+  const draw = () => {
+    g.clear()
+    g.fillStyle(color, 0.22 * state.a)
+    g.lineStyle(2, 0xffffff, 0.55 * state.a)
+    if (arc >= Math.PI * 2) {
+      g.fillCircle(x, y, range)
+      g.strokeCircle(x, y, range)
+    } else {
+      g.slice(x, y, range, aim - arc / 2, aim + arc / 2)
+      g.fillPath()
+      g.beginPath()
+      g.arc(x, y, range, aim - arc / 2, aim + arc / 2)
+      g.strokePath()
+    }
+  }
+  draw()
+  scene.tweens.add({ targets: state, a: 0, duration: 170, ease: 'Quad.easeIn', onUpdate: draw, onComplete: () => g.destroy() })
 }
 
 const SPECIALS = {
@@ -280,16 +334,17 @@ const SPECIALS = {
  * Normal blending with a dark underline, not additive: additive artwork
  * vanishes against a sunlit field.
  */
-function strikeShape(fighter, spec, hitIndex = 0) {
+function strikeShape(fighter, spec, hitIndex = 0, aim = fighter.aim) {
   const scene = fighter.scene
   const g = scene.add.graphics().setDepth(fighter.y + 3)
   const arc = Phaser.Math.DegToRad(spec.arc)
   const reach = spec.range
-  const aim = fighter.aim
   const rim = fighter.colors.rim
   const body = fighter.colors.body
-  const cx = fighter.x
-  const cy = fighter.y - 10
+  // Drawn from the same point the hit is tested from, and carried along with
+  // the attacker: a swing drawn where you stood lagged behind where it landed.
+  let cx = fighter.x
+  let cy = fighter.y
   const at = (a, r) => ({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r })
   const state = { t: 0 }
 
@@ -393,7 +448,11 @@ function strikeShape(fighter, spec, hitIndex = 0) {
   const draw = shapes[fighter.axieClass] ?? shapes.beast
   scene.tweens.add({
     targets: state, t: 1, duration: 260, ease: 'Sine.easeOut',
-    onUpdate: () => { g.clear(); draw(state.t) },
+    onUpdate: () => {
+      if (fighter.alive) { cx = fighter.x; cy = fighter.y; g.setDepth(fighter.y + 3) }
+      g.clear()
+      draw(state.t)
+    },
     onComplete: () => g.destroy(),
   })
 }

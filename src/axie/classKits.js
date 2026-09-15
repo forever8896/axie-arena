@@ -108,7 +108,7 @@ export const CLASS_KITS = {
   bird: {
     title: 'Bird',
     tagline: 'Fastest and longest reach, thinnest skin',
-    hp: 1900, speed: 255,
+    hp: 2100, speed: 255,
     hitSfx: 'bird_throw_hit',
     basic: {
       name: 'Peck', desc: 'Rapid jabs at range',
@@ -134,7 +134,7 @@ export const CLASS_KITS = {
     hitSfx: 'bug_projectile_hit',
     basic: {
       name: 'Venom Bite', desc: 'Leaves poison behind',
-      kind: 'cone', range: 90, arc: 80, damage: 225, cooldown: 540, knockback: 120,
+      kind: 'cone', range: 90, arc: 80, damage: 210, cooldown: 540, knockback: 120,
       // Back to 90: raised to 120 while poison was silently dealing nothing,
       // which would overshoot now that it ticks.
       poison: { damage: 80, ticks: 3, interval: 900 },

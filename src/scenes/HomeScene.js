@@ -3,6 +3,7 @@ import AxieSprite from '../axie/AxieSprite.js'
 import { makeGrassTexture } from '../arena/Arena.js'
 import { FIELD } from '../axie/palette.js'
 import { ambientMotes } from '../fx/Juice.js'
+import { tutorialDone } from '../tutorial/TutorialDirector.js'
 
 const HEAD = 'Rowdies, ui-sans-serif, system-ui, sans-serif'
 const MONO = 'ui-monospace, monospace'
@@ -38,6 +39,7 @@ export default class HomeScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-ENTER', () => this.start('showdown'))
     this.input.keyboard.on('keydown-SPACE', () => this.start('showdown'))
     this.input.keyboard.on('keydown-W', () => this.start('wilds'))
+    this.input.keyboard.on('keydown-T', () => this.start('tutorial'))
 
     this.scale.on('resize', this.layout, this)
     this.layout()
@@ -121,6 +123,15 @@ export default class HomeScene extends Phaser.Scene {
     this.wildsTag.setShadow(0, 1, 'rgba(35,48,15,0.8)', 2, false, true)
     this.wildsZone = this.add.zone(0, 0, 300, 50).setInteractive({ useHandCursor: true }).setDepth(1012)
     this.wildsZone.on('pointerdown', () => this.start('wilds'))
+
+    // The way in for new players: loud until the tutorial has been finished once.
+    const fresh = !tutorialDone()
+    this.tutorialText = this.add.text(0, 0, fresh ? 'NEW HERE?  PLAY THE TUTORIAL  ▸' : 'REPLAY THE TUTORIAL  ▸', {
+      fontFamily: HEAD, fontSize: fresh ? '17px' : '14px', color: fresh ? '#ffd964' : '#fff8d8',
+    }).setOrigin(0.5).setDepth(1012).setInteractive({ useHandCursor: true })
+    this.tutorialText.setShadow(0, 2, 'rgba(35,48,15,0.8)', 3, false, true)
+    this.tutorialText.on('pointerdown', () => this.start('tutorial'))
+    if (fresh) this.tweens.add({ targets: this.tutorialText, scale: 1.06, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
   }
 
   drawWilds() {
@@ -228,7 +239,7 @@ export default class HomeScene extends Phaser.Scene {
 
   buildFooter() {
     this.footer = this.add.text(0, 0,
-      'ENTER  SHOWDOWN  ·  W  THE ENDLESS WILDS  ·  BUILT FOR AXIE VIBEATHON 2026', {
+      'ENTER  SHOWDOWN  ·  W  THE ENDLESS WILDS  ·  T  TUTORIAL  ·  BUILT FOR AXIE VIBEATHON 2026', {
         fontFamily: MONO, fontSize: '11px', color: '#e8f0d6',
       }).setOrigin(0.5).setDepth(1012).setAlpha(0.85)
     this.footer.setShadow(0, 2, 'rgba(35,48,15,0.6)', 3, false, true)
@@ -281,7 +292,8 @@ export default class HomeScene extends Phaser.Scene {
     this.wildsY = this.playY + 80
     this.drawWilds()
 
-    this.aboutY = this.wildsY + 80
+    this.tutorialText?.setPosition(this.playX, this.wildsY + 72)
+    this.aboutY = this.wildsY + 112
     this.aboutToggle?.setPosition(cx, this.aboutY)
     this.drawAbout()
 

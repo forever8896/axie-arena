@@ -1,7 +1,11 @@
 import Phaser from 'phaser'
 import { FIELD } from '../axie/palette.js'
 
-export const WORLD = { width: 2400, height: 1800 }
+import { WORLD, BOUNDS, worldWalls, worldBushes } from './layout.js'
+import { paintBush } from './Foliage.js'
+import { ensureTexture as ensureSoftTexture } from './Moonwell.js'
+
+export { WORLD }
 
 // Kept dark on purpose: the camera bloom lifts these several stops, and a
 // lighter face turns every block into a pale slab.
@@ -15,40 +19,6 @@ const WALL = {
 
 const GRASS_TILE = 256
 
-/**
- * Cover layout. Mirrored on both axes so no spawn corner is safer than
- * another, with a broken centre so fights there have somewhere to break to.
- */
-function mirrored(quadrant) {
-  const out = []
-  for (const w of quadrant) {
-    out.push({ ...w })
-    out.push({ ...w, x: -w.x })
-    out.push({ ...w, y: -w.y })
-    out.push({ ...w, x: -w.x, y: -w.y })
-  }
-  return out
-}
-
-const WALLS = mirrored([
-  { x: 0, y: 250, w: 220, h: 46 },
-  { x: 300, y: 0, w: 46, h: 200 },
-  { x: 560, y: 380, w: 320, h: 46 },
-  { x: 760, y: 190, w: 46, h: 300 },
-  { x: 300, y: 660, w: 240, h: 46 },
-  { x: 430, y: 560, w: 46, h: 220 },
-  { x: 980, y: 700, w: 260, h: 46 },
-  { x: 1090, y: 430, w: 46, h: 240 },
-])
-
-/** Soft cover: you can stand in it, and you are harder to see and to target. */
-const BUSHES = mirrored([
-  { x: 180, y: 470, rx: 130, ry: 84 },
-  { x: 690, y: 90, rx: 112, ry: 74 },
-  { x: 900, y: 620, rx: 150, ry: 92 },
-  { x: 420, y: 800, rx: 120, ry: 78 },
-])
-
 export default class Arena {
   constructor(scene) {
     this.scene = scene
@@ -56,14 +26,11 @@ export default class Arena {
     this.cy = WORLD.height / 2
 
     // Layout is authored around the centre; store it in world coordinates.
-    this.walls = WALLS.map(w => ({
-      x: this.cx + w.x, y: this.cy + w.y, w: w.w, h: w.h,
-      left: this.cx + w.x - w.w / 2, right: this.cx + w.x + w.w / 2,
-      top: this.cy + w.y - w.h / 2, bottom: this.cy + w.y + w.h / 2,
-    }))
-    this.bushes = BUSHES.map(b => ({ x: this.cx + b.x, y: this.cy + b.y, rx: b.rx, ry: b.ry }))
-
-    this.bounds = { left: 70, top: 96, right: WORLD.width - 70, bottom: WORLD.height - 70 }
+    // Geometry lives in layout.js, where scripts/check-terrain.mjs verifies it.
+    this.walls = worldWalls()
+    this.bushes = worldBushes()
+    this.bounds = { ...BOUNDS }
+    this.canopies = []
   }
 
   /**
@@ -119,45 +86,44 @@ export default class Arena {
   }
 
   /** Broad colour variation so the field is not one flat green. */
-  drawMeadowPatches() {
-    const rng = new Phaser.Math.RandomDataGenerator(['lunacia-patches'])
-    const g = this.offList()
+  /**
+   * A soft-edged blob stamped into the ground. Hard-edged ellipses, even faint
+   * ones, read as flat circles on the grass; a radial falloff reads as light
+   * and wear.
+   */
+  softBlob(x, y, w, h, color, alpha) {
+    const img = this.scene.make.image({ x, y, key: 'fx-moonwell', add: false })
+    img.setTint(color).setDisplaySize(w, h).setAlpha(alpha)
+    this.ground.draw(img)
+    img.destroy()
+  }
 
+  drawMeadowPatches() {
+    ensureSoftTexture(this.scene)
+    const rng = new Phaser.Math.RandomDataGenerator(['lunacia-patches'])
     for (let i = 0; i < 46; i++) {
-      const x = rng.between(0, WORLD.width)
-      const y = rng.between(0, WORLD.height)
-      const rx = rng.between(150, 460)
-      const ry = rng.between(90, 300)
-      g.fillStyle(rng.pick([FIELD.grassLight, FIELD.grassDeep, FIELD.grassPale]), rng.realInRange(0.1, 0.24))
-      g.fillEllipse(x, y, rx, ry)
+      this.softBlob(
+        rng.between(0, WORLD.width), rng.between(0, WORLD.height),
+        rng.between(260, 700), rng.between(180, 460),
+        rng.pick([FIELD.grassLight, FIELD.grassDeep, FIELD.grassPale]), rng.realInRange(0.18, 0.34),
+      )
     }
-    this.stamp(g)
   }
 
   /** Worn dirt where the fighting happens, so the centre reads as an arena. */
   drawTrampledCentre() {
     const rng = new Phaser.Math.RandomDataGenerator(['lunacia-ring'])
-    const g = this.offList()
-
-    g.fillStyle(FIELD.dirt, 0.5)
-    g.fillEllipse(this.cx, this.cy, 760, 560)
-    g.fillStyle(FIELD.dirtDark, 0.28)
-    g.fillEllipse(this.cx, this.cy, 610, 430)
-
-    // Ragged edge, so the patch is not a clean ellipse.
-    for (let i = 0; i < 60; i++) {
-      const a = (i / 60) * Math.PI * 2
-      g.fillStyle(FIELD.dirt, rng.realInRange(0.18, 0.42))
-      g.fillEllipse(
-        this.cx + Math.cos(a) * rng.between(330, 410),
-        this.cy + Math.sin(a) * rng.between(240, 300),
-        rng.between(60, 150), rng.between(40, 100),
+    this.softBlob(this.cx, this.cy, 980, 720, FIELD.dirt, 0.55)
+    // Irregular wear toward the edges, so the patch has no clean outline.
+    for (let i = 0; i < 26; i++) {
+      const a = rng.realInRange(0, Math.PI * 2)
+      const d = rng.realInRange(0.35, 0.8)
+      this.softBlob(
+        this.cx + Math.cos(a) * 420 * d, this.cy + Math.sin(a) * 300 * d,
+        rng.between(160, 320), rng.between(110, 220),
+        rng.pick([FIELD.dirt, FIELD.dirtDark]), rng.realInRange(0.18, 0.4),
       )
     }
-
-    g.fillStyle(FIELD.dirtDark, 0.22)
-    g.fillEllipse(this.cx, this.cy, 320, 230)
-    this.stamp(g)
   }
 
   /** Tufts, stones and wildflowers, baked into one texture. */
@@ -217,36 +183,34 @@ export default class Arena {
     this.stamp(brush)
   }
 
-  /** A hedge ring instead of a glowing line: the field has an edge you can see. */
+  /**
+   * A hedge ring instead of a glowing line: the field has an edge you can see.
+   * Painted clumps in the same style as the bushes, stamped into the ground.
+   */
   drawHedgeBorder() {
+    const s = this.scene
     const rng = new Phaser.Math.RandomDataGenerator(['lunacia-hedge'])
-    const g = this.offList()
     const b = this.bounds
-    const inset = 36
+    const inset = 40
+    const variants = [0, 1, 2, 3].map(i => paintBush(s, `hedge-${i}`, 54 + i * 4, 38 + i * 2, { seed: `hedge-${i}`, flowers: i % 2 }))
 
     const ring = []
-    const stepX = 74
-    const stepY = 74
-    for (let x = b.left - inset; x <= b.right + inset; x += stepX) {
-      ring.push({ x, y: b.top - inset })
-      ring.push({ x, y: b.bottom + inset })
+    const step = 82
+    for (let x = b.left - inset; x <= b.right + inset; x += step) {
+      ring.push({ x: x + rng.between(-10, 10), y: b.top - inset + rng.between(-6, 6) })
+      ring.push({ x: x + rng.between(-10, 10), y: b.bottom + inset + rng.between(-6, 6) })
     }
-    for (let y = b.top - inset; y <= b.bottom + inset; y += stepY) {
-      ring.push({ x: b.left - inset, y })
-      ring.push({ x: b.right + inset, y })
+    for (let y = b.top - inset; y <= b.bottom + inset; y += step) {
+      ring.push({ x: b.left - inset + rng.between(-6, 6), y: y + rng.between(-10, 10) })
+      ring.push({ x: b.right + inset + rng.between(-6, 6), y: y + rng.between(-10, 10) })
     }
-
+    ring.sort((p, q) => p.y - q.y)
     for (const p of ring) {
-      const w = rng.between(78, 118)
-      const h = rng.between(56, 84)
-      g.fillStyle(0x000000, 0.22)
-      g.fillEllipse(p.x + 5, p.y + 12, w, h * 0.7)
-      g.fillStyle(FIELD.hedge, 1)
-      g.fillEllipse(p.x, p.y, w, h)
-      g.fillStyle(FIELD.hedgeLight, 0.55)
-      g.fillEllipse(p.x - w * 0.12, p.y - h * 0.2, w * 0.6, h * 0.45)
+      const img = s.make.image({ x: p.x, y: p.y, key: rng.pick(variants), add: false })
+      img.setScale(rng.realInRange(0.9, 1.15))
+      this.ground.draw(img)
+      img.destroy()
     }
-    this.stamp(g)
   }
 
   /**
@@ -286,6 +250,26 @@ export default class Arena {
       g.lineStyle(1, WALL.edge, 0.5)
       g.strokeRoundedRect(w.left, w.top - lift, w.w, w.h, radius)
 
+      // A dark outline around the whole block, as the Axies and foliage have.
+      g.lineStyle(3, 0x3a2a18, 0.9)
+      g.strokeRoundedRect(w.left, w.top - lift, w.w, w.h + lift, radius)
+
+      // A clump or two of moss where rain would collect, never evenly spaced.
+      const mossRng = new Phaser.Math.RandomDataGenerator([`moss-${w.left}-${w.top}`])
+      const clumps = mossRng.between(1, 2)
+      for (let m = 0; m < clumps; m++) {
+        const along = mossRng.realInRange(0.12, 0.88)
+        const mx = w.w >= w.h ? w.left + w.w * along : w.left + mossRng.realInRange(8, w.w - 8)
+        const my = w.w >= w.h ? w.top - lift + mossRng.realInRange(4, w.h * 0.5) : w.top - lift + w.h * along
+        const blobs = [[0, 0, 13], [mossRng.between(-12, -7), mossRng.between(1, 4), 9], [mossRng.between(7, 12), mossRng.between(-2, 3), 8]]
+        g.fillStyle(0x1f3a17, 0.85)
+        for (const [ox, oy, r] of blobs) g.fillEllipse(mx + ox, my + oy, r * 2 + 4, r + 4)
+        g.fillStyle(0x5fb043, 1)
+        for (const [ox, oy, r] of blobs) g.fillEllipse(mx + ox, my + oy, r * 2, r)
+        g.fillStyle(0xb6e878, 0.8)
+        for (const [ox, oy, r] of blobs) g.fillEllipse(mx + ox - r * 0.3, my + oy - r * 0.2, r * 0.7, r * 0.3)
+      }
+
       const pad = 16
       this.bake(g, {
         x: w.left - pad, y: w.top - lift - pad,
@@ -303,28 +287,25 @@ export default class Arena {
     this.stamp(g)
   }
 
-  /** Drawn above the fighters, so standing in one half-hides you. */
+  /** Drawn above the fighters, so standing in one hides you. */
   drawBushCanopies() {
-    const rng = new Phaser.Math.RandomDataGenerator(['axie-bush'])
-    for (const b of this.bushes) {
-      const g = this.offList()
-      g.fillStyle(FIELD.hedge, 0.72)
-      g.fillEllipse(b.x, b.y, b.rx * 2, b.ry * 2)
-      for (let i = 0; i < 18; i++) {
-        const a = rng.realInRange(0, Math.PI * 2)
-        const d = rng.realInRange(0.25, 0.95)
-        g.fillStyle(rng.pick([FIELD.hedgeLight, FIELD.hedge, 0x63b356]), 0.6)
-        g.fillEllipse(
-          b.x + Math.cos(a) * b.rx * d,
-          b.y + Math.sin(a) * b.ry * d,
-          rng.between(30, 62), rng.between(20, 38),
-        )
-      }
+    this.bushes.forEach((b, i) => {
+      const key = paintBush(this.scene, `bush-${i}-${b.rx}x${b.ry}`, b.rx, b.ry, { seed: `axie-bush-${i}`, shadow: false })
+      const image = this.scene.add.image(b.x, b.y, key).setDepth(b.y + b.ry + 40)
+      this.canopies.push({ bush: b, image })
+    })
+  }
 
-      this.bake(g, {
-        x: b.x - b.rx - 40, y: b.y - b.ry - 30,
-        w: (b.rx + 40) * 2, h: (b.ry + 30) * 2,
-      }, b.y + b.ry + 40)
+  /**
+   * The bush you are standing in turns see-through, for you only, so you can
+   * still see yourself and what is inside with you. Everyone else's stays solid.
+   */
+  updateCanopies(player) {
+    for (const c of this.canopies) {
+      const b = c.bush
+      const inside = player?.alive && ((player.x - b.x) / b.rx) ** 2 + ((player.y - b.y) / b.ry) ** 2 <= 1.15
+      const target = inside ? 0.42 : 1
+      c.image.alpha += (target - c.image.alpha) * 0.2
     }
   }
 
@@ -388,42 +369,48 @@ export function makeGrassTexture(scene) {
 
   const size = GRASS_TILE
   const rng = new Phaser.Math.RandomDataGenerator(['lunacia-grass'])
-  const g = scene.make.graphics({ x: 0, y: 0, add: false })
-
-  g.fillStyle(FIELD.grassBase, 1).fillRect(0, 0, size, size)
-
-  const wrapped = (x, y, draw) => {
-    for (const dx of [0, -size, size]) {
-      for (const dy of [0, -size, size]) draw(x + dx, y + dy)
-    }
+  const tex = scene.textures.createCanvas('field-grass', size, size)
+  const ctx = tex.getContext()
+  const css = (c, a) => `rgba(${(c >> 16) & 255}, ${(c >> 8) & 255}, ${c & 255}, ${a})`
+  const wrapped = draw => {
+    for (const dx of [0, -size, size]) for (const dy of [0, -size, size]) draw(dx, dy)
   }
 
-  // Mottling, so the base is never a flat colour.
-  for (let i = 0; i < 150; i++) {
+  ctx.fillStyle = css(FIELD.grassBase, 1)
+  ctx.fillRect(0, 0, size, size)
+
+  // Mottling with soft radial falloff: variation without visible ovals.
+  for (let i = 0; i < 70; i++) {
     const x = rng.between(0, size)
     const y = rng.between(0, size)
-    const rx = rng.between(26, 90)
-    const ry = rng.between(18, 60)
+    const r = rng.between(24, 80)
     const c = rng.pick([FIELD.grassLight, FIELD.grassDeep, FIELD.grassPale, FIELD.grassShadow])
-    g.fillStyle(c, rng.realInRange(0.06, 0.16))
-    wrapped(x, y, (px, py) => g.fillEllipse(px, py, rx, ry))
+    const a = rng.realInRange(0.08, 0.2)
+    wrapped((dx, dy) => {
+      const grad = ctx.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r)
+      grad.addColorStop(0, css(c, a))
+      grad.addColorStop(1, css(c, 0))
+      ctx.fillStyle = grad
+      ctx.fillRect(x + dx - r, y + dy - r, r * 2, r * 2)
+    })
   }
 
-  // Fine blades for texture at close range.
-  for (let i = 0; i < 520; i++) {
+  // Fine curved blades for texture at close range.
+  ctx.lineCap = 'round'
+  for (let i = 0; i < 360; i++) {
     const x = rng.between(0, size)
     const y = rng.between(0, size)
     const h = rng.between(4, 9)
     const lean = rng.realInRange(-3, 3)
-    g.lineStyle(1, rng.pick([FIELD.grassDeep, FIELD.grassPale, FIELD.grassShadow]), rng.realInRange(0.2, 0.45))
-    wrapped(x, y, (px, py) => {
-      g.beginPath()
-      g.moveTo(px, py)
-      g.lineTo(px + lean, py - h)
-      g.strokePath()
+    ctx.strokeStyle = css(rng.pick([FIELD.grassDeep, FIELD.grassPale, FIELD.grassShadow]), rng.realInRange(0.25, 0.5))
+    ctx.lineWidth = 1.2
+    wrapped((dx, dy) => {
+      ctx.beginPath()
+      ctx.moveTo(x + dx, y + dy)
+      ctx.quadraticCurveTo(x + dx + lean * 0.2, y + dy - h * 0.6, x + dx + lean, y + dy - h)
+      ctx.stroke()
     })
   }
 
-  g.generateTexture('field-grass', size, size)
-  g.destroy()
+  tex.refresh()
 }

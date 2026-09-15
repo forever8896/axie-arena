@@ -61,6 +61,9 @@ export default class Fighter {
 
     // Aim is independent of movement: you can back off while swinging forward.
     this.aim = 0
+    // A swing holds the facing it started with until the blow lands.
+    this.facingAim = 0
+    this.facingLockUntil = 0
 
     this.dashSpeed = 780
     this.dashDuration = 190
@@ -229,7 +232,8 @@ export default class Fighter {
 
     const speed = this.vel.length()
     // Facing follows the aim, not the movement, so strafing reads correctly.
-    this.sprite.setFacing(Math.cos(this.aim) < 0 ? -1 : 1)
+    const faceAim = this.scene.time.now < this.facingLockUntil ? this.facingAim : this.aim
+    this.sprite.setFacing(Math.cos(faceAim) < 0 ? -1 : 1)
     this.sprite.setAlpha(this.hidden ? 0.45 : 1)
     this.sprite.setPosition(this.pos.x, this.pos.y)
     this.sprite.update(delta, speed)
@@ -357,6 +361,11 @@ export default class Fighter {
     return Boolean(this.scene.arena?.inBush(this.pos.x, this.pos.y))
   }
 
+  lockFacing(aim, ms) {
+    this.facingAim = aim
+    this.facingLockUntil = this.scene.time.now + ms
+  }
+
   /** Arrived in the Wilds moments ago: protected, and not yet allowed to strike. */
   get shielded() {
     return this.spawnShieldUntil > this.scene.time.now
@@ -453,7 +462,7 @@ export default class Fighter {
     this.hp -= this.absorb(this.poisonSpec.damage)
     damageNumber(this.scene, this.x, this.y - 12, String(this.poisonSpec.damage), '#9ff0bb', this.poisonSpec.damage)
     this.sprite.flash(0x9a5ad4, 90)
-    if (this.hp <= 0) this.die(this.poisonFrom)
+    if (this.hp <= 0) this.fall(this.poisonFrom)
   }
 
   canDash(now) {
@@ -593,7 +602,16 @@ export default class Fighter {
       this.vel.add(away)
     }
 
-    if (this.hp <= 0) this.die(from)
+    if (this.hp <= 0) this.fall(from)
+  }
+
+  /** Health reached zero. In the tutorial you cannot actually go down. */
+  fall(from) {
+    if (this.immortal) {
+      this.hp = 1
+      return
+    }
+    this.die(from)
   }
 
   clearOverlays() {

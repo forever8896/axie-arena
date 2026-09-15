@@ -3,6 +3,7 @@ import { WORLD } from '../arena/Arena.js'
 import { PARRY } from '../axie/classKits.js'
 import { POWERUPS } from '../arena/PowerUps.js'
 import WildsHud from '../wilds/WildsHud.js'
+import TutorialHud from '../tutorial/TutorialHud.js'
 
 const MINIMAP = { size: 186, pad: 22 }
 
@@ -94,6 +95,7 @@ export default class UIScene extends Phaser.Scene {
     this.buildMinimap()
 
     this.wildsHud = this.game_.wilds ? new WildsHud(this) : null
+    this.tutorialHud = this.game_.tutorial ? new TutorialHud(this) : null
 
     this.layoutHintPlate()
     this.scale.on('resize', this.layout, this)
@@ -306,8 +308,9 @@ export default class UIScene extends Phaser.Scene {
     this.drawAnnouncement()
     this.drawBuffRow(player)
     this.wildsHud?.update(player)
+    this.tutorialHud?.update(player)
 
-    if (!this.wildsHud) {
+    if (!this.wildsHud && !this.tutorialHud) {
       const alive = this.game_.bots.filter(b => b.alive).length
       this.status.setText(String(alive).padStart(2, '0'))
     }

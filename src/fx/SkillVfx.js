@@ -49,6 +49,20 @@ export async function loadSkillPlates(ids, scene, onOne) {
           hideOnComplete: true,
         })
       }
+      // The impact cut: from just before the plate's peak, so the burst is at
+      // full size on the frame the damage lands.
+      if (!scene.anims.exists(`${key}-impact`)) {
+        const peak = clip.peakFrame ?? Math.floor(clip.frames * 0.4)
+        scene.anims.create({
+          key: `${key}-impact`,
+          frames: scene.anims.generateFrameNumbers(key, {
+            start: Math.max(0, peak - 1),
+            end: Math.min(clip.frames - 1, peak + 10),
+          }),
+          frameRate: clip.fps * 1.5,
+          hideOnComplete: true,
+        })
+      }
       plates[id] = clip
     } catch (err) {
       console.warn(`skill plate failed: ${id}`, err)
@@ -117,6 +131,37 @@ function loadImage(src) {
     img.onerror = () => reject(new Error(`could not load ${src}`))
     img.src = src
   })
+}
+
+/**
+ * A basic attack's Origins plate, played as what it is: an impact.
+ *
+ * The basic plates are hit bursts recorded around the defender (their anchor
+ * maps to the defender), so they belong on the fighter that was hit, not
+ * stretched out from the attacker. The art's blow travels from the attacker on
+ * the right to the defender on the left; it is mirrored and turned so that
+ * direction runs along the swing's aim, and flipped vertically on the left half
+ * so it is never drawn upside down.
+ */
+export function playImpactPlate(scene, id, x, y, aim, { size = 118, whiff = false } = {}) {
+  const clip = plates[id]
+  if (!clip) return null
+  const key = `vfx-${id}`
+  const ax = (clip.anchor?.x ?? clip.crop.w / 2) / clip.atlas.frameW
+  const ay = (clip.anchor?.y ?? clip.crop.h / 2) / clip.atlas.frameH
+  const left = Math.cos(aim) < 0
+  const scale = (size * (whiff ? 0.7 : 1)) / Math.max(90, Math.min(clip.crop.h, clip.crop.w))
+  const sprite = scene.add.sprite(x, y, key)
+    .setOrigin(1 - ax, left ? 1 - ay : ay)
+    .setFlip(true, left)
+    .setRotation(aim)
+    .setScale(scale)
+    .setAlpha(whiff ? 0.7 : 1)
+    .setBlendMode(Phaser.BlendModes.ADD)
+    .setDepth(y + 40)
+  sprite.play(`${key}-impact`)
+  sprite.once('animationcomplete', () => sprite.destroy())
+  return sprite
 }
 
 /** Basic attack plate: the quick cut, sized to the basic's reach. */

@@ -467,3 +467,55 @@ field; a bot races to an orb it can win and heals when hurt.
 measured from it fired the first spawn on the first frame and pushed the next
 one out of the match. Power-ups and Moonwells count from their own first update
 instead.
+
+---
+
+## 7. What you see is what hits
+
+Playtesting found basic attacks that looked disconnected from their damage.
+There were three separate causes.
+
+1. **The Origins plate was the wrong kind of effect in the wrong place.** The
+   basic plates are impact bursts recorded around the *defender*: their anchor
+   maps to the defender. They were stretched outward from the attacker to 1.7×
+   the attack's reach, so the splash landed well past where damage could.
+   They now play on each fighter actually hit, mirrored and rotated along the
+   swing's aim, and flipped on the left half so they are never upside down.
+   The cut starts one frame before the plate's peak, so the burst is at full
+   size on the frame the damage lands. A whiff plays a smaller burst at the
+   cone's sweet spot.
+2. **The aim moved between the swing and the hit.** Damage resolved 165ms after
+   the swing began, against the live mouse aim and the attacker's live
+   position. The swing art used the aim at the start. The aim is now locked when
+   the blow starts, the swing art follows the attacker, and facing holds until
+   contact.
+3. **The hit test ignored bodies.** Only a target's centre point counted, so
+   an Axie half inside the drawn edge took nothing. A target now counts when
+   half its body radius is inside.
+
+On contact, the exact cone that was tested (reach and arc, from where the
+attacker stands) flashes on the ground for 170ms. The damage area is never a
+guess.
+
+## 8. Terrain that reads true
+
+Two pieces of cover now either join solidly or leave at least 100px, well over
+an Axie's 60px body. The first layout had corners 24–47px apart and walls
+17–20px from the border. They looked like passages and trapped whoever tried
+them. The layout lives as data in `src/arena/layout.js`.
+`scripts/check-terrain.mjs` fails on any gap in between. It also flood-fills
+the floor at body radius to prove every open area connects to every other;
+the old layout fails it and the new one passes.
+
+Foliage is painted in the Axie style instead of drawn as flat translucent
+ellipses: clustered lobes inside one dark outline, top-lit gradients, a
+highlight per lobe, leaf tips and a few flowers. The bush you stand in turns
+see-through for you. The ground's mottling and trampled centre use soft
+radial falloff, so there are no visible hard-edged circles.
+
+**Balance after both changes.** Hits that count on body contact moved the
+spread: over 120 matches bird fell to 5.8%, since it has the least health to
+absorb the extra hits, and bug rose to 25.0%. Bird health 1900 → 2100 and bug
+basic damage 225 → 210 brought 240 matches back inside the noise band. Plant
+won 20.4%, beast 19.2%, aquatic 17.1%, reptile 15.0%, bug 14.6% and bird
+13.8%. Matches averaged about 55s.

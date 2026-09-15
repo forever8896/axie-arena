@@ -28,6 +28,8 @@ node scripts/headless/check-flow.mjs      # full loop in headless Chromium (dev 
 node scripts/headless/check-parry.mjs     # 17 parry rules, in real matches
 node scripts/headless/check-boons.mjs     # 22 power-up and Moonwell rules
 node scripts/headless/check-wilds.mjs     # 33 Endless Wilds rules, incl. a 4-minute value-conservation run
+node scripts/headless/check-tutorial.mjs  # plays all ten tutorial steps through the real mechanics
+node scripts/check-terrain.mjs            # no fake passages, all floor connected (no browser needed)
 node scripts/vendor-origins-vfx.mjs       # re-vendor Origins effect plates, icons and sounds
 node scripts/brand/build-logo.mjs         # rebuild the logo SVG and PNG exports
 node scripts/economy/model.mjs            # stake-mode economy model used in docs/VISION.md
@@ -36,6 +38,10 @@ node scripts/economy/model.mjs            # stake-mode economy model used in doc
 
 ## Modes
 
+- **Tutorial**: ten short playable steps: move, attack, dash, special, parry
+  (with a timing ring), power-ups, Moonwells, bushes, a real fight, and a Moon
+  Gate. You cannot go down, `Tab` skips a step, and the home screen offers it
+  until it has been finished once.
 - **Showdown**: six Axies, one closing field, last one standing.
 - **The Endless Wilds** *(prototype)*: a room that never ends. Pick a room in
   the lobby and you are in, with no queue. Your stake buys a bounty (a 10% fee
@@ -74,6 +80,9 @@ src/
   arena/PowerUps.js     orbs: Fury, Bulwark, Tailwind, Moonrise
   arena/Moonwell.js     healing wells that bloom mid-match
   scenes/LobbyScene.js  Endless Wilds lobby: live rooms, practice wallet
+  tutorial/             the guided course: steps, training partners, coach card
+  arena/layout.js       walls and bushes as data, verified by check-terrain
+  arena/Foliage.js      Axie-style bushes and hedges, painted with Canvas 2D
   wilds/WildsDirector.js a never-ending room: arrivals, bounties, gates, Blood Moons, ledger
   wilds/MoonGate.js     extraction gates
   wilds/WildsHud.js     bounty, gate compass, top bounties, feed, panels

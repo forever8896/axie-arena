@@ -7,10 +7,11 @@ import ClosingField from '../arena/ClosingField.js'
 import PowerUps, { POWERUPS } from '../arena/PowerUps.js'
 import Moonwells from '../arena/Moonwell.js'
 import { createFxTextures, ambientMotes } from '../fx/Juice.js'
-import { playPlate, playBasicPlate, playStatusPlate } from '../fx/SkillVfx.js'
+import { playPlate, playImpactPlate, playStatusPlate } from '../fx/SkillVfx.js'
 import { play as playSfx } from '../fx/Sfx.js'
 import { PARRY } from '../axie/classKits.js'
 import WildsDirector from '../wilds/WildsDirector.js'
+import TutorialDirector from '../tutorial/TutorialDirector.js'
 
 
 export default class GameScene extends Phaser.Scene {
@@ -21,7 +22,8 @@ export default class GameScene extends Phaser.Scene {
   init(data) {
     this.builds = data.builds
     this.playerClass = data.playerClass
-    // 'showdown' (last one standing, closing field) or 'wilds' (endless room).
+    // 'showdown' (last one standing, closing field), 'wilds' (endless room)
+    // or 'tutorial' (the guided course).
     this.mode = data.mode ?? 'showdown'
     this.room = data.room ?? null
     this.roomSnapshot = data.snapshot ?? null
@@ -47,6 +49,7 @@ export default class GameScene extends Phaser.Scene {
     this.projectiles = []
     this.zones = []
     this.wilds = null
+    this.tutorial = null
     this.player = null
     this.bots = []
     this.fighters = []
@@ -54,6 +57,10 @@ export default class GameScene extends Phaser.Scene {
     if (this.mode === 'wilds') {
       this.wilds = new WildsDirector(this, this.room, this.roomSnapshot ?? {})
       this.wilds.begin(playerClass)
+    } else if (this.mode === 'tutorial') {
+      this.playerClass = playerClass
+      this.tutorial = new TutorialDirector(this)
+      this.tutorial.begin(playerClass)
     } else {
       this.player = new Fighter(this, WORLD.width / 2, WORLD.height / 2, {
         axieClass: playerClass, build: this.builds[playerClass], isPlayer: true, name: 'you',
@@ -88,7 +95,14 @@ export default class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-Q', () => this.playerParry())
     this.input.keyboard.on('keydown-F', () => this.playerParry())
     // In the Wilds there is no match to lose, only a room to leave.
-    this.input.keyboard.on('keydown-ESC', () => this.wilds?.requestLeave())
+    this.input.keyboard.on('keydown-ESC', () => {
+      if (this.tutorial) this.leaveTutorial()
+      else this.wilds?.requestLeave()
+    })
+    this.input.keyboard.on('keydown-TAB', event => {
+      event.preventDefault?.()
+      this.tutorial?.skip()
+    })
     this.input.mouse?.disableContextMenu()
 
     this.buildReticle()
@@ -102,15 +116,20 @@ export default class GameScene extends Phaser.Scene {
     this.startedAt = null
     this.kills = 0
     // The Wilds never close: Moon Gates and Blood Moons do the field's job.
-    this.field = this.mode === 'wilds' ? null : new ClosingField(this)
+    this.field = this.mode === 'showdown' ? new ClosingField(this) : null
     this.powerUps = new PowerUps(this)
     this.moonwells = new Moonwells(this)
+    // The tutorial hands these out one lesson at a time.
+    if (this.tutorial) {
+      this.powerUps.enabled = false
+      this.moonwells.enabled = false
+    }
     // Read by the HUD for its centre-screen callouts.
     this.announcement = null
 
     const cam = this.cameras.main
     cam.setBounds(0, 0, WORLD.width, WORLD.height)
-    if (!this.wilds) cam.startFollow(this.player.sprite.root, true, 0.11, 0.11)
+    if (this.mode === 'showdown') cam.startFollow(this.player.sprite.root, true, 0.11, 0.11)
     cam.setZoom(1.15)
     // Small dead zone so tiny movements do not drag the whole view.
     cam.setDeadzone(140, 110)
@@ -188,7 +207,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   playerSwing() {
-    if (this.matchOver || this.wilds?.panel) return
+    if (this.matchOver || this.wilds?.panel || this.tutorial?.finished) return
     this.player.swing(this.fighters, this.time.now)
   }
 
@@ -197,9 +216,9 @@ export default class GameScene extends Phaser.Scene {
     playPlate(this, fighter, spec)
   }
 
-  /** Called by the ability system on every basic swing. */
-  playBasicVfx(fighter, spec) {
-    playBasicPlate(this, fighter, spec)
+  /** Called when a basic lands: on each fighter hit, or at the whiff point. */
+  playImpactVfx(fighter, spec, x, y, aim, opts) {
+    playImpactPlate(this, spec.vfx, x, y, aim, opts)
   }
 
   playerSpecial() {
@@ -253,6 +272,11 @@ export default class GameScene extends Phaser.Scene {
     if (defender === this.player || attacker === this.player) this.cameras.main.shake(120, 0.004)
   }
 
+  leaveTutorial() {
+    this.scene.stop('UIScene')
+    this.scene.start('HomeScene', { builds: this.builds })
+  }
+
   /** A Moonwell started to bloom. Worth a callout: it is somewhere to be. */
   onMoonwell(well) {
     this.announce('A MOONWELL BLOOMS', '#9dffd8', well)
@@ -280,6 +304,7 @@ export default class GameScene extends Phaser.Scene {
 
   onFighterDown(fighter, killer) {
     if (this.wilds) return this.wilds.onDown(fighter, killer)
+    if (this.tutorial) return
     if (this.matchOver) return
     if (killer === this.player && fighter !== this.player) this.kills++
 
@@ -338,6 +363,8 @@ export default class GameScene extends Phaser.Scene {
       this.powerUps.update(this.fighters)
       this.moonwells.update(this.fighters)
       this.wilds?.update()
+      this.tutorial?.update(delta)
+      this.arena.updateCanopies(this.player)
 
       for (const p of this.projectiles) p.update(delta, this.fighters)
       for (const z of this.zones) z.update(delta, this.fighters)
