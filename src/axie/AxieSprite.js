@@ -58,7 +58,9 @@ export default class AxieSprite {
     this.facingWrap = scene.add.container(0, 0)
     this.root.add([this.glow, this.shadow, this.facingWrap])
 
-    this.rig = new AxieRig(build.skeleton)
+    // Tail clips mirror the body to turn it away mid-swing; in an aimed game
+    // that reads as the sprite flipping for no reason. See AxieRig.
+    this.rig = new AxieRig(build.skeleton, { allowMirror: false })
 
     // One image per slot, created in slot order so draw order matches the rig.
     this.images = []
@@ -189,13 +191,15 @@ export default class AxieSprite {
       const img = this.slotImages.get(p.slot)
       if (!img) continue
       const key = this.build.textures[`${p.slot}/${p.attachment}`]
-      if (!key || !this.scene.textures.exists(key) || p.width < 1) continue
+      if (!key || !this.scene.textures.exists(key) || Math.abs(p.width) < 1) continue
 
       if (img.texture.key !== key) img.setTexture(key)
       img
         .setPosition((p.x - b.cx) * S, (p.y - b.bottom) * S)
         .setRotation(p.rotation)
-        .setDisplaySize(p.width * S, p.height * S)
+        .setDisplaySize(Math.abs(p.width) * S, Math.abs(p.height) * S)
+        // Signed sizes mean a mirrored part: flip it rather than rotate it.
+        .setFlip(p.width < 0, p.height < 0)
         .setVisible(true)
       seen.add(p.slot)
     }
@@ -231,6 +235,7 @@ export default class AxieSprite {
             // ghost is not inside the flipped container.
             scene.add.image(img.x * this.facingWrap.scaleX, img.y, img.texture.key)
               .setScale(img.scaleX * this.facingWrap.scaleX, img.scaleY)
+              .setFlip(img.flipX, img.flipY)
               .setRotation(img.rotation * this.facingWrap.scaleX)
               .setTintFill(this.colors.rim)
               .setAlpha(0.4),

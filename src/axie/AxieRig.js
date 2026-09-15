@@ -21,8 +21,22 @@
 const DEG = Math.PI / 180
 
 export default class AxieRig {
-  constructor(skeleton) {
+  /**
+   * `allowMirror: false` keeps the Axie facing the way it was facing.
+   *
+   * Three tail clips (tail-multi-slap, tail-thrash, tail-smash) scale
+   * @pivot-back to -1 so the Axie turns round in place to strike with its tail.
+   * In a game where you aim, that reads as the sprite snapping to face away.
+   *
+   * Simply ignoring the negative scale does not work: the clips position the
+   * body relative to that mirror, so dropping it slid the body ~430 units
+   * sideways mid-swing. Instead the authored pose is solved as-is, and any frame
+   * where the body comes out mirrored is reflected back around the body's own
+   * resting centre — same motion, same spot, original facing.
+   */
+  constructor(skeleton, { allowMirror = true } = {}) {
     this.data = skeleton
+    this.allowMirror = allowMirror
     this.animations = skeleton.animations ?? {}
 
     this.bones = skeleton.bones.map(b => ({
@@ -56,6 +70,9 @@ export default class AxieRig {
     this.track = null
     this.time = 0
     this.durations = {}
+
+    this.pose()
+    this.mirrorAxisX = this.rawParts().find(p => p.slot === 'body')?.x ?? 0
   }
 
   has(name) {
@@ -118,8 +135,31 @@ export default class AxieRig {
   /**
    * World placement of every visible attachment, in skeleton units with Y
    * pointing down (screen space). Rotation is in radians.
+   *
+   * `height` is signed: negative means the part is mirrored and must be drawn
+   * flipped. Decomposing with unsigned lengths turned every mirrored part into
+   * a ~180 degree rotation, drawing it upside down.
    */
   parts() {
+    const out = this.rawParts()
+    if (this.allowMirror) return out
+
+    const body = this.slotByName.get('body')?.bone
+    const mirrored = body && body.a * body.d - body.b * body.c < 0
+    if (!mirrored) return out
+
+    // Reflect the whole picture about the resting body centre. For a part drawn
+    // as R(theta) * S(w, h), reflecting it gives R(-theta) * S(-w, h).
+    const axis = this.mirrorAxisX
+    for (const p of out) {
+      p.x = 2 * axis - p.x
+      p.rotation = -p.rotation
+      p.width = -p.width
+    }
+    return out
+  }
+
+  rawParts() {
     const out = []
     for (const slot of this.slots) {
       const name = slot.attachment
@@ -131,18 +171,30 @@ export default class AxieRig {
       const ay = att.y ?? 0
       const wx = b.worldX + b.a * ax + b.b * ay
       const wy = b.worldY + b.c * ax + b.d * ay
-      const boneRot = Math.atan2(b.c, b.a) / DEG
-      const sx = Math.hypot(b.a, b.c)
-      const sy = Math.hypot(b.b, b.d)
+
+      // Full 2x2 transform of the image: bone world x attachment local.
+      const ar = (att.rotation ?? 0) * DEG
+      const asx = att.scaleX ?? 1
+      const asy = att.scaleY ?? 1
+      const la = Math.cos(ar) * asx, lb = -Math.sin(ar) * asy
+      const lc = Math.sin(ar) * asx, ld = Math.cos(ar) * asy
+      const wa = b.a * la + b.b * lc, wb = b.a * lb + b.b * ld
+      const wc = b.c * la + b.d * lc, wd = b.c * lb + b.d * ld
+
+      // Into screen space (Y down), then rotation + signed scale.
+      const pa = wa, pb = -wb, pc = -wc, pd = wd
+      const sx = Math.hypot(pa, pc)
+      const sy = sx > 1e-9 ? (pa * pd - pb * pc) / sx : 0
+
       out.push({
         slot: slot.name,
         attachment: name,
         path: att.path ?? name,
         x: wx,
         y: -wy,
-        rotation: -(boneRot + (att.rotation ?? 0)) * DEG,
-        width: (att.width ?? 0) * (att.scaleX ?? 1) * sx,
-        height: (att.height ?? 0) * (att.scaleY ?? 1) * sy,
+        rotation: Math.atan2(pc, pa),
+        width: (att.width ?? 0) * sx,
+        height: (att.height ?? 0) * sy,
       })
     }
     return out

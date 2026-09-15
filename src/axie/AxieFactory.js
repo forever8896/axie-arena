@@ -92,11 +92,13 @@ function restBounds(skeleton) {
   rig.pose()
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
   for (const p of rig.parts()) {
-    if (p.slot === 'shadow' || p.slot === 'ball' || p.width < 1) continue
-    minX = Math.min(minX, p.x - p.width / 2)
-    maxX = Math.max(maxX, p.x + p.width / 2)
-    minY = Math.min(minY, p.y - p.height / 2)
-    maxY = Math.max(maxY, p.y + p.height / 2)
+    if (p.slot === 'shadow' || p.slot === 'ball' || Math.abs(p.width) < 1) continue
+    const hw = Math.abs(p.width) / 2
+    const hh = Math.abs(p.height) / 2
+    minX = Math.min(minX, p.x - hw)
+    maxX = Math.max(maxX, p.x + hw)
+    minY = Math.min(minY, p.y - hh)
+    maxY = Math.max(maxY, p.y + hh)
   }
   return { cx: (minX + maxX) / 2, bottom: maxY, width: maxX - minX, height: maxY - minY }
 }
