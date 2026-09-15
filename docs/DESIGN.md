@@ -316,3 +316,154 @@ now off.
 **No hidden frame on the first hit.** Scheduling a basic's first hit with a
 zero-delay timer deferred it to the next frame, adding a frame to the 165ms
 connect the balance was measured on. It now starts immediately.
+
+---
+
+## 6. Power-ups and Moonwells
+
+Before this, nothing on the field was worth walking to except a rival, and a
+hurt fighter's only options were to hide in the grass or die slowly. Both
+problems have well-studied answers.
+
+### What the research says
+
+**Items on a timer create places to fight over.** Quake's item game is its
+depth: Mega Health and armour respawn on a 30s timer, Quad Damage spawns 90s in
+and every 120s after, and players who learn where and when win the fights before
+they happen ([Dignitas](https://dignitas.gg/articles/blogs/Quake/11424/how-to-master-quake-spawn-timers-controlling-mega-and-armor),
+[Quake Champions timing](https://steamcommunity.com/sharedfiles/filedetails/?id=1423067926)).
+Dota's power runes spawn every two minutes at one of two river spots, and never
+repeat a type within a cycle ([Liquipedia](https://liquipedia.net/dota2/Runes),
+[Dota 2 Wiki](https://dota2.fandom.com/wiki/Runes)).
+
+**A power-up must be visible on its holder.** Dota's rune effects and Quake's
+quad glow tell everyone who is dangerous, so the answer to a buff is a
+decision — run from it, or fight it before it expires — not a surprise.
+
+**Healing needs counterplay or it ends fights instead of starting them.**
+- *Damage interrupts it.* Dota's Regeneration rune restores to full, but taking
+  hero damage drops it to 1% per second ([Dota 2 Wiki](https://dota2.fandom.com/wiki/Regeneration_Rune)).
+- *It is limited and shared.* League's Honeyfruit heals 3.5% max health per
+  fruit and slows the eater, and a rival can eat the rest to deny them
+  ([League Wiki](https://leagueoflegends.fandom.com/wiki/Jungle_plants)).
+  Battlerite's health orbs respawn 25s after being taken
+  ([Battlerite Wiki](https://battlerite.fandom.com/wiki/Orbs)).
+- *It is paced.* Heroes of the Storm's fountains restore 40% max health over
+  20s, on a 120s cooldown ([HotS Wiki](https://heroesofthestorm.fandom.com/wiki/Healing_Fountain));
+  Overwatch packs restore 75 or 250 health and respawn in 10 or 15s
+  ([Overwatch Wiki](https://overwatch.fandom.com/wiki/Health_pack)).
+- *In a free-for-all it should help the loner.* Brawl Stars' Healing Mushrooms
+  modifier grows healing rings that appear more often as a Showdown goes on,
+  and spawn near fighters who are on their own rather than on groups, to
+  discourage teaming ([Brawl Stars Wiki](https://brawlstars.fandom.com/wiki/Modifiers),
+  [Supercell](https://support.supercell.com/brawl-stars/en/articles/event-modifiers-11.html)).
+
+Lunacy's matches last about a minute, so every timer here is scaled down from
+games whose matches last ten to forty.
+
+### Power-ups
+
+Orbs with an Origins status icon inside a bubble. Walk over one to take it.
+
+| Power-up | Effect | Duration | Origins art |
+| --- | --- | --- | --- |
+| Fury | +30% damage | 7s | `buff_dmg_boost` icon, `dmg_boost` plate, `damage_boost` sound |
+| Bulwark | shield worth 25% of max health, soaks first | 8s | `buff_shield_boost`, `shield_boost`, `shield` |
+| Tailwind | +35% speed, dash cooldown halved | 7s | `buff_summerbreeze`, `buff_apply`, `buff` |
+| Moonrise | special fully charged | instant | `power_energy_master`, `power_awaken`, `power_awaken` |
+
+| Rule | Value | From |
+| --- | --- | --- |
+| First orb | 8s | before the field starts at 20s, so the opening has somewhere to go |
+| Then every | 11s, at most two on the field | Quake's timers, scaled to a one-minute match |
+| Forming | 1.5s ground shimmer before it can be taken | a race, not a lottery |
+| Lifetime | 20s, blinking for the last 3 | |
+| Order | every type once before any repeats | Dota's rune cycle |
+| Placement | inside where the field will still be safe, clear of cover and bushes, not on top of anyone, away from the other orb | |
+| Holder | coloured ring at the feet, shield bubble, icon and timer by the health bar; a callout when a rival nearby takes one | Dota and Quake visibility |
+
+Percentages rather than flat numbers, so a shield or a buff is worth the same
+share of a fight to a 1,900-health bird as to a 3,800-health plant.
+
+### Moonwells
+
+A ring of Origins mushrooms blooms around a pool of light; stand inside to heal.
+
+| Rule | Value | From |
+| --- | --- | --- |
+| First bloom | 15s, then every 14–20s, one at a time | Showdown's mushrooms, paced to the match |
+| Bloom | 2.5s growing ring and sprouting mushrooms before it heals; minimap pulse and a callout | somewhere to race to |
+| Open | 7s | |
+| Healing | 8% max health per second | between HotS fountains (2%/s) and Showdown mushrooms |
+| Interrupted | no healing for 1.2s after a rival's direct hit (poison ticks do not count) | Dota's Regeneration rune |
+| Pool | 2,400 health shared by everyone inside; the ring shrinks as it drains | Honeyfruit's deniable, limited heal |
+| Placement | inside the future safe field, clear of cover; scored toward a fighter who is alone and away from the second-nearest | Showdown's anti-teaming placement |
+
+Neither the closing field nor a Bulwark shield interacts with a Moonwell: the
+field is still the clock, and healing never outruns it.
+
+**Bots** walk to a Moonwell when below 60% health if it will still be open
+when they arrive, and race for an orb only when no rival is closer to it; both
+only while no rival is within 230 units, so a detour never hands out a free hit.
+
+### Measured
+
+Every run below is bot-only, 120 matches at a time, reported as pooled win
+rates. Noise is ±2.4pt at 1σ over 240 matches and ±1.7pt over 480; a fair
+share is 16.7%.
+
+**Power-ups are balance-neutral; Moonwells were not.** With both systems on,
+four runs (480 matches) moved the class spread well past noise: bug 25.4%,
+beast 22.3%, aquatic 11.7%, reptile 10.2%. A switch in the simulation
+(`/?sim=120&boons=orbs|wells|none`) then isolated each system over 240 matches:
+
+| Class | Orbs only | Wells only |
+| --- | --- | --- |
+| bug | 17.9% | 22.5% |
+| aquatic | 17.5% | 16.3% |
+| plant | 16.7% | 17.1% |
+| bird | 16.3% | 15.8% |
+| reptile | 15.9% | 12.9% |
+| beast | 15.8% | 15.4% |
+
+**First guess, wrong.** Poison ticks triggered the Moonwell lockout, so one bug
+bite could shut a rival out of a well for three seconds. Poison no longer
+interrupts healing. It is the better rule, but bug still won 24.2% of the next
+240 matches and reptile 10.0%.
+
+**The actual cause: healing makes people run.** A hurt fighter now retreats to
+a well instead of trading to the death, so classes that catch a runner gain —
+beast's Impale and bug's homing, stunning seeker — and reptile, the slowest
+class with a point-blank special, lost. Reptile also took the fewest orbs and
+the least healing in every run, since it rarely reached them first. Three tuning
+passes, each measured over 240 matches:
+
+| Pass | Change | bug | beast | reptile |
+| --- | --- | --- | --- | --- |
+| 1 | reptile speed 215 → 230; bug seeker stun 1000 → 800ms; Impale 520 → 480 | 21.7% | 19.2% | 12.1% |
+| 2 | bug poison 90 → 80 per tick; reptile health 3200 → 3350 | 20.8% | 20.8% | 9.6% |
+| 3 | Tail Sweep radius 140 → 160, so it catches someone turning away | 20.8% | 17.9% | 16.3% |
+
+Final, 240 matches: bug 20.8%, plant 18.3%, beast 17.9%, reptile 16.3%,
+aquatic 13.8%, bird 12.9%; widest gap 1.7σ. Average match 60.2s, unchanged
+from before this section. Per match: 2.3 power-ups taken, 1.1 Moonwells, about
+360 health healed.
+
+**Bots were first too cautious to use the wells.** At 60% health, 900 units and
+no rival within 230, they took about a tenth of a well's pool, so wells changed
+nothing about how bots fought. At 65%, 1,100 units and 180 units of room
+(orbs keep 230), healing given rose about 40%, from 242 to roughly 340 health per match.
+
+Verified by `scripts/headless/check-boons.mjs`, 22 checks, stepped at a fixed
+60fps: the first orb forms at 8s and cannot be taken while forming; each
+power-up does exactly what the table says and wears off on time; the cycle never
+repeats early; a Moonwell does not heal while blooming, heals 8% per second once
+open, stops for the lockout after a rival's hit, drains, shrinks, closes when
+spent and never gives more than its pool; spawns stay inside the future safe
+field; a bot races to an orb it can win and heals when hurt.
+
+**A clock fix found on the way.** `GameScene.startedAt` is stamped in
+`create()`, where the scene clock can still read an old value, so a schedule
+measured from it fired the first spawn on the first frame and pushed the next
+one out of the match. Power-ups and Moonwells count from their own first update
+instead.

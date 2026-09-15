@@ -65,6 +65,13 @@ export default class ClosingField {
     return Math.max(0, Math.ceil((CLOSE.startsAt - (this.scene.time.now - this.startedAt)) / 1000))
   }
 
+  /** The safe radius `ms` from now. */
+  radiusIn(ms) {
+    const t = this.scene.time.now + ms - this.startedAt - CLOSE.startsAt
+    const eased = Phaser.Math.Easing.Sine.InOut(Phaser.Math.Clamp(t / CLOSE.duration, 0, 1))
+    return Phaser.Math.Linear(this.maxRadius, CLOSE.minRadius, eased)
+  }
+
   outside(x, y, pad = 0) {
     return Phaser.Math.Distance.Between(x, y, this.cx, this.cy) > this.radius - pad
   }

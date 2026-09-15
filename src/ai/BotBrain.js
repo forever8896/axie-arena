@@ -64,6 +64,17 @@ export default class BotBrain {
       return
     }
 
+    // Moonwells and power-ups, when nobody is close enough to punish the detour.
+    if (dist > 180) {
+      const goal = this.boonGoal(now, targets, dist)
+      if (goal) {
+        me.intent.set(goal.x - me.x, goal.y - me.y)
+        if (me.intent.length() <= goal.stop) me.intent.set(0, 0)
+        else me.intent.normalize()
+        return
+      }
+    }
+
     switch (this.state) {
       case 'wander':
         this.wander(now)
@@ -195,6 +206,48 @@ export default class BotBrain {
     if (rival) me.aim = Math.atan2(rival.y - me.y, rival.x - me.x)
     this.parryFocus = rival
     return me.parry(now)
+  }
+
+  /**
+   * Somewhere worth going instead of fighting: a Moonwell when hurt, or a
+   * power-up this bot can reach before any rival. Null when neither applies.
+   */
+  boonGoal(now, targets, threat) {
+    const me = this.fighter
+    const scene = me.scene
+    const travelMs = d => d / Math.max(1, me.speed) * 1000
+
+    // The sim measured bots taking only a tenth of each well's pool at 60% and
+    // 900u, so wells did not change their fights. Hurt bots now travel further.
+    if (me.hp / me.maxHp < 0.65) {
+      for (const w of scene.moonwells?.wells ?? []) {
+        if (w.dead || w.ending) continue
+        const d = Phaser.Math.Distance.Between(me.x, me.y, w.x, w.y)
+        if (d > 1100) continue
+        // Worth the walk if it will still be open when we arrive.
+        if (now + travelMs(d) > w.activeUntil - 800) continue
+        return { x: w.x, y: w.y, stop: w.radius * 0.45 }
+      }
+    }
+
+    // Orbs are a detour, so they need a little more room than a heal does.
+    if (threat <= 230) return null
+    let best = null
+    let bestD = 560
+    for (const o of scene.powerUps?.orbs ?? []) {
+      if (o.dead) continue
+      if (o.type === 'moonrise' && me.charge > 0.6) continue
+      const d = Phaser.Math.Distance.Between(me.x, me.y, o.x, o.y)
+      if (d >= bestD) continue
+      if (!o.live && o.liveAt - now > travelMs(d) + 300) continue
+      // Only races it can win.
+      const beaten = targets.some(t => t !== me && t.alive &&
+        Phaser.Math.Distance.Between(t.x, t.y, o.x, o.y) < d * 0.85)
+      if (beaten) continue
+      best = { x: o.x, y: o.y, stop: 0 }
+      bestD = d
+    }
+    return best
   }
 
   /** How close a bot wants to be before spending its special. */

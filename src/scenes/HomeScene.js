@@ -274,6 +274,7 @@ const ABOUT =
   'on. Bug wears you down. Aquatic shoves you where it wants you. Reptile\n' +
   'punishes anyone who crowds it.\n\n' +
   'Aim with the mouse, dash to escape, and spend your special when it counts.\n' +
+  'Grab power-ups as they appear, and heal in a Moonwell when one blooms.\n' +
   'Hide in the long grass if the fight is going badly.\n\n' +
   'Axie bodies are built with the official 2D mixer. Battle effects and sounds\n' +
   'come from the Axie Origins Battle Kit. No wallet, no account, no download.'

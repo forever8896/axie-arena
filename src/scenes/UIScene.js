@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { WORLD } from '../arena/Arena.js'
 import { PARRY } from '../axie/classKits.js'
+import { POWERUPS } from '../arena/PowerUps.js'
 
 const MINIMAP = { size: 186, pad: 22 }
 
@@ -23,6 +24,7 @@ export default class UIScene extends Phaser.Scene {
     // update() must be forgotten here, or a restarted match reuses objects
     // destroyed with the previous one.
     this.fieldText = null
+    this.announceText = null
     this.mmRoot = null
     this.mmDots = null
 
@@ -76,6 +78,17 @@ export default class UIScene extends Phaser.Scene {
       'WASD  MOVE     MOUSE  AIM     LEFT  ATTACK     RIGHT / E  SPECIAL     Q  PARRY     SPACE  DASH', {
         fontFamily: MONO, fontSize: '12px', color: '#b9c4a6',
       })
+
+    // Your active power-ups, under the readout plate: icon, name, time left.
+    this.buffRow = this.add.graphics()
+    this.buffSlots = ['fury', 'bulwark', 'tailwind'].map(type => {
+      const def = POWERUPS[type]
+      const key = `icon-${def.icon}`
+      const icon = this.textures.exists(key) ? this.add.image(0, 0, key) : null
+      icon?.setScale(26 / Math.max(icon.frame.width, icon.frame.height))
+      const text = this.add.text(0, 0, def.name, { fontFamily: MONO, fontSize: '11px', color: hex(def.color) })
+      return { type, def, icon, text }
+    })
 
     this.buildMinimap()
 
@@ -156,6 +169,21 @@ export default class UIScene extends Phaser.Scene {
       this.mmDots.strokeCircle(game.field.cx * s, game.field.cy * s, game.field.radius * s)
     }
 
+    // Moonwells and power-ups: the places worth going.
+    const pulse = 0.6 + Math.sin(game.time.now / 180) * 0.4
+    for (const w of game.moonwells?.wells ?? []) {
+      if (w.dead) continue
+      this.mmDots.fillStyle(0x9dffd8, w.blooming ? 0.25 * pulse : 0.45)
+      this.mmDots.fillCircle(w.x * s, w.y * s, Math.max(4, w.radius * s))
+      this.mmDots.lineStyle(1.5, 0xd9fff0, w.blooming ? pulse : 0.9)
+      this.mmDots.strokeCircle(w.x * s, w.y * s, Math.max(4, w.radius * s) + (w.blooming ? 3 * pulse : 0))
+    }
+    for (const o of game.powerUps?.orbs ?? []) {
+      if (o.dead) continue
+      this.mmDots.fillStyle(o.def.color, o.live ? 1 : 0.35 * pulse)
+      this.mmDots.fillRect(o.x * s - 2.5, o.y * s - 2.5, 5, 5)
+    }
+
     for (const bot of game.bots) {
       if (!bot.alive) continue
       // Hidden rivals do not show; foliage means something on the map too.
@@ -169,6 +197,45 @@ export default class UIScene extends Phaser.Scene {
       this.mmDots.fillCircle(game.player.x * s, game.player.y * s, 6)
       this.mmDots.fillStyle(game.player.colors.body, 1)
       this.mmDots.fillCircle(game.player.x * s, game.player.y * s, 3.6)
+    }
+  }
+
+  drawAnnouncement() {
+    const a = this.game_.announcement
+    const now = this.game_.time.now
+    if (!this.announceText) {
+      this.announceText = this.add.text(this.scale.width / 2, 60, '', {
+        fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif', fontSize: '16px', color: '#ffffff',
+        stroke: '#16200f', strokeThickness: 5,
+      }).setOrigin(0.5).setDepth(600)
+    }
+    if (!a || now > a.until) {
+      this.announceText.setVisible(false)
+      return
+    }
+    const fade = Math.min(1, (a.until - now) / 400)
+    this.announceText.setVisible(true).setX(this.scale.width / 2).setText(a.text).setColor(a.color).setAlpha(fade)
+  }
+
+  drawBuffRow(player) {
+    const g = this.buffRow
+    g.clear()
+    const now = this.game_.time.now
+    let y = 210
+    for (const slot of this.buffSlots) {
+      const b = player.buffs?.[slot.type]
+      const on = player.alive && b && now < b.until
+      slot.icon?.setVisible(on)
+      slot.text.setVisible(on)
+      if (!on) continue
+      const left = (b.until - now) / b.durationMs
+      g.fillStyle(0x16200f, 0.62).fillRoundedRect(18, y - 18, 190, 36, 10)
+      slot.icon?.setPosition(40, y)
+      const label = slot.type === 'bulwark' ? `${slot.def.name}  ${Math.ceil(player.shieldHp)}` : slot.def.name
+      slot.text.setPosition(62, y - 12).setText(label)
+      g.fillStyle(0x2a2440, 1).fillRect(62, y + 5, 130, 5)
+      g.fillStyle(slot.def.color, 1).fillRect(62, y + 5, 130 * left, 5)
+      y += 42
     }
   }
 
@@ -213,6 +280,9 @@ export default class UIScene extends Phaser.Scene {
         this.fieldText.setText('GET BACK INSIDE').setColor('#ff8098')
       }
     }
+
+    this.drawAnnouncement()
+    this.drawBuffRow(player)
 
     const alive = this.game_.bots.filter(b => b.alive).length
     this.status.setText(String(alive).padStart(2, '0'))

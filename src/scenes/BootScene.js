@@ -2,7 +2,8 @@ import Phaser from 'phaser'
 import { initMixer, buildAxie, AXIE_CDN, CLASS_PART_SETS } from '../axie/AxieFactory.js'
 import { ARENA_PALETTE } from '../axie/palette.js'
 import { CLASS_KITS } from '../axie/classKits.js'
-import { loadSkillPlates, STATUS_PLATES } from '../fx/SkillVfx.js'
+import { loadSkillPlates, loadIcons, STATUS_PLATES } from '../fx/SkillVfx.js'
+import { POWERUPS, POWERUP_ICONS } from '../arena/PowerUps.js'
 import { loadSfx, SFX } from '../fx/Sfx.js'
 
 /**
@@ -51,9 +52,13 @@ export default class BootScene extends Phaser.Scene {
     const vfxIds = [...new Set([
       ...Object.values(CLASS_KITS).flatMap(k => [k.basic.vfx, k.special.vfx]),
       ...STATUS_PLATES,
+      ...Object.values(POWERUPS).map(p => p.plate),
+      'heal',
     ].filter(Boolean))]
     let vfxDone = 0
     await loadSkillPlates(vfxIds, this, () => this.setBar(++vfxDone / vfxIds.length))
+
+    await loadIcons(POWERUP_ICONS, this)
 
     this.status.setText('LOADING BATTLE AUDIO')
     this.setBar(0)

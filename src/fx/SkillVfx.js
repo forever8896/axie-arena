@@ -57,6 +57,19 @@ export async function loadSkillPlates(ids, scene, onOne) {
   }))
 }
 
+/** Origins status icons, as plain textures keyed `icon-<id>`. */
+export async function loadIcons(ids, scene) {
+  await Promise.all(ids.map(async id => {
+    const key = `icon-${id}`
+    if (scene.textures.exists(key)) return
+    try {
+      scene.textures.addImage(key, await loadImage(`${BASE}icons/${id}.png`))
+    } catch (err) {
+      console.warn(`icon failed: ${id}`, err)
+    }
+  }))
+}
+
 export function hasPlate(id) {
   return Boolean(plates[id])
 }

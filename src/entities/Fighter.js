@@ -64,7 +64,7 @@ export default class Fighter {
 
     this.dashSpeed = 780
     this.dashDuration = 190
-    this.dashCooldown = 1800
+    this.baseDashCooldown = 1800
     this.lastDash = -Infinity
     this.dashUntil = 0
     this.invulnerableUntil = 0
@@ -79,6 +79,15 @@ export default class Fighter {
 
     this.healthBar = scene.add.graphics().setDepth(9000)
     this.parryFx = scene.add.graphics()
+
+    // Power-ups (arena/PowerUps.js): type -> { def, until }. The shield is a
+    // separate pool that soaks damage before health does.
+    this.buffs = {}
+    this.shieldHp = 0
+    this.buffFx = scene.add.graphics()
+    this.buffIcons = {}
+    // Last time a rival hurt us. Moonwells stop healing for a moment after.
+    this.lastHurtAt = -Infinity
   }
 
   get x() { return this.pos.x }
@@ -97,7 +106,50 @@ export default class Fighter {
   get speed() {
     const slowed = this.scene.time.now < this.slowUntil ? this.slowFactor : 1
     const planted = this.parryCommitted ? PARRY.moveFactor : 1
-    return this.baseSpeed * slowed * planted * (this.casting ? 0.35 : 1)
+    const wind = this.buff('tailwind')?.speedMult ?? 1
+    return this.baseSpeed * slowed * planted * wind * (this.casting ? 0.35 : 1)
+  }
+
+  get dashCooldown() {
+    return this.baseDashCooldown * (this.buff('tailwind')?.dashCooldownMult ?? 1)
+  }
+
+  get damageMult() {
+    return this.buff('fury')?.damageMult ?? 1
+  }
+
+  /** The definition of an active timed power-up, or null. */
+  buff(type) {
+    const b = this.buffs[type]
+    return b && this.scene.time.now < b.until ? b.def : null
+  }
+
+  applyPowerUp(type, def) {
+    if (def.instant) {
+      if (type === 'moonrise') this.addCharge(1)
+      return
+    }
+    this.buffs[type] = { def, until: this.scene.time.now + def.durationMs, durationMs: def.durationMs }
+    if (def.shieldFrac) this.shieldHp = Math.round(this.maxHp * def.shieldFrac)
+  }
+
+  heal(amount) {
+    if (!this.alive) return 0
+    const before = this.hp
+    this.hp = Math.min(this.maxHp, this.hp + amount)
+    return this.hp - before
+  }
+
+  /** Damage left over after the Bulwark shield soaks what it can. */
+  absorb(amount) {
+    if (this.shieldHp <= 0 || !this.buff('bulwark')) return amount
+    const soaked = Math.min(this.shieldHp, amount)
+    this.shieldHp -= soaked
+    if (this.shieldHp <= 0) {
+      this.buffs.bulwark = null
+      this.sprite.flash(0x7ce8ff, 140)
+    }
+    return amount - soaked
   }
 
   get frozen() { return this.scene.time.now < this.frozenUntil }
@@ -125,6 +177,7 @@ export default class Fighter {
     this.tickPoison()
     this.drawHealthBar()
     this.drawParry()
+    this.drawBuffs()
 
     if (this.frozen) {
       this.sprite.setPosition(this.pos.x, this.pos.y)
@@ -209,6 +262,57 @@ export default class Fighter {
     }
   }
 
+  /**
+   * Whoever holds a power-up shows it: a coloured ring at the feet, a bubble
+   * for the shield, and the icon beside the health bar with its time left.
+   */
+  drawBuffs() {
+    const g = this.buffFx
+    g.clear()
+    const now = this.scene.time.now
+    const t = now / 1000
+    let slot = 0
+
+    for (const type of ['fury', 'bulwark', 'tailwind']) {
+      const def = this.buff(type)
+      let icon = this.buffIcons[type]
+      if (!def) {
+        icon?.setVisible(false)
+        continue
+      }
+      const b = this.buffs[type]
+      const left = (b.until - now) / b.durationMs
+      // Blink in the last second and a half, so its end can be played around.
+      const blink = b.until - now < 1500 && Math.floor(now / 120) % 2 === 0
+
+      if (type === 'bulwark') {
+        const a = (0.5 + Math.sin(t * 6) * 0.12) * (blink ? 0.4 : 1)
+        g.fillStyle(def.color, 0.1 * a)
+        g.fillCircle(this.pos.x, this.pos.y - 26, this.bodyRadius + 26)
+        g.lineStyle(3, def.color, 0.8 * a)
+        g.strokeCircle(this.pos.x, this.pos.y - 26, this.bodyRadius + 26)
+      } else {
+        const r = this.bodyRadius + 10 + slot * 7 + Math.sin(t * 8 + slot) * 2
+        g.lineStyle(4, def.color, blink ? 0.3 : 0.85)
+        g.strokeEllipse(this.pos.x, this.pos.y + 4, r * 2.1, r * 0.9)
+      }
+
+      if (!icon) {
+        const key = `icon-${def.icon}`
+        if (!this.scene.textures.exists(key)) continue
+        icon = this.buffIcons[type] = this.scene.add.image(0, 0, key)
+        icon.setScale(18 / Math.max(icon.frame.width, icon.frame.height))
+      }
+      const ix = this.pos.x + 38 + slot * 20
+      const iy = this.pos.y - 74
+      icon.setVisible(!blink).setPosition(ix, iy).setDepth(this.pos.y + 61)
+      g.fillStyle(0x16200f, 0.6).fillRect(ix - 9, iy + 11, 18, 3)
+      g.fillStyle(def.color, 1).fillRect(ix - 9, iy + 11, 18 * left, 3)
+      slot++
+    }
+    g.setDepth(this.pos.y + 4)
+  }
+
   drawHealthBar() {
     const g = this.healthBar
     g.clear()
@@ -223,6 +327,9 @@ export default class Fighter {
     g.fillStyle(0x16200f, 0.7).fillRoundedRect(x - 2, y - 2, w + 4, h + 4, 4)
     const color = this.isPlayer ? 0x7ce85a : (frac > 0.35 ? 0xffd964 : 0xff6b6b)
     g.fillStyle(color, 1).fillRoundedRect(x, y, Math.max(2, w * frac), h, 3)
+    if (this.shieldHp > 0 && this.buff('bulwark')) {
+      g.fillStyle(0x7ce8ff, 1).fillRect(x, y - 4, w * Math.min(1, this.shieldHp / this.maxHp), 3)
+    }
 
     // A thin charge line under your own bar, so the special is readable in the fight.
     if (this.isPlayer) {
@@ -330,7 +437,10 @@ export default class Fighter {
 
     this.poisonTicks--
     this.poisonNext = now + this.poisonSpec.interval
-    this.hp -= this.poisonSpec.damage
+    // Poison does not interrupt Moonwell healing. It did, and one bite shut a
+    // rival out of a well for three seconds: bug won 22.5% of 240 wells-only
+    // matches against a fair 16.7%.
+    this.hp -= this.absorb(this.poisonSpec.damage)
     damageNumber(this.scene, this.x, this.y - 12, String(this.poisonSpec.damage), '#9ff0bb', this.poisonSpec.damage)
     this.sprite.flash(0x9a5ad4, 90)
     if (this.hp <= 0) this.die(this.poisonFrom)
@@ -447,14 +557,22 @@ export default class Fighter {
    */
   takeDamage(amount, from, knockback = 210, { projectile = false } = {}) {
     if (!this.alive || this.invulnerable) return
-    this.hp -= amount
+    amount = Math.round(amount * (from?.damageMult ?? 1))
+    if (from && from !== this) this.lastHurtAt = this.scene.time.now
+    const dealt = this.absorb(amount)
+    if (dealt < amount) {
+      damageNumber(this.scene, this.x + 18, this.y - 30, String(amount - dealt), '#7ce8ff', (amount - dealt) * 0.6)
+    }
+    this.hp -= dealt
 
     this.sprite.flash(0xffffff, 90)
     this.sprite.playState('hit')
     if (from?.kit?.hitSfx) playVaried(this.scene, from.kit.hitSfx, 0.45)
     const power = Phaser.Math.Clamp(amount / 400, 0.6, 1.8)
     impact(this.scene, this.x, this.y - 8, from?.colors.rim ?? 0xffffff, power)
-    damageNumber(this.scene, this.x, this.y, String(Math.round(amount)), this.isPlayer ? '#ff8098' : '#ffe08a', amount)
+    if (dealt > 0) {
+      damageNumber(this.scene, this.x, this.y, String(Math.round(dealt)), this.isPlayer ? '#ff8098' : '#ffe08a', dealt)
+    }
     hitStopFor([this, from], amount, projectile)
 
     if (from && knockback) {
@@ -471,6 +589,9 @@ export default class Fighter {
     impact(this.scene, this.x, this.y - 8, this.colors.body, 1.8)
     this.healthBar.destroy()
     this.parryFx.destroy()
+    this.buffFx.destroy()
+    Object.values(this.buffIcons).forEach(i => i.destroy())
+    this.buffs = {}
 
     this.scene.tweens.add({
       targets: this.sprite.root,

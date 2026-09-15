@@ -22,6 +22,7 @@ const DT = 16.7
 // every six matches, and the first three balance runs were invalid.
 let simClock = 1e7
 const parryStats = { attempts: 0, successes: 0 }
+const boonStats = { powerUps: 0, healed: 0, wells: 0, byClass: {} }
 
 export async function runBalanceSim(game, builds, matches) {
   const results = []
@@ -41,7 +42,7 @@ export async function runBalanceSim(game, builds, matches) {
   }
 
   const report = summarise(results)
-  window.__balance = { results, report, parryStats: { ...parryStats, perMatch: +(parryStats.attempts / matches).toFixed(1), successRate: +(parryStats.successes / Math.max(1, parryStats.attempts)).toFixed(2) } }
+  window.__balance = { results, report, boonStats: { perMatchPowerUps: +(boonStats.powerUps / matches).toFixed(1), perMatchHealed: Math.round(boonStats.healed / matches), perMatchWells: +(boonStats.wells / matches).toFixed(2), byClass: Object.fromEntries(Object.entries(boonStats.byClass).map(([c, r]) => [c, { powerUps: +(r.powerUps / matches).toFixed(2), healed: Math.round(r.healed / matches) }])) }, parryStats: { ...parryStats, perMatch: +(parryStats.attempts / matches).toFixed(1), successRate: +(parryStats.successes / Math.max(1, parryStats.attempts)).toFixed(2) } }
   status.textContent = format(report, matches)
   return report
 }
@@ -61,6 +62,12 @@ function simulate(game, builds, seat) {
   // field is born fully closed and the match lasts eight seconds.
   s.field.startedAt = s.time.now
   s.startedAt = s.time.now
+  // /?sim=120&boons=orbs|wells|none isolates one system's effect on balance.
+  const boons = new URLSearchParams(location.search).get('boons') ?? 'all'
+  s.powerUps.enabled = boons === 'all' || boons === 'orbs'
+  s.moonwells.enabled = boons === 'all' || boons === 'wells'
+  const spawnWell = s.moonwells.spawn.bind(s.moonwells)
+  s.moonwells.spawn = (...a) => { const w = spawnWell(...a); if (w) boonStats.wells++; return w }
 
   // No seat is human. matchOver suppresses keyboard input and the result
   // screen; the closing field is then driven manually below.
@@ -72,6 +79,11 @@ function simulate(game, builds, seat) {
     f.parry = now => { const ok = parry(now); if (ok) parryStats.attempts++; return ok }
     const tryParry = f.tryParry.bind(f)
     f.tryParry = attacker => { const ok = tryParry(attacker); if (ok) parryStats.successes++; return ok }
+    const row = boonStats.byClass[f.axieClass] ??= { powerUps: 0, healed: 0 }
+    const apply = f.applyPowerUp.bind(f)
+    f.applyPowerUp = (...a) => { row.powerUps++; return apply(...a) }
+    const heal = f.heal.bind(f)
+    f.heal = amount => { const got = heal(amount); row.healed += got; return got }
   }
 
   const everyone = s.fighters
@@ -95,6 +107,9 @@ function simulate(game, builds, seat) {
       deaths.pop()
     }
   }
+
+  boonStats.powerUps += s.powerUps.taken
+  boonStats.healed += s.moonwells.healed
 
   if (sim > 30000 && !s.field.active) {
     throw new Error('closing field never activated: simulation clock is not advancing')

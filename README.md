@@ -20,7 +20,8 @@ npm run build    # static build in dist/
 ```bash
 node scripts/headless/check-flow.mjs      # full loop in headless Chromium (dev server running)
 node scripts/headless/check-parry.mjs     # 17 parry rules, in real matches
-node scripts/vendor-origins-vfx.mjs       # re-vendor and downscale Origins effect plates
+node scripts/headless/check-boons.mjs     # 22 power-up and Moonwell rules
+node scripts/vendor-origins-vfx.mjs       # re-vendor Origins effect plates, icons and sounds
 # balance: open http://localhost:5173/?sim=120 in a browser
 ```
 
@@ -34,6 +35,8 @@ node scripts/vendor-origins-vfx.mjs       # re-vendor and downscale Origins effe
 | Right click / `E` | Special (once charged) |
 | `Q` / `F` | Parry — 200ms, front only; a whiff leaves you open |
 | `Space` / `Shift` | Dash |
+| Walk over an orb | Power-up: Fury, Bulwark, Tailwind or Moonrise |
+| Stand in a Moonwell | Heal 8%/s; a rival's hit pauses it |
 
 ## Where things are
 
@@ -45,6 +48,8 @@ src/
   scenes/UIScene.js     HUD, isolated from camera zoom and shake
   entities/Fighter.js   one combatant; player and bots share it
   ai/BotBrain.js        wander → chase → strike → backoff
+  arena/PowerUps.js     orbs: Fury, Bulwark, Tailwind, Moonrise
+  arena/Moonwell.js     healing wells that bloom mid-match
   axie/AxieFactory.js   mixer setup and layer export
   axie/AxieSprite.js    assembles and animates the layers
   fx/Juice.js           impact, dust, motes, damage numbers, hit-stop

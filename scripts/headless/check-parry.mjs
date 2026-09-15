@@ -32,6 +32,9 @@ try {
       s.field.startedAt = s.time.now + 1e9
       // Stubbing a brain does not clear the last intent it set: zero it, or the
       // bot keeps walking and drifts out of reach mid-swing.
+      // Power-ups and Moonwells would wander into these staged fights.
+      s.powerUps.enabled = false
+      s.moonwells.enabled = false
       s.bots.forEach((bot, i) => { bot.brain = { update() {} }; bot.intent.set(0, 0); bot.vel.set(0, 0); bot.pos.set(200 + i * 80, 200) })
       const wait = async ms => { const end = s.time.now + ms; while (s.time.now < end) stepOnce() }
       await wait(1500)

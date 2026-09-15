@@ -4,6 +4,8 @@ import BotBrain from '../ai/BotBrain.js'
 import { ARENA_PALETTE } from '../axie/palette.js'
 import Arena, { WORLD } from '../arena/Arena.js'
 import ClosingField from '../arena/ClosingField.js'
+import PowerUps, { POWERUPS } from '../arena/PowerUps.js'
+import Moonwells from '../arena/Moonwell.js'
 import { createFxTextures, ambientMotes } from '../fx/Juice.js'
 import { playPlate, playBasicPlate, playStatusPlate } from '../fx/SkillVfx.js'
 import { play as playSfx } from '../fx/Sfx.js'
@@ -78,6 +80,10 @@ export default class GameScene extends Phaser.Scene {
     this.startedAt = this.time.now
     this.kills = 0
     this.field = new ClosingField(this)
+    this.powerUps = new PowerUps(this)
+    this.moonwells = new Moonwells(this)
+    // Read by the HUD for its centre-screen callouts.
+    this.announcement = null
 
     const cam = this.cameras.main
     cam.setBounds(0, 0, WORLD.width, WORLD.height)
@@ -224,6 +230,25 @@ export default class GameScene extends Phaser.Scene {
     if (defender === this.player || attacker === this.player) this.cameras.main.shake(120, 0.004)
   }
 
+  /** A Moonwell started to bloom. Worth a callout: it is somewhere to be. */
+  onMoonwell(well) {
+    this.announce('A MOONWELL BLOOMS', '#9dffd8', well)
+  }
+
+  onPowerUp(fighter, type) {
+    if (fighter === this.player) return
+    const def = POWERUPS[type]
+    const p = this.player
+    // A rival powering up nearby is information you can act on.
+    if (def && p?.alive && Phaser.Math.Distance.Between(fighter.x, fighter.y, p.x, p.y) < 650) {
+      this.announce(`${fighter.axieClass.toUpperCase()} TOOK ${def.name}`, `#${def.color.toString(16).padStart(6, '0')}`)
+    }
+  }
+
+  announce(text, color, at = null) {
+    this.announcement = { text, color, at, until: this.time.now + 2200 }
+  }
+
   /** A whiff still costs the cooldown, so the swing has to be earned. */
   swingMiss(fighter) {
     if (fighter !== this.player) return
@@ -282,6 +307,8 @@ export default class GameScene extends Phaser.Scene {
       for (const bot of this.bots) bot.brain.update(time, this.fighters)
       for (const f of this.fighters) f.update(delta)
       if (!this.matchOver) this.field.update(this.fighters)
+      this.powerUps.update(this.fighters)
+      this.moonwells.update(this.fighters)
 
       for (const p of this.projectiles) p.update(delta, this.fighters)
       for (const z of this.zones) z.update(delta, this.fighters)

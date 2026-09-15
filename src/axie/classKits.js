@@ -60,7 +60,7 @@ export const CLASS_KITS = {
     },
     special: {
       name: 'Impale', desc: 'Charge forward, goring everything you pass through',
-      kind: 'charge', damage: 520, speed: 700, duration: 300,
+      kind: 'charge', damage: 480, speed: 700, duration: 300,
       vfx: 'beast_gore', sfx: 'beast_gore_attack',
       anim: 'attack/melee/horn-gore',
     },
@@ -137,7 +137,7 @@ export const CLASS_KITS = {
       kind: 'cone', range: 90, arc: 80, damage: 225, cooldown: 540, knockback: 120,
       // Back to 90: raised to 120 while poison was silently dealing nothing,
       // which would overshoot now that it ticks.
-      poison: { damage: 90, ticks: 3, interval: 900 },
+      poison: { damage: 80, ticks: 3, interval: 900 },
       sfx: 'bug_bite_attack',
       anim: 'attack/melee/multi-attack',
       vfx: 'bug_bite',
@@ -145,7 +145,7 @@ export const CLASS_KITS = {
     special: {
       name: 'Swarm', desc: 'A seeking shot that stuns on contact',
       kind: 'seeker', damage: 350, projectileSpeed: 330,
-      projectileRange: 520, turnRate: 2.4, stun: 1000,
+      projectileRange: 520, turnRate: 2.4, stun: 800,
       vfx: 'bug_projectile', sfx: 'bug_projectile_attack',
       anim: 'attack/melee/shrimp',
     },
@@ -153,7 +153,7 @@ export const CLASS_KITS = {
   reptile: {
     title: 'Reptile',
     tagline: 'Punishes anyone who surrounds it',
-    hp: 3200, speed: 215,
+    hp: 3350, speed: 230,
     hitSfx: 'reptile_projectile_hit',
     basic: {
       name: 'Tail Whip', desc: 'Sweeps a wide arc',
@@ -164,7 +164,7 @@ export const CLASS_KITS = {
     },
     special: {
       name: 'Tail Sweep', desc: 'Strike every rival around you at once',
-      kind: 'radial', damage: 650, radius: 140, knockback: 300,
+      kind: 'radial', damage: 650, radius: 160, knockback: 300,
       vfx: 'reptile_projectile', sfx: 'reptile_projectile_attack',
       anim: 'attack/melee/tail-roll',
     },

@@ -9,7 +9,11 @@
  * untouched, and because SkillVfx sizes a plate from the ratio of its own
  * geometry, it renders at the same on-screen size as the full-resolution file.
  *
- * Needs ffmpeg. Usage: node scripts/vendor-origins-vfx.mjs
+ * Also vendors the status icons that power-ups are drawn with, and battle
+ * sounds transcoded from WAV to mono Ogg Vorbis.
+ *
+ * Needs ffmpeg. Usage: node scripts/vendor-origins-vfx.mjs [id ...]
+ * With ids, only those plates, icons and sounds are fetched.
  */
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync, readFileSync, statSync, existsSync } from 'node:fs'
@@ -31,7 +35,24 @@ const PLATES = {
   stunned: 0.4, poison_apply: 0.4, debuff_apply: 0.4, power_gain: 0.4,
   // Parry: the shield flash on a successful block
   shield: 0.4,
+  // Power-ups and the Moonwell
+  heal: 0.4, dmg_boost: 0.4, shield_boost: 0.4, power_awaken: 0.4, buff_apply: 0.4,
 }
+
+/** Status icons, tiny PNGs used as-is: power-up orbs and HUD buff slots. */
+const ICONS = ['buff_dmg_boost', 'buff_shield_boost', 'buff_summerbreeze', 'power_energy_master', 'buff_leaf', 'buff_mushroom']
+
+/** sound id -> path in the kit. Some only exist in the Unity audio folder. */
+const SOUNDS = {
+  heal: 'web-vfx/public/sfx/heal.wav',
+  power_awaken: 'web-vfx/public/sfx/power_awaken.wav',
+  bubble: 'web-vfx/public/sfx/bubble.wav',
+  damage_boost: 'Assets/OriginsKit/Audio/damage_boost.wav',
+  buff: 'Assets/OriginsKit/Audio/buff.wav',
+}
+
+const only = new Set(process.argv.slice(2))
+const wanted = id => !only.size || only.has(id)
 
 const GEOMETRY = ['x', 'y', 'w', 'h']
 const scalePoint = (o, s) => {
@@ -46,6 +67,7 @@ let before = 0
 let after = 0
 
 for (const [id, s] of Object.entries(PLATES)) {
+  if (!wanted(id)) continue
   const src = join(work, `${id}.png`)
   const clip = JSON.parse(execFileSync('curl', ['-sf', `${RAW}/web-vfx/public/vfx/${id}/clip.json`]).toString())
   execFileSync('curl', ['-sf', `${RAW}/web-vfx/public/vfx/${id}/atlas.png`, '-o', src])
@@ -76,6 +98,21 @@ for (const [id, s] of Object.entries(PLATES)) {
   before += b
   after += a
   console.log(`${id.padEnd(20)} ${(b / 1024).toFixed(0).padStart(5)}K -> ${(a / 1024).toFixed(0).padStart(4)}K  (${frameW}x${frameH} -> ${fw}x${fh})`)
+}
+
+mkdirSync(join('public', 'vfx', 'icons'), { recursive: true })
+for (const id of ICONS.filter(wanted)) {
+  execFileSync('curl', ['-sf', `${RAW}/Assets/OriginsKit/Textures/StatusIcons/${id}.png`, '-o', join('public', 'vfx', 'icons', `${id}.png`)])
+  console.log(`icon ${id}`)
+}
+
+for (const [id, path] of Object.entries(SOUNDS)) {
+  if (!wanted(id)) continue
+  const src = join(work, `${id}.wav`)
+  execFileSync('curl', ['-sf', `${RAW}/${path}`, '-o', src])
+  execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', src,
+    '-ac', '1', '-ar', '48000', '-c:a', 'libvorbis', '-q:a', '3', join('public', 'sfx', `${id}.ogg`)])
+  console.log(`sound ${id.padEnd(14)} ${(statSync(src).size / 1024).toFixed(0)}K -> ${(statSync(join('public', 'sfx', `${id}.ogg`)).size / 1024).toFixed(0)}K`)
 }
 
 for (const f of ['LICENSE.md', 'Third%20Party%20Notices.md']) {
