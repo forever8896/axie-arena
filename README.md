@@ -19,6 +19,7 @@ npm run build    # static build in dist/
 
 ```bash
 node scripts/headless/check-flow.mjs      # full loop in headless Chromium (dev server running)
+node scripts/headless/check-parry.mjs     # 17 parry rules, in real matches
 node scripts/vendor-origins-vfx.mjs       # re-vendor and downscale Origins effect plates
 # balance: open http://localhost:5173/?sim=120 in a browser
 ```
@@ -28,7 +29,11 @@ node scripts/vendor-origins-vfx.mjs       # re-vendor and downscale Origins effe
 | Input | Action |
 | --- | --- |
 | `W` `A` `S` `D` | Move |
-| `Space` | Attack (short range, has a cooldown — whiffs cost you the cooldown too) |
+| Mouse | Aim |
+| Left click | Basic attack |
+| Right click / `E` | Special (once charged) |
+| `Q` / `F` | Parry — 200ms, front only; a whiff leaves you open |
+| `Space` / `Shift` | Dash |
 
 ## Where things are
 

@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { WORLD } from '../arena/Arena.js'
+import { PARRY } from '../axie/classKits.js'
 
 const MINIMAP = { size: 186, pad: 22 }
 
@@ -28,7 +29,7 @@ export default class UIScene extends Phaser.Scene {
     // The field is bright, so the readouts sit on their own dark plate.
     this.plate = this.add.graphics().setDepth(-1)
     this.plate.fillStyle(0x16200f, 0.62)
-    this.plate.fillRoundedRect(18, 20, 190, 128, 12)
+    this.plate.fillRoundedRect(18, 20, 190, 158, 12)
 
     this.hintPlate = this.add.graphics().setDepth(-1)
 
@@ -57,6 +58,13 @@ export default class UIScene extends Phaser.Scene {
       fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
     })
 
+    // Parry readiness, under dash.
+    this.parryBg = this.add.rectangle(34, 152, 130, 5, 0x2a2440).setOrigin(0, 0.5)
+    this.parryBar = this.add.rectangle(34, 152, 0, 5, 0xffffff).setOrigin(0, 0.5)
+    this.parryLabel = this.add.text(34, 162, 'PARRY', {
+      fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
+    })
+
     // Special charge, named so you always know what it will do.
     this.specialBg = this.add.rectangle(34, 122, 130, 5, 0x2a2440).setOrigin(0, 0.5)
     this.specialBar = this.add.rectangle(34, 122, 0, 5, 0xffb812).setOrigin(0, 0.5)
@@ -65,7 +73,7 @@ export default class UIScene extends Phaser.Scene {
     })
 
     this.hint = this.add.text(34, this.scale.height - 40,
-      'WASD  MOVE      MOUSE  AIM      LEFT  ATTACK      RIGHT / E  SPECIAL      SPACE  DASH', {
+      'WASD  MOVE     MOUSE  AIM     LEFT  ATTACK     RIGHT / E  SPECIAL     Q  PARRY     SPACE  DASH', {
         fontFamily: MONO, fontSize: '12px', color: '#b9c4a6',
       })
 
@@ -214,6 +222,13 @@ export default class UIScene extends Phaser.Scene {
     this.dashBar.width = 130 * charge
     this.dashBar.setFillStyle(charge >= 1 ? 0x7ce8ff : 0x4a4570)
     this.dashLabel.setColor(charge >= 1 ? '#7ce8ff' : '#6f6892')
+
+    const pr = Phaser.Math.Clamp((now - player.lastParry) / PARRY.cooldownMs, 0, 1)
+    this.parryBar.width = 130 * pr
+    this.parryBar.setFillStyle(player.parrying ? 0xffd964 : pr >= 1 ? 0xffffff : 0x6d7a5a)
+    this.parryLabel
+      .setText(player.parrying ? 'PARRY  ACTIVE' : player.parryRecovering ? 'PARRY  RECOVERING' : 'PARRY')
+      .setColor(player.parrying ? '#ffd964' : pr >= 1 ? '#ffffff' : '#b9c4a6')
 
     // Charge, not cooldown: it fills fastest when you are landing hits.
     const sp = Phaser.Math.Clamp(player.charge, 0, 1)

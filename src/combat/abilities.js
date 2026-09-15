@@ -16,15 +16,17 @@ export function useBasic(fighter, targets, now) {
   fighter.lastAttack = now
 
   const hits = spec.hits ?? 1
-  for (let i = 0; i < hits; i++) {
-    fighter.scene.time.delayedCall(i * 150, () => {
-      if (!fighter.alive) return
-      if (spec.sfx) playVaried(fighter.scene, spec.sfx, 0.4)
-      strikeShape(fighter, spec, i)
-      fighter.scene.playBasicVfx?.(fighter, spec)
-      fighter.sprite.playAttack(() => coneHit(fighter, spec, targets), spec.anim)
-    })
+  const strike = i => {
+    if (!fighter.alive || fighter.stunned) return
+    if (spec.sfx) playVaried(fighter.scene, spec.sfx, 0.4)
+    strikeShape(fighter, spec, i)
+    fighter.scene.playBasicVfx?.(fighter, spec)
+    fighter.sprite.playAttack(() => coneHit(fighter, spec, targets), spec.anim)
   }
+  // The first hit starts now. A zero-delay timer would defer it a whole frame,
+  // silently adding a frame to the 165ms connect the game is balanced on.
+  strike(0)
+  for (let i = 1; i < hits; i++) fighter.scene.time.delayedCall(i * 150, () => strike(i))
   return true
 }
 
@@ -43,6 +45,7 @@ export function useSpecial(fighter, targets, now, aimPoint) {
   fighter.charge = 0
   fighter.lastSpecial = now
   fighter.casting = true
+  fighter.castToken = {}
 
   // Aim locks when the cast starts: committing to a direction is the risk.
   const lockedAim = fighter.aim
@@ -130,13 +133,15 @@ function telegraph(fighter, spec, aim, point) {
 
 /** Shared cone resolution — the basic for every class, tuned per kit. */
 function coneHit(fighter, spec, targets) {
-  if (!fighter.alive) return
+  // A parry earlier in a multi-hit swing staggers you out of the rest of it.
+  if (!fighter.alive || fighter.stunned) return
   const arc = Phaser.Math.DegToRad(spec.arc)
   let connected = false
 
   for (const other of targets) {
     if (other === fighter || !other.alive || other.invulnerable) continue
     if (!inCone(fighter, other, spec.range, arc)) continue
+    if (other.tryParry(fighter)) return
 
     other.takeDamage(spec.damage, fighter, spec.knockback)
     if (spec.poison) other.applyPoison(spec.poison, fighter)
@@ -167,11 +172,15 @@ const SPECIALS = {
     fighter.beginCharge(dir, spec.speed, spec.duration, (t) => {
       if (alreadyHit.has(t)) return
       alreadyHit.add(t)
+      if (t.tryParry(fighter)) return
       t.takeDamage(spec.damage, fighter, 320)
     }, targets)
   },
 
-  /** Aquatic: a pushing, slowing cone. */
+  /**
+   * Aquatic: a pushing, slowing cone. Water is not a blow you can meet, so the
+   * wave goes through a raised parry: aquatic is the answer to a turtling rival.
+   */
   wave(fighter, spec, targets) {
     const arc = Phaser.Math.DegToRad(spec.arc)
     waveVisual(fighter, spec)
@@ -257,6 +266,7 @@ const SPECIALS = {
     for (const other of targets) {
       if (other === fighter || !other.alive || other.invulnerable) continue
       if (Phaser.Math.Distance.Between(fighter.x, fighter.y, other.x, other.y) > spec.radius) continue
+      if (other.tryParry(fighter)) continue
       other.takeDamage(spec.damage, fighter, spec.knockback)
     }
     scene.cameras.main.shake(140, 0.006)

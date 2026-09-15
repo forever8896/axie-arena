@@ -35,7 +35,9 @@ const IDLE_FLOURISH = [
 ]
 
 /** Higher wins. A clip only interrupts one of equal or lower priority. */
-const PRIORITY = { locomotion: 0, flourish: 0, ready: 1, hit: 1, stun: 2, dash: 2, prepare: 2, appear: 2, attack: 3, special: 3, victory: 4 }
+// A stagger (being parried) cuts off your own attack clip; a parry stance
+// outranks walking and getting hit.
+const PRIORITY = { locomotion: 0, flourish: 0, ready: 1, hit: 1, stun: 2, dash: 2, prepare: 2, appear: 2, parry: 2, attack: 3, special: 3, stagger: 3, victory: 4 }
 
 export default class AxieSprite {
   constructor(scene, x, y, { build, axieClass = 'beast' } = {}) {

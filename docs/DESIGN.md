@@ -209,3 +209,110 @@ close enough to noise that neither was changed; a longer run should decide.
 
 **Not yet measured:** the poison fix. The next simulation run is the first one
 where bug fights as designed.
+
+---
+
+## 5. Parry
+
+### What the research says
+
+**The counter is the soul of an arena brawler.** In Battlerite most champions
+had a short defensive stance that punished anyone who attacked into it.
+"Attacking into it results in punishment, not attacking gives the enemy free
+time, and baiting it allows punishing the cooldown" — every high-level fight
+was a counter mind-game first and a damage race second.
+
+**A parry must be tight enough to feel like a parry.** "If you attempt a parry
+a full second too early and it still counts, that no longer feels like a parry,
+it just feels like a counter." Windows in shipped games: Street Fighter III ~10
+frames (~167ms), Dark Souls 6 frames at 30fps (200ms, criticised as too hard),
+Sekiro half a second (deliberately generous, and it shrinks if spammed).
+
+**Missing one has to cost something.** Street Fighter III locks out another
+parry for 23 frames (383ms) after an attempt. Blocking is low-risk, low-reward;
+parrying is high-risk, high-reward.
+
+**Landing one has to pay.** For Honor guarantees a ~600ms punish after a heavy
+parry. Steel Carnelian refills resources on a parry. ULTRAKILL freezes the
+whole game for a moment so the player feels it.
+
+**Not everything should be parryable.** "If everything in a game is reliably
+parriable, the space-and-time elements of a combat system start to break down.
+Positioning no longer matters." Parry should sit alongside dodging, not replace
+it.
+
+### The design
+
+| Rule | Value | From |
+| --- | --- | --- |
+| Active window | 200ms | between SF3 and Dark Souls; Sekiro's 500ms reads as a counter |
+| Whiff recovery | 380ms, planted at 40% speed, no attack / dash / special | SF3's 23-frame lockout |
+| Cooldown | 1.4s | anti-spam, Sekiro's decaying window |
+| Success: attacker | staggered 650ms, attack cut off, a charge stopped dead | For Honor's ~600ms punish |
+| Success: defender | +35% special charge, no recovery, 140ms freeze, clang, flash | Steel Carnelian refill, ULTRAKILL freeze |
+| Coverage | front 200° only | positioning must matter |
+| Parryable | basics, Impale, Tail Sweep | melee-range blows |
+| Not parryable | Undertow, projectiles, spore zones, poison, the closing field | dodge those |
+
+**The decision it creates.** A basic lands 165ms after the swing starts, faster
+than the ~250ms reaction benchmark, so parrying a basic is a *read*. That is the
+point: swing into a raised parry and eat a stagger; hold off and hand over free
+time; or bait it out and punish the 380ms recovery. Specials telegraph for
+260ms, so they can be parried on reaction — watching the ground marker pays.
+
+**Undertow goes through a parry.** Water is not a blow you can meet. That
+gives aquatic a role, the answer to a rival turtling behind parries, and it was
+needed: with Undertow parryable, aquatic won 3.3% of 120 matches (−13.3pt, well
+past the 2σ flag), because a parried two-hit basic loses both hits.
+
+**Bots play the same game.** They read a rival bot's lunge (in reach, attack
+ready) and parry it about half the time, gamble at a lower rate against the
+player whose intent they cannot see, and raise a parry timed to land when a
+telegraphed special arrives. An attacker notices a raised parry only after a
+human-like 110–190ms, then holds off, and hovers just outside reach to punish
+a whiff. While committed, a bot keeps facing the rival it parried.
+
+The first version gambled constantly and saw parries instantly: 1% of 4,868
+attempts succeeded, so parrying was noise. A diagnostic of each miss found
+bots parrying blind, plus 52 of 115 misses landing *0ms* after the window
+closed, where the blow and the deadline fall on the same frame. With reads,
+reaction timing and one frame (17ms) of grace, success rose to 75% — about 18
+parries per match — and the class spread held:
+
+| Class | Win rate | vs fair (16.7%) |
+| --- | --- | --- |
+| aquatic | 20.0% | +3.3pt |
+| bug | 19.2% | +2.5pt |
+| beast | 17.5% | +0.8pt |
+| reptile | 16.7% | +0.0pt |
+| plant | 15.0% | −1.7pt |
+| bird | 11.7% | −5.0pt |
+
+120 matches, noise ±3.4pt at 1σ, nothing past 2σ; average 59.8s. Getting there
+took two passes after Undertow: bug's unparryable stunning seeker left it at
+25.8% (basic 250 → 225), and plant, now blocked on every chomp, got 330 → 355.
+
+Verified in real matches by `scripts/headless/check-parry.mjs`, 17 checks: a
+front parry blocks and staggers, refunds charge and leaves no recovery; a blow
+from behind lands; a whiff recovers, slows and blocks action, then clears; the
+cooldown holds; feathers pass through; Impale is parried on reaction and the
+beast stopped; a bot holds off a raised parry and punishes its recovery. The checks step the
+scene in exact 60fps increments rather than sampling the live loop: headless
+Chromium renders WebGL in software at a few fps, and a 200ms window read at
+130ms frame boundaries made them flaky.
+
+### Two engine-level fixes found while verifying it
+
+**One gameplay clock.** Combat mixes deadlines on `scene.time.now` (parry
+windows, stuns, cooldowns) with timers that advance on frame delta (a blow
+connecting, a telegraph). Phaser's default delta smoothing caps that delta at
+one 60fps frame for the first 120 frames after the game starts or regains focus,
+and clamps any frame over 200ms, while `time.now` keeps real time. Measured in
+one session at ~7.6fps: a 1000ms timer fired at 7,833ms of `time.now` with
+smoothing on, and at 1,017–1,067ms with it off. Below 60fps that would let a
+correctly timed parry expire before the blow it was meant to catch. Smoothing is
+now off.
+
+**No hidden frame on the first hit.** Scheduling a basic's first hit with a
+zero-delay timer deferred it to the next frame, adding a frame to the 165ms
+connect the balance was measured on. It now starts immediately.

@@ -16,7 +16,7 @@ export const SFX = [
   'bug_projectile_attack', 'reptile_projectile_attack',
   'beast_projectile_hit', 'aquatic_projectile_hit', 'plant_projectile_hit',
   'bird_throw_hit', 'bug_projectile_hit', 'reptile_projectile_hit',
-  'poison', 'stunned',
+  'poison', 'stunned', 'shield',
 ]
 
 /**

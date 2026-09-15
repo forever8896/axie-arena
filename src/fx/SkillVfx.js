@@ -145,7 +145,7 @@ export function playStatusPlate(scene, fighter, id, { durationMs, size = 1.5 } =
   return sprite
 }
 
-export const STATUS_PLATES = ['stunned', 'poison_apply', 'debuff_apply', 'power_gain']
+export const STATUS_PLATES = ['stunned', 'poison_apply', 'debuff_apply', 'power_gain', 'shield']
 
 function placeOnAttacker(scene, fighter, id, clip, reach, animKey) {
   const span = Math.abs(clip.attackerInCrop.x - clip.anchor.x) || clip.crop.w * 0.6

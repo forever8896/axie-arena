@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import AxieSprite from '../axie/AxieSprite.js'
 import { CLASS_COLORS } from '../axie/palette.js'
-import { CLASS_KITS, CHARGE_PER_SECOND } from '../axie/classKits.js'
+import { CLASS_KITS, CHARGE_PER_SECOND, PARRY } from '../axie/classKits.js'
 import { impact, damageNumber, hitStopFor, dustEmitter } from '../fx/Juice.js'
 import { useBasic, useSpecial } from '../combat/abilities.js'
 import { play, playVaried } from '../fx/Sfx.js'
@@ -49,6 +49,11 @@ export default class Fighter {
     // Hit-stop is per fighter. Freezing the whole arena in a six-way
     // free-for-all is exactly what Sakurai warns against.
     this.frozenUntil = 0
+
+    // Parry: a short active window, then a vulnerable recovery if nothing hit.
+    this.lastParry = -Infinity
+    this.parryUntil = 0
+    this.parryRecoverUntil = 0
     this.poisonTicks = 0
     this.poisonNext = 0
     this.poisonSpec = null
@@ -73,6 +78,7 @@ export default class Fighter {
     this.dust.setDepth(y - 1)
 
     this.healthBar = scene.add.graphics().setDepth(9000)
+    this.parryFx = scene.add.graphics()
   }
 
   get x() { return this.pos.x }
@@ -80,9 +86,18 @@ export default class Fighter {
   get dashing() { return this.scene.time.now < this.dashUntil }
   get invulnerable() { return this.scene.time.now < this.invulnerableUntil }
   get stunned() { return this.scene.time.now < this.stunUntil }
+  get parrying() { return this.parryUntil > 0 && this.scene.time.now <= this.parryUntil + PARRY.graceMs }
+  get parryRecovering() {
+    const now = this.scene.time.now
+    return now >= this.parryUntil && now < this.parryRecoverUntil
+  }
+  /** Mid-parry or recovering from one: committed, and unable to act. */
+  get parryCommitted() { return this.parrying || this.parryRecovering }
+
   get speed() {
     const slowed = this.scene.time.now < this.slowUntil ? this.slowFactor : 1
-    return this.baseSpeed * slowed * (this.casting ? 0.35 : 1)
+    const planted = this.parryCommitted ? PARRY.moveFactor : 1
+    return this.baseSpeed * slowed * planted * (this.casting ? 0.35 : 1)
   }
 
   get frozen() { return this.scene.time.now < this.frozenUntil }
@@ -109,6 +124,7 @@ export default class Fighter {
     this.addCharge(CHARGE_PER_SECOND * step)
     this.tickPoison()
     this.drawHealthBar()
+    this.drawParry()
 
     if (this.frozen) {
       this.sprite.setPosition(this.pos.x, this.pos.y)
@@ -164,6 +180,35 @@ export default class Fighter {
     this.dust.setDepth(this.pos.y - 1)
   }
 
+  drawParry() {
+    const g = this.parryFx
+    g.clear()
+    if (!this.alive || !this.parryCommitted) return
+
+    const r = this.bodyRadius + 22
+    const half = Phaser.Math.DegToRad(PARRY.arcDeg) / 2
+    const cy = this.pos.y - 14
+    g.setDepth(this.pos.y + 5)
+
+    if (this.parrying) {
+      // Bright and unmistakable: rivals need to see it to decide not to swing.
+      const t = 1 - (this.parryUntil - this.scene.time.now) / PARRY.windowMs
+      g.lineStyle(9, 0x1d2b12, 0.35)
+      g.beginPath(); g.arc(this.pos.x, cy, r, this.aim - half, this.aim + half); g.strokePath()
+      g.lineStyle(6, 0xffffff, 0.95 - t * 0.3)
+      g.beginPath(); g.arc(this.pos.x, cy, r, this.aim - half, this.aim + half); g.strokePath()
+      g.lineStyle(3, this.colors.rim, 1)
+      g.beginPath(); g.arc(this.pos.x, cy, r + 6, this.aim - half, this.aim + half); g.strokePath()
+    } else {
+      // Recovering: a dim, broken arc — the opening.
+      g.lineStyle(3, 0x9aa88a, 0.45)
+      for (let i = 0; i < 6; i++) {
+        const a0 = this.aim - half + (i / 6) * half * 2
+        g.beginPath(); g.arc(this.pos.x, cy, r, a0, a0 + half / 8); g.strokePath()
+      }
+    }
+  }
+
   drawHealthBar() {
     const g = this.healthBar
     g.clear()
@@ -202,11 +247,12 @@ export default class Fighter {
 
   canAttack(now) {
     return this.alive && !this.dashing && !this.stunned && !this.chargeState && !this.casting &&
-      now - this.lastAttack >= this.attackCooldown
+      !this.parryCommitted && now - this.lastAttack >= this.attackCooldown
   }
 
   canSpecial() {
-    return this.alive && this.specialReady && !this.dashing && !this.stunned && !this.chargeState && !this.casting
+    return this.alive && this.specialReady && !this.dashing && !this.stunned && !this.chargeState && !this.casting &&
+      !this.parryCommitted
   }
 
   /** Beast's Impale: a longer, damaging dash that cannot be steered. */
@@ -233,6 +279,8 @@ export default class Fighter {
     for (const t of this.chargeState.targets) {
       if (t === this || !t.alive) continue
       if (Phaser.Math.Distance.Between(this.x, this.y, t.x, t.y) <= 62) this.chargeState.onHit(t)
+      // Parried mid-charge: tryParry cleared the charge and staggered us.
+      if (!this.chargeState) return
     }
 
     if (this.scene.time.now >= this.chargeState.until) {
@@ -289,7 +337,68 @@ export default class Fighter {
   }
 
   canDash(now) {
-    return this.alive && !this.dashing && now - this.lastDash >= this.dashCooldown
+    return this.alive && !this.dashing && !this.parryCommitted && now - this.lastDash >= this.dashCooldown
+  }
+
+  canParry(now) {
+    return this.alive && !this.dashing && !this.stunned && !this.chargeState && !this.casting &&
+      now - this.lastParry >= PARRY.cooldownMs
+  }
+
+  /** Raise a parry. Commits for the window, and for a recovery if nothing lands. */
+  parry(now) {
+    if (!this.canParry(now)) return false
+    this.lastParry = now
+    this.parryUntil = now + PARRY.windowMs
+    this.parryRecoverUntil = now + PARRY.windowMs + PARRY.recoveryMs
+    this.parrySucceeded = false
+
+    // The braced opening of hit-with-shield, stretched across the window.
+    this.sprite.play('defense/hit-with-shield', { kind: 'parry', peakAt: PARRY.windowMs, peakFraction: 0.4 })
+
+    this.scene.time.delayedCall(PARRY.windowMs, () => {
+      if (!this.alive || this.parrySucceeded) return
+      // Whiffed: visibly off-balance, which is exactly what a baiting rival
+      // is waiting to punish.
+      this.sprite.playState('stun', { fit: PARRY.recoveryMs, holdMs: PARRY.recoveryMs, kind: 'parry' })
+    })
+    return true
+  }
+
+  /**
+   * Called by an attack about to land on this fighter. True means the blow was
+   * parried: it must deal nothing, and the attacker is staggered.
+   */
+  tryParry(attacker) {
+    if (!this.alive || !attacker || attacker === this || !this.parrying) return false
+
+    // Only blows from the front half: you cannot parry what you are not facing.
+    const toAttacker = Math.atan2(attacker.y - this.y, attacker.x - this.x)
+    if (Math.abs(Phaser.Math.Angle.Wrap(toAttacker - this.aim)) > Phaser.Math.DegToRad(PARRY.arcDeg) / 2) {
+      return false
+    }
+
+    this.parrySucceeded = true
+    this.parryUntil = 0
+    this.parryRecoverUntil = 0   // a clean parry leaves you free to punish
+    this.addCharge(PARRY.chargeReward)
+    this.scene.onParry?.(this, attacker)
+
+    attacker.stagger(PARRY.staggerMs)
+    // A charging beast is stopped dead.
+    attacker.chargeState = null
+    return true
+  }
+
+  /** Knocked off balance by a parry: like a stun, but grants no stun immunity. */
+  stagger(ms) {
+    const now = this.scene.time.now
+    this.stunUntil = Math.max(this.stunUntil, now + ms)
+    this.casting = false
+    this.intent.set(0, 0)
+    this.vel.set(0, 0)
+    this.sprite.playState('stun', { loop: true, holdMs: ms, kind: 'stagger' })
+    playStatusPlate(this.scene, this, 'stunned', { durationMs: ms, size: 1.2 })
   }
 
   /** Committed burst along `dir`, with brief invulnerability. */
@@ -361,6 +470,7 @@ export default class Fighter {
     this.dust.emitting = false
     impact(this.scene, this.x, this.y - 8, this.colors.body, 1.8)
     this.healthBar.destroy()
+    this.parryFx.destroy()
 
     this.scene.tweens.add({
       targets: this.sprite.root,

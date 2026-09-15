@@ -21,6 +21,7 @@ const DT = 16.7
 // one, which stalled it: the closing field then never activated in five of
 // every six matches, and the first three balance runs were invalid.
 let simClock = 1e7
+const parryStats = { attempts: 0, successes: 0 }
 
 export async function runBalanceSim(game, builds, matches) {
   const results = []
@@ -40,7 +41,7 @@ export async function runBalanceSim(game, builds, matches) {
   }
 
   const report = summarise(results)
-  window.__balance = { results, report }
+  window.__balance = { results, report, parryStats: { ...parryStats, perMatch: +(parryStats.attempts / matches).toFixed(1), successRate: +(parryStats.successes / Math.max(1, parryStats.attempts)).toFixed(2) } }
   status.textContent = format(report, matches)
   return report
 }
@@ -66,6 +67,12 @@ function simulate(game, builds, seat) {
   s.matchOver = true
   s.player.brain = new BotBrain(s.player)
   s.bots.push(s.player)
+  for (const f of s.fighters) {
+    const parry = f.parry.bind(f)
+    f.parry = now => { const ok = parry(now); if (ok) parryStats.attempts++; return ok }
+    const tryParry = f.tryParry.bind(f)
+    f.tryParry = attacker => { const ok = tryParry(attacker); if (ok) parryStats.successes++; return ok }
+  }
 
   const everyone = s.fighters
   const deaths = []

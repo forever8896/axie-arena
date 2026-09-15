@@ -5,7 +5,9 @@ import { ARENA_PALETTE } from '../axie/palette.js'
 import Arena, { WORLD } from '../arena/Arena.js'
 import ClosingField from '../arena/ClosingField.js'
 import { createFxTextures, ambientMotes } from '../fx/Juice.js'
-import { playPlate, playBasicPlate } from '../fx/SkillVfx.js'
+import { playPlate, playBasicPlate, playStatusPlate } from '../fx/SkillVfx.js'
+import { play as playSfx } from '../fx/Sfx.js'
+import { PARRY } from '../axie/classKits.js'
 
 
 export default class GameScene extends Phaser.Scene {
@@ -65,7 +67,9 @@ export default class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-SPACE', () => this.playerDash())
     this.input.keyboard.on('keydown-SHIFT', () => this.playerDash())
     this.input.keyboard.on('keydown-E', () => this.playerSpecial())
-    this.input.keyboard.on('keydown-Q', () => this.playerSpecial())
+    // Q sits under the left hand next to WASD, so a parry never means letting go of movement.
+    this.input.keyboard.on('keydown-Q', () => this.playerParry())
+    this.input.keyboard.on('keydown-F', () => this.playerParry())
     this.input.mouse?.disableContextMenu()
 
     this.buildReticle()
@@ -179,6 +183,45 @@ export default class GameScene extends Phaser.Scene {
   playerDash() {
     if (this.matchOver) return
     this.player.dash(this.player.intent, this.time.now)
+  }
+
+  playerParry() {
+    if (this.matchOver) return
+    this.player.parry(this.time.now)
+  }
+
+  /**
+   * A parry landed. Sold hard — freeze, clang, flash, a word on screen — because
+   * it is a read that paid off, and the attacker needs to know what hit them.
+   */
+  onParry(defender, attacker) {
+    defender.freeze(PARRY.freezeMs)
+    attacker.freeze(PARRY.freezeMs)
+
+    playSfx(this, 'shield', { volume: 0.75 })
+    playStatusPlate(this, defender, 'shield', { size: 1.8 })
+    defender.sprite.play('defense/hit-with-shield', { kind: 'stagger', peakAt: 60, peakFraction: 0.6 })
+    defender.sprite.flash(0xffffff, 120)
+
+    const mx = (defender.x + attacker.x) / 2
+    const my = (defender.y + attacker.y) / 2 - 20
+    const ring = this.add.circle(mx, my, 10, 0xffffff, 0).setStrokeStyle(5, 0xffffff, 1).setDepth(my + 50)
+    this.tweens.add({
+      targets: ring, radius: 70, alpha: 0, duration: 260, ease: 'Cubic.easeOut',
+      onUpdate: () => ring.setStrokeStyle(5, 0xffffff, ring.alpha),
+      onComplete: () => ring.destroy(),
+    })
+
+    const label = this.add.text(defender.x, defender.y - 96, 'PARRY', {
+      fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif',
+      fontSize: '26px', color: '#ffffff', stroke: '#16200f', strokeThickness: 6,
+    }).setOrigin(0.5).setDepth(10001)
+    this.tweens.add({
+      targets: label, y: label.y - 36, alpha: 0, scale: { from: 1.5, to: 1 },
+      duration: 720, ease: 'Quad.easeOut', onComplete: () => label.destroy(),
+    })
+
+    if (defender === this.player || attacker === this.player) this.cameras.main.shake(120, 0.004)
   }
 
   /** A whiff still costs the cooldown, so the swing has to be earned. */

@@ -24,6 +24,14 @@ async function start() {
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
     render: { pixelArt: false, antialias: true },
+    // One clock for gameplay. Combat mixes deadlines on scene.time.now (parry
+    // windows, stuns, cooldowns) with timers that advance on frame delta (a
+    // blow connecting, a special's telegraph). Phaser's smoothing caps that
+    // delta on slow or hitching frames while time.now keeps real time, so the
+    // two drift: at 10fps a 1000ms timer fired after 24.9s of time.now. A
+    // parry could expire before the blow it was meant to catch. Unsmoothed,
+    // timers advance on real elapsed time and the two agree.
+    fps: { smoothStep: false },
     scene: [BootScene, HomeScene, MenuScene, GameScene, UIScene, ResultScene],
   })
 

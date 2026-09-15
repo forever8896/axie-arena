@@ -29,6 +29,8 @@ const PLATES = {
   bird_bite: 0.5, bug_bite: 0.5, reptile_slash: 0.5,
   // Statuses, drawn small over a fighter
   stunned: 0.4, poison_apply: 0.4, debuff_apply: 0.4, power_gain: 0.4,
+  // Parry: the shield flash on a successful block
+  shield: 0.4,
 }
 
 const GEOMETRY = ['x', 'y', 'w', 'h']

@@ -163,16 +163,21 @@ export default class Arena {
   /** Tufts, stones and wildflowers, baked into one texture. */
   drawScatter() {
     const rng = new Phaser.Math.RandomDataGenerator(['lunacia-scatter'])
-    const rt = this.ground
-    const brush = this.scene.make.graphics({ x: 0, y: 0, add: false })
+    // All 900 items go into one Graphics at their world positions and are
+    // stamped in a single draw. One draw per item made 900 separate render
+    // passes into the ground texture on the first frame, a multi-second hitch
+    // on weak GPUs and software rendering.
+    const brush = this.offList()
 
     for (let i = 0; i < 900; i++) {
       const x = rng.between(20, WORLD.width - 20)
       const y = rng.between(20, WORLD.height - 20)
       if (this.wallAt(x, y, 26)) continue
 
-      brush.clear()
       const roll = rng.frac()
+      // Items were authored around a local (20, 20) origin; shift to world.
+      brush.save()
+      brush.translateCanvas(x - 20, y - 20)
 
       if (roll < 0.62) {
         // Grass tuft: a few blades fanning from one point.
@@ -206,10 +211,10 @@ export default class Arena {
         brush.fillStyle(FIELD.stoneTop, 0.8).fillEllipse(20, 19, r * 1.2, r * 0.7)
       }
 
-      rt.draw(brush, x - 20, y - 20)
+      brush.restore()
     }
 
-    brush.destroy()
+    this.stamp(brush)
   }
 
   /** A hedge ring instead of a glowing line: the field has an edge you can see. */

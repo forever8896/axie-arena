@@ -21,6 +21,30 @@ export const CHARGE_PER_SECOND = 0.045
 /** Specials wind up for this long, drawn on the ground, before firing. */
 export const TELEGRAPH_MS = 260
 
+/**
+ * Parry. Every number is sourced in docs/DESIGN.md section 5.
+ *
+ * A basic lands 165ms after its swing starts, faster than the ~250ms human
+ * reaction benchmark, so parrying a basic is a read, not a reaction: attack
+ * into a parry and get staggered, hold off and hand over free time, or bait it
+ * and punish the recovery. Specials telegraph for 260ms, so they can be parried
+ * on reaction.
+ */
+export const PARRY = {
+  windowMs: 200,        // SF3 ~167ms, Dark Souls 200ms; Sekiro's 500ms reads as a counter
+  recoveryMs: 380,      // SF3 locks out another parry for 23 frames (383ms) after an attempt
+  cooldownMs: 1400,     // no spamming it as a default defence
+  staggerMs: 650,       // For Honor guarantees ~600ms of punish after a parry
+  arcDeg: 200,          // only blows from the front: facing matters
+  chargeReward: 0.35,   // more than a landed hit (0.22): resource refills reward the read
+  freezeMs: 140,        // the whole-moment freeze ULTRAKILL uses to sell a parry
+  moveFactor: 0.4,      // committed: you plant your feet while parrying or recovering
+  // One 60fps frame of leniency at the edge, the kind ULTRAKILL gives by letting
+  // a hit wait a few frames. Without it, 52 of 115 measured bot parries missed
+  // by exactly 0ms: the blow resolved on the frame the window closed.
+  graceMs: 17,
+}
+
 export const CLASS_KITS = {
   beast: {
     title: 'Beast',
@@ -54,7 +78,7 @@ export const CLASS_KITS = {
       vfx: 'aquatic_gore',
     },
     special: {
-      name: 'Undertow', desc: 'A wave that knocks rivals back and slows them',
+      name: 'Undertow', desc: 'An unparryable wave that knocks rivals back and slows them',
       kind: 'wave', damage: 400, range: 190, arc: 150,
       knockback: 380, slow: { factor: 0.5, duration: 2200 },
       vfx: 'aquatic_slash', sfx: 'aquatic_slash_attack',
@@ -68,7 +92,7 @@ export const CLASS_KITS = {
     hitSfx: 'plant_projectile_hit',
     basic: {
       name: 'Chomp', desc: 'Short reach, steady damage',
-      kind: 'cone', range: 92, arc: 75, damage: 330, cooldown: 600, knockback: 130,
+      kind: 'cone', range: 92, arc: 75, damage: 355, cooldown: 600, knockback: 130,
       sfx: 'plant_bite_attack',
       anim: 'attack/melee/mouth-bite',
       vfx: 'plant_bite',
@@ -110,7 +134,7 @@ export const CLASS_KITS = {
     hitSfx: 'bug_projectile_hit',
     basic: {
       name: 'Venom Bite', desc: 'Leaves poison behind',
-      kind: 'cone', range: 90, arc: 80, damage: 250, cooldown: 540, knockback: 120,
+      kind: 'cone', range: 90, arc: 80, damage: 225, cooldown: 540, knockback: 120,
       // Back to 90: raised to 120 while poison was silently dealing nothing,
       // which would overshoot now that it ticks.
       poison: { damage: 90, ticks: 3, interval: 900 },
