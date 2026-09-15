@@ -69,6 +69,11 @@ export default class HomeScene extends Phaser.Scene {
   }
 
   buildTitle() {
+    if (this.textures.exists('brand-logo')) {
+      this.logo = this.add.image(0, 0, 'brand-logo').setDepth(1010)
+      // A slow bob, so the title feels as alive as the field under it.
+      this.logoBob = 0
+    }
     this.titleShadow = this.add.text(0, 0, 'LUNACY', {
       fontFamily: HEAD, fontSize: '120px', color: '#23300f',
     }).setOrigin(0.5).setAlpha(0.32).setDepth(1009)
@@ -216,11 +221,25 @@ export default class HomeScene extends Phaser.Scene {
       this.wash.fillRect(0, (bandH / bands) * i, width, bandH / bands + 1)
     }
 
-    const top = Math.max(96, height * 0.2)
-
+    let top = Math.max(96, height * 0.2)
+    let taglineY = top + 82
+    if (this.logo) {
+      // The text title stays as a fallback for a logo that failed to load.
+      this.title.setVisible(false)
+      this.titleShadow.setVisible(false)
+      const w = Math.min(560, width * 0.7)
+      this.logo.setScale(w / this.logo.width)
+      const h = this.logo.displayHeight
+      top = Math.max(h / 2 + 12, height * 0.19)
+      this.logoY = top
+      this.logo.setPosition(cx, top)
+      // The logo's own padding holds sparkles; the tagline tucks under the letters.
+      taglineY = top + h / 2 + 8
+      top = taglineY - 88
+    }
     this.titleShadow?.setPosition(cx + 5, top + 8)
     this.title?.setPosition(cx, top)
-    this.tagline?.setPosition(cx, top + 82)
+    this.tagline?.setPosition(cx, taglineY)
 
     this.playX = cx
     this.playY = top + 176
@@ -252,6 +271,8 @@ export default class HomeScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    if (this.logo) this.logo.y = this.logoY + Math.sin(time / 900) * 4
+
     // Slow drift, so the field is alive without pulling focus.
     for (const w of this.wanderers) {
       w.phase += delta / 1000 * w.speed

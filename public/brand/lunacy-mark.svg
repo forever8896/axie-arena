@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-190 -272 390 390" width="512" height="512">
+  <title>Lunacy</title>
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf2"/>
+      <stop offset="0.55" stop-color="#fff3c4"/>
+      <stop offset="1" stop-color="#ffd978"/>
+    </linearGradient>
+    <linearGradient id="side" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5f9330"/>
+      <stop offset="1" stop-color="#3a5f1c"/>
+    </linearGradient>
+    <radialGradient id="moon" cx="0.35" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="#fff2a8"/>
+      <stop offset="0.5" stop-color="#ffc93a"/>
+      <stop offset="1" stop-color="#f19a00"/>
+    </radialGradient>
+    <linearGradient id="leaf" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#4f9a2a"/>
+      <stop offset="1" stop-color="#a6e05a"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.75"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(6 -40)">
+      <g transform="translate(-14 -6) rotate(-10)">
+      <path d="M35.22 -95.73 A102 102 0 1 0 72.94 71.3 A86 86 0 0 1 35.22 -95.73Z" transform="translate(10 22)" fill="#1d2b12" stroke="#1d2b12" stroke-width="30" stroke-linejoin="round" opacity="0.28"/>
+      <path d="M35.22 -95.73 A102 102 0 1 0 72.94 71.3 A86 86 0 0 1 35.22 -95.73Z" transform="translate(0 14)" fill="#b86a00" stroke="#1d2b12" stroke-width="30" stroke-linejoin="round"/>
+      <path d="M35.22 -95.73 A102 102 0 1 0 72.94 71.3 A86 86 0 0 1 35.22 -95.73Z" fill="url(#moon)" stroke="#1d2b12" stroke-width="30" stroke-linejoin="round"/>
+      <path d="M35.22 -95.73 A102 102 0 1 0 72.94 71.3 A86 86 0 0 1 35.22 -95.73Z" fill="url(#moon)"/>
+      <path d="M35.22 -95.73 A102 102 0 1 0 72.94 71.3 A86 86 0 0 1 35.22 -95.73Z" fill="url(#gloss)"/>
+        <circle cx="-44" cy="30" r="11" fill="#f5a300" opacity="0.45"/>
+        <circle cx="-22" cy="58" r="7" fill="#f5a300" opacity="0.4"/>
+      </g>
+      <g transform="translate(6 -104) rotate(-30)">
+        <path d="M0 0 C 10 -34, 44 -58, 84 -54 C 78 -18, 44 6, 0 0 Z" transform="translate(0 8)" fill="#2f5516" stroke="#1d2b12" stroke-width="16" stroke-linejoin="round"/>
+        <path d="M0 0 C 10 -34, 44 -58, 84 -54 C 78 -18, 44 6, 0 0 Z" fill="url(#leaf)" stroke="#1d2b12" stroke-width="16" stroke-linejoin="round"/>
+        <path d="M0 0 C 10 -34, 44 -58, 84 -54 C 78 -18, 44 6, 0 0 Z" fill="url(#leaf)"/>
+        <path d="M6 -3 C 30 -18, 52 -34, 72 -48" fill="none" stroke="#2f5516" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
+      </g></g>
+</svg>

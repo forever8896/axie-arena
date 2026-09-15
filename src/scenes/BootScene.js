@@ -60,6 +60,8 @@ export default class BootScene extends Phaser.Scene {
 
     await loadIcons(POWERUP_ICONS, this)
 
+    await this.loadBrand()
+
     this.status.setText('LOADING BATTLE AUDIO')
     this.setBar(0)
     let sfxDone = 0
@@ -98,6 +100,17 @@ export default class BootScene extends Phaser.Scene {
       done++
       this.setBar(done / paths.length)
     }))
+  }
+
+  /** The logo, as SVG rasterised at its authored size so it stays crisp. */
+  loadBrand() {
+    if (this.textures.exists('brand-logo')) return Promise.resolve()
+    return new Promise(resolve => {
+      const img = new Image()
+      img.onload = () => { this.textures.addImage('brand-logo', img); resolve() }
+      img.onerror = () => { console.warn('logo failed to load'); resolve() }
+      img.src = `${import.meta.env.BASE_URL}brand/lunacy-logo.svg`
+    })
   }
 
   loadTexture(path) {

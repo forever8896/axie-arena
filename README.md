@@ -1,3 +1,5 @@
+<p align="center"><img src="public/brand/lunacy-logo.png" alt="Lunacy" width="520"></p>
+
 # Lunacy
 
 **Six Axies. One field. Last one standing.**
@@ -6,6 +8,10 @@ A browser arena brawler for **Axie Vibeathon 2026** (theme: Axie Core).
 
 Six Axie classes, each with its own basic attack and special, fighting over a
 Lunacia meadow. Named for Lunacia, minus a letter.
+
+Where it goes next (an always-on arena, and how stakes could work without
+repeating play-to-earn's mistakes): **[docs/VISION.md](docs/VISION.md)**.
+How the combat numbers were chosen: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Run it
 
@@ -22,6 +28,8 @@ node scripts/headless/check-flow.mjs      # full loop in headless Chromium (dev 
 node scripts/headless/check-parry.mjs     # 17 parry rules, in real matches
 node scripts/headless/check-boons.mjs     # 22 power-up and Moonwell rules
 node scripts/vendor-origins-vfx.mjs       # re-vendor Origins effect plates, icons and sounds
+node scripts/brand/build-logo.mjs         # rebuild the logo SVG and PNG exports
+node scripts/economy/model.mjs            # stake-mode economy model used in docs/VISION.md
 # balance: open http://localhost:5173/?sim=120 in a browser
 ```
 
@@ -101,17 +109,13 @@ Skill effects are the real Origins plates, processed by
 
 **The core loop is complete**: choose an Axie, fight, win or lose, play again.
 
-Working: a Lunacia grass field with cover, foliage and a minimap, Origins
-battle audio, real Axie bodies for six classes, per-part procedural animation,
-class select, six distinct kits (per-class basic and special), Origins skill
-VFX, projectiles, ground zones, poison / slow / stun, mouse aim, dash with
-invulnerability, bot AI that uses specials, hit-stop, damage numbers, HUD,
-win and lose states, restart.
+Working: home page and class select, a Lunacia field with cover, foliage and a
+minimap, real Axie bodies playing their authored clips, six distinct kits,
+Origins skill effects and battle audio, parry, power-ups, Moonwells, a closing
+field, bots that use all of it, hit-stop, HUD, win and lose, restart. Balance is
+checked by simulation and every rule by headless browser tests.
 
-Not yet: audio, mobile controls, networked play.
-
-Body attack animation is hand-made rather than the authored Origins clips —
-see the rendering section above.
+Not yet: mobile controls, networked play (see docs/VISION.md).
 
 ## Known issues
 
