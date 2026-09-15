@@ -3,22 +3,24 @@ import {
   getAxieSpineFromCombo,
   getAxieColorPartShift,
   getVariantAttachmentPath,
-  exportAvatarLayers,
   genesStuff,
 } from '@axieinfinity/mixer'
+import AxieRig from './AxieRig.js'
 
-// Loaded as URLs rather than imported as modules: ~6.7MB of JSON has no
+// Loaded as URLs rather than imported as modules: several MB of JSON has no
 // business sitting inside the JS bundle.
 import genesUrl from '@axieinfinity/mixer/dist/data/axie-2d-v3-stuff-genes.json?url'
 import samplesUrl from '@axieinfinity/mixer/dist/data/axie-2d-v3-stuff-samples.json?url'
 import variantsUrl from '@axieinfinity/mixer/dist/data/axie-2d-v3-stuff-variant.json?url'
-import animationsUrl from '@axieinfinity/mixer/dist/data/axie-2d-v3-stuff-animations_lite.json?url'
+// The full set, not the lite one: the lite file carries 17 clips and none of
+// the class attacks (horn-gore, tail-smash, mouth-bite, tail-multi-slap,
+// cast-high, cast-multi, tail-roll) that make each class move differently.
+import animationsUrl from '@axieinfinity/mixer/dist/data/axie-2d-v3-stuff-animations.json?url'
 
 export const AXIE_CDN = 'https://axiecdn.axieinfinity.com/mixer-stuffs/v6/'
 
-/** Render scale for the exported layers. Tuned against the arena camera. */
-const LAYER_SCALE = 0.125
-const CANVAS = 460
+/** Skeleton units to screen pixels. Tuned against the arena camera. */
+export const AXIE_SCALE = 0.125
 
 let ready = false
 
@@ -32,10 +34,12 @@ export async function initMixer() {
 }
 
 /**
- * Builds one Axie of a class as flat positioned layers.
+ * Builds one Axie of a class: its skeleton with all 46 authored clips, and the
+ * CDN texture for every attachment it can show — including the alternate faces
+ * (angry, shut, bite, open…) that attack clips swap in.
  *
- * Deliberately uses exportAvatarLayers rather than the Spine skeleton: it
- * returns plain images, so no Spine runtime ships. See README.
+ * Posed by AxieRig, our own reader of the animation data. No Spine runtime
+ * ships; see AxieRig for why that matters under Official Rules section 5.
  */
 export function buildAxie(axieClass, partSet = '02') {
   if (!ready) throw new Error('initMixer() must finish before buildAxie()')
@@ -51,66 +55,50 @@ export function buildAxie(axieClass, partSet = '02') {
     ['horn', part], ['mouth', part], ['back', part], ['tail', part],
   ])
 
-  const res = getAxieSpineFromCombo(combo, variantIndex, true)
+  const res = getAxieSpineFromCombo(combo, variantIndex, false)
   if (res.error) throw new Error(`mixer: ${res.error}`)
 
-  const layers = exportLayers(res)
-  return { axieClass, variant: res.variant, layers, scale: LAYER_SCALE }
-}
-
-function exportLayers(res) {
+  const skeleton = res.skeletonDataAsset
   const shift = getAxieColorPartShift(res.variant)
-  const sizes = attachmentSizes(res.skeletonDataAsset, res.variant, shift)
 
-  return exportAvatarLayers(
-    res.skeletonDataAsset, res.combo, res.variant, shift, getVariantAttachmentPath,
-    { width: CANVAS, height: CANVAS, offsetX: 0, offsetY: 0, scale: LAYER_SCALE },
-  ).map(l => {
-    const size = sizes[l.imagePath]
-    return {
-      ...l,
-      part: classify(l.imagePath),
-      w: (size?.w ?? 0) * LAYER_SCALE,
-      h: (size?.h ?? 0) * LAYER_SCALE,
-    }
-  })
-}
-
-/**
- * Layer positions are in the skeleton's coordinate space, but the CDN serves
- * textures at a smaller size (~1.57x). Carrying the attachment's own width and
- * height means each image is drawn at the size its position was computed for,
- * with no scale factor to guess at.
- */
-function attachmentSizes(skeleton, variantKey, partColorShift) {
-  const sizes = {}
-  const skinAttachments = skeleton.skins[0].attachments
-  for (const slotName in skinAttachments) {
-    for (const attachmentName in skinAttachments[slotName]) {
-      const attachment = skinAttachments[slotName][attachmentName]
-      if (!attachment.path || !attachment.width) continue
-      const path = getVariantAttachmentPath(slotName, attachment.path, variantKey, partColorShift)
-      sizes[path] = { w: attachment.width, h: attachment.height }
+  // slot/attachment -> CDN path, for every attachment rather than only the
+  // ones visible at rest.
+  const textures = {}
+  const skin = skeleton.skins[0].attachments
+  for (const slot in skin) {
+    for (const name in skin[slot]) {
+      const att = skin[slot][name]
+      if (!att.path || !att.width || slot === 'shadow' || slot === 'ball') continue
+      textures[`${slot}/${name}`] = getVariantAttachmentPath(slot, att.path, res.variant, shift)
     }
   }
-  return sizes
+
+  return {
+    axieClass,
+    variant: res.variant,
+    skeleton,
+    textures,
+    scale: AXIE_SCALE,
+    bounds: restBounds(skeleton),
+  }
 }
 
 /**
- * exportAvatarLayers returns paths, not slot names — but the path says which
- * body part it is, which is all the animation needs.
+ * Where the Axie sits at rest, so a sprite can centre it horizontally and stand
+ * it on its feet rather than on the skeleton's origin.
  */
-function classify(imagePath) {
-  if (imagePath.includes('leg-front')) return 'legFront'
-  if (imagePath.includes('leg-back')) return 'legBack'
-  if (imagePath.includes('tail')) return 'tail'
-  if (imagePath.includes('ear-left')) return 'earLeft'
-  if (imagePath.includes('ear-right')) return 'earRight'
-  if (imagePath.includes('horn')) return 'horn'
-  if (imagePath.includes('eyes')) return 'eyes'
-  if (imagePath.includes('mouth')) return 'mouth'
-  if (imagePath.includes('/back/') || imagePath.endsWith('back.png')) return 'back'
-  return 'body'
+function restBounds(skeleton) {
+  const rig = new AxieRig(skeleton)
+  rig.pose()
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+  for (const p of rig.parts()) {
+    if (p.slot === 'shadow' || p.slot === 'ball' || p.width < 1) continue
+    minX = Math.min(minX, p.x - p.width / 2)
+    maxX = Math.max(maxX, p.x + p.width / 2)
+    minY = Math.min(minY, p.y - p.height / 2)
+    maxY = Math.max(maxY, p.y + p.height / 2)
+  }
+  return { cx: (minX + maxX) / 2, bottom: maxY, width: maxX - minX, height: maxY - minY }
 }
 
 export const CLASS_PART_SETS = {

@@ -5,6 +5,7 @@ import { CLASS_KITS, CHARGE_PER_SECOND } from '../axie/classKits.js'
 import { impact, damageNumber, hitStopFor, dustEmitter } from '../fx/Juice.js'
 import { useBasic, useSpecial } from '../combat/abilities.js'
 import { play, playVaried } from '../fx/Sfx.js'
+import { playStatusPlate } from '../fx/SkillVfx.js'
 
 /**
  * One Axie in the arena. The player and the bots are the same thing; only the
@@ -88,7 +89,12 @@ export default class Fighter {
   get specialReady() { return this.charge >= 1 }
 
   addCharge(amount) {
+    const wasReady = this.charge >= 1
     this.charge = Math.min(1, this.charge + amount)
+    if (!wasReady && this.charge >= 1) {
+      this.sprite?.playState('ready')
+      if (this.sprite) playStatusPlate(this.scene, this, 'power_gain', { size: 1.6 })
+    }
   }
 
   /** Local hit-stop: only the fighters involved stop. */
@@ -215,6 +221,7 @@ export default class Fighter {
     // Deliberately not invulnerable. Offensive movement should be answerable;
     // Stunlock rejected i-frames on Raigon's engage for the same reason.
     this.sprite.dashTrail(this.chargeState.dir)
+    this.sprite.play('action/run', { kind: 'special', fit: duration, loop: true, holdMs: duration })
   }
 
   updateCharge(step) {
@@ -230,11 +237,13 @@ export default class Fighter {
 
     if (this.scene.time.now >= this.chargeState.until) {
       this.chargeState = null
+      this.sprite.play(this.kit?.special?.anim, { kind: 'special', peakAt: 140 })
       this.vel.scale(0.3)
     }
   }
 
   applySlow({ factor, duration }) {
+    playStatusPlate(this.scene, this, 'debuff_apply', { size: 1.4 })
     this.slowFactor = factor
     this.slowUntil = Math.max(this.slowUntil, this.scene.time.now + duration)
     this.sprite.flash(0x7ce8ff, 120)
@@ -246,11 +255,15 @@ export default class Fighter {
     play(this.scene, 'stunned', { volume: 0.5 })
     this.stunUntil = Math.max(this.stunUntil, now + duration)
     this.stunImmuneUntil = this.stunUntil + 1500
+    this.sprite.playState('stun', { loop: true, holdMs: this.stunUntil - now })
+    playStatusPlate(this.scene, this, 'stunned', { durationMs: this.stunUntil - now, size: 1.3 })
     this.intent.set(0, 0)
   }
 
   applyPoison(spec, from) {
     play(this.scene, 'poison', { volume: 0.45 })
+    // Only on a fresh poisoning: a bite every half second would stack plates.
+    if (this.poisonTicks <= 0) playStatusPlate(this.scene, this, 'poison_apply', { size: 1.4 })
     // Reapplying refreshes the remaining ticks but must not push back a tick
     // that is already scheduled. It used to: bug bites every 540ms and poison
     // ticks every 900ms, so every bite reset the timer and poison dealt no
@@ -292,6 +305,7 @@ export default class Fighter {
     this.invulnerableUntil = now + this.dashDuration + 60
     this.vel.copy(d.scale(this.dashSpeed))
     this.sprite.dashTrail(d)
+    this.sprite.playState('dash', { fit: this.dashDuration + 120 })
     return true
   }
 
@@ -327,6 +341,7 @@ export default class Fighter {
     this.hp -= amount
 
     this.sprite.flash(0xffffff, 90)
+    this.sprite.playState('hit')
     if (from?.kit?.hitSfx) playVaried(this.scene, from.kit.hitSfx, 0.45)
     const power = Phaser.Math.Clamp(amount / 400, 0.6, 1.8)
     impact(this.scene, this.x, this.y - 8, from?.colors.rim ?? 0xffffff, power)

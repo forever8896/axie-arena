@@ -1,0 +1,77 @@
+{
+  "id": "debuff_apply",
+  "kind": "buff",
+  "blend": "additive",
+  "source": {
+    "capture": "unity-SkillEffect",
+    "fps": 30,
+    "width": 960,
+    "height": 540,
+    "duration": 1.5,
+    "frames": 69,
+    "background": [
+      19,
+      22,
+      27
+    ],
+    "camera": {
+      "orthographicSize": 5.2,
+      "position": [
+        0,
+        0.35,
+        -20
+      ]
+    },
+    "holder": [
+      0,
+      0
+    ],
+    "defenderLocal": null
+  },
+  "crop": {
+    "x": 80.879,
+    "y": 0,
+    "w": 205,
+    "h": 196.992
+  },
+  "atlas": {
+    "file": "atlas.png",
+    "cols": 8,
+    "rows": 9,
+    "frameW": 205,
+    "frameH": 197
+  },
+  "frames": 69,
+  "fps": 30,
+  "duration": 1.5,
+  "clipDuration": 1.5499999523162842,
+  "attackAnimation": null,
+  "hitAnimation": null,
+  "isRanged": false,
+  "projectileTravel": null,
+  "anchor": {
+    "x": 102.293,
+    "y": 88.746,
+    "space": "crop",
+    "mapsTo": "target"
+  },
+  "attackerInCrop": {
+    "x": 111.309,
+    "y": 115.382
+  },
+  "captureAttacker": {
+    "x": 192.188,
+    "y": 115.382
+  },
+  "captureDefender": {
+    "x": 183.172,
+    "y": 88.746
+  },
+  "peakFrame": 18,
+  "events": [],
+  "systems": 8,
+  "vendored": {
+    "from": "axie-origins-asset-kit@069a59b772e54633d04a3d9d12ecde73b3e4be5d",
+    "downscale": 0.4004
+  }
+}

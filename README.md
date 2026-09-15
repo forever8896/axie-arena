@@ -15,6 +15,14 @@ npm run dev      # http://localhost:5173
 npm run build    # static build in dist/
 ```
 
+## Checks
+
+```bash
+node scripts/headless/check-flow.mjs      # full loop in headless Chromium (dev server running)
+node scripts/vendor-origins-vfx.mjs       # re-vendor and downscale Origins effect plates
+# balance: open http://localhost:5173/?sim=120 in a browser
+```
+
 ## Controls
 
 | Input | Action |
@@ -40,35 +48,44 @@ src/
 **`AxieSprite` is the seam.** Gameplay never draws anything itself — it calls
 `setPosition`, `setFacing`, `update`, `flash`, `playAttack`.
 
-## Rendering approach: real Axie art, no Spine runtime
+## Rendering approach: real Axie art and animation, no Spine runtime
 
-Axie bodies come from `@axieinfinity/mixer`, which outputs Spine skeleton data.
-Rendering that normally means shipping `pixi-spine` — Spine runtime code, which
-Vibeathon Official Rules §5 says requires a separate licence from Esoteric
-Software that the Origins kit does not grant.
+Axie bodies come from `@axieinfinity/mixer`, which outputs Spine skeleton data
+with all 46 authored clips embedded. Playing that normally means shipping
+`pixi-spine` — Spine runtime code, which Vibeathon Official Rules §5 says needs
+a separate licence from Esoteric Software.
 
-So this uses the mixer's `exportAvatarLayers` instead: it returns flat
-positioned image layers, which are plain PNGs served from the official Axie
-CDN. No runtime ships.
+Instead, `src/axie/AxieRig.js` reads the animation data directly and poses each
+body part every frame. It supports exactly what these skeletons use, measured
+across all 46 clips: region attachments; rotate, translate and scale timelines
+with linear, stepped or bezier easing; face swaps; the `normal`, `noScale` and
+`noRotationOrReflection` transform modes; and single-bone leg IK.
 
-Two details that matter if you touch this code:
+It is verified against the mixer: at rest, every part lands exactly where
+`exportAvatarLayers` puts it with IK disabled, and within one screen pixel with
+IK on (the flat export ignores IK; a real render applies it).
 
-- Layer positions are in the skeleton's coordinate space, but the CDN serves
-  textures roughly 1.57x smaller. `AxieFactory` carries each attachment's own
-  width and height through so every image is drawn at the size its position was
-  computed for. Do not substitute the texture's own dimensions.
-- The mixer's art faces **left**. Facing right flips the rig.
+38 of the 46 clips carry motion. Each class uses its own:
 
-Motion is procedural, per part: the body bobs and squashes, legs alternate,
-ears and tail lag behind, and the Axie blinks.
+| Class | Basic | Special |
+| --- | --- | --- |
+| Beast | horn-gore | sprint into horn-gore |
+| Aquatic | tail-multi-slap | tail-thrash |
+| Plant | mouth-bite | cast-high |
+| Bird | normal-attack | cast-multi |
+| Bug | multi-attack | shrimp (somersault) |
+| Reptile | tail-smash | tail-roll |
 
-**What this costs us.** The mixer's 46 authored clips — `attack/melee/horn-gore`
-and the rest — are Spine animations, so they are unavailable without a Spine
-runtime. Body motion is therefore hand-made, including attack wind-ups.
+Shared: idle with random flourishes, run (cadence follows speed), a hit
+reaction, dash hop, dizzy stun, wind-up during a special's telegraph, entrance,
+victory flip. Attack clips are sped up so their impact lands at 165ms, the hit
+timing the combat was balanced on.
 
-**What it does not cost us.** Skill effects are the real Origins ones. The kit
-ships every skill as a pre-rendered additive sprite sheet with Origins' own
-frame timing, which needs no runtime at all. Those are in `public/vfx/`.
+The three `hit-by-normal` clips are empty in mixed skeletons; hits use
+`hit-by-ranged-attack`, the one hit clip with motion.
+
+Skill effects are the real Origins plates, processed by
+`scripts/vendor-origins-vfx.mjs` (see DISCLOSURES.md).
 
 ## Status
 

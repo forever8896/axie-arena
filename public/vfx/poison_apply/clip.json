@@ -1,0 +1,77 @@
+{
+  "id": "poison_apply",
+  "kind": "buff",
+  "blend": "additive",
+  "source": {
+    "capture": "unity-SkillEffect",
+    "fps": 30,
+    "width": 960,
+    "height": 540,
+    "duration": 2.7,
+    "frames": 81,
+    "background": [
+      19,
+      22,
+      27
+    ],
+    "camera": {
+      "orthographicSize": 5.2,
+      "position": [
+        0,
+        0.35,
+        -20
+      ]
+    },
+    "holder": [
+      0,
+      0
+    ],
+    "defenderLocal": null
+  },
+  "crop": {
+    "x": 96.295,
+    "y": 19.179,
+    "w": 183,
+    "h": 182.6
+  },
+  "atlas": {
+    "file": "atlas.png",
+    "cols": 8,
+    "rows": 11,
+    "frameW": 183,
+    "frameH": 183
+  },
+  "frames": 81,
+  "fps": 30,
+  "duration": 2.7,
+  "clipDuration": 4.5,
+  "attackAnimation": null,
+  "hitAnimation": null,
+  "isRanged": false,
+  "projectileTravel": null,
+  "anchor": {
+    "x": 91.16,
+    "y": 90.999,
+    "space": "crop",
+    "mapsTo": "target"
+  },
+  "attackerInCrop": {
+    "x": 95.496,
+    "y": 95.964
+  },
+  "captureAttacker": {
+    "x": 191.79,
+    "y": 115.143
+  },
+  "captureDefender": {
+    "x": 187.455,
+    "y": 110.178
+  },
+  "peakFrame": 29,
+  "events": [],
+  "systems": 7,
+  "vendored": {
+    "from": "axie-origins-asset-kit@069a59b772e54633d04a3d9d12ecde73b3e4be5d",
+    "downscale": 0.3996
+  }
+}

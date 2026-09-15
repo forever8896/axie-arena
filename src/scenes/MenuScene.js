@@ -212,7 +212,7 @@ export default class MenuScene extends Phaser.Scene {
     this.leaving = true
 
     const card = this.cards.find(c => c.cls === cls)
-    card?.sprite.playAttack()
+    card?.sprite.playState('victory')
     this.cameras.main.flash(180, 40, 30, 70)
 
     this.time.delayedCall(260, () => {
@@ -230,8 +230,11 @@ export default class MenuScene extends Phaser.Scene {
 
       // The highlighted Axie shows off its attack every couple of seconds.
       if (selected && time > card.attackAt) {
-        card.attackAt = time + 2200
-        card.sprite.playAttack()
+        card.attackAt = time + 2400
+        const kit = CLASS_KITS[card.cls]
+        // Alternate the class's basic and its special, played at authored speed.
+        card.showSpecial = !card.showSpecial
+        card.sprite.play(card.showSpecial ? kit.special.anim : kit.basic.anim, { kind: 'attack' })
       }
     })
   }

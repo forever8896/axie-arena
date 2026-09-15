@@ -4,7 +4,7 @@
   "blend": "additive",
   "source": {
     "capture": "unity-SkillEffect",
-    "fps": 30.0,
+    "fps": 30,
     "width": 960,
     "height": 540,
     "duration": 2.066666666666667,
@@ -17,7 +17,7 @@
     "camera": {
       "orthographicSize": 6.1,
       "position": [
-        0.0,
+        0,
         -0.35,
         -20
       ]
@@ -32,20 +32,20 @@
     ]
   },
   "crop": {
-    "x": 217,
-    "y": 48,
-    "w": 471,
-    "h": 331
+    "x": 108.73,
+    "y": 24.051,
+    "w": 236,
+    "h": 165.851
   },
   "atlas": {
     "file": "atlas.png",
     "cols": 8,
     "rows": 12,
-    "frameW": 471,
-    "frameH": 331
+    "frameW": 236,
+    "frameH": 166
   },
   "frames": 93,
-  "fps": 30.0,
+  "fps": 30,
   "duration": 2.066666666666667,
   "clipDuration": 2.799999952316284,
   "attackAnimation": "attack/ranged/cast-fly",
@@ -53,22 +53,22 @@
   "isRanged": true,
   "projectileTravel": 0.6499999761581421,
   "anchor": {
-    "x": 64.312,
-    "y": 126.508,
+    "x": 32.224,
+    "y": 63.388,
     "space": "crop",
     "mapsTo": "defender"
   },
   "attackerInCrop": {
-    "x": 457.754,
-    "y": 233.066
+    "x": 229.363,
+    "y": 116.78
   },
   "captureAttacker": {
-    "x": 674.754,
-    "y": 281.066
+    "x": 338.093,
+    "y": 140.831
   },
   "captureDefender": {
-    "x": 281.312,
-    "y": 174.508
+    "x": 140.955,
+    "y": 87.439
   },
   "peakFrame": 22,
   "events": [
@@ -76,13 +76,13 @@
       "time": 0.03333333507180214,
       "function": "OnStartLoop",
       "string": null,
-      "float": 0.0
+      "float": 0
     },
     {
       "time": 0.06666667014360428,
       "function": "OnAttack",
       "string": "attack/ranged/cast-fly",
-      "float": 0.0
+      "float": 0
     },
     {
       "time": 0.5833333134651184,
@@ -94,20 +94,24 @@
       "time": 1.25,
       "function": "OnHit",
       "string": "defense/hit-by-ranged-attack",
-      "float": 0.0
+      "float": 0
     },
     {
       "time": 1.6666666269302368,
       "function": "OnEndLoop",
       "string": null,
-      "float": 0.0
+      "float": 0
     },
     {
       "time": 1.7666666507720947,
       "function": "OnBack",
       "string": null,
-      "float": 0.0
+      "float": 0
     }
   ],
-  "systems": 29
+  "systems": 29,
+  "vendored": {
+    "from": "axie-origins-asset-kit@069a59b772e54633d04a3d9d12ecde73b3e4be5d",
+    "downscale": 0.5011
+  }
 }

@@ -1,5 +1,5 @@
 {
-  "id": "bird_throw",
+  "id": "beast_bite",
   "kind": "skill",
   "blend": "additive",
   "source": {
@@ -7,8 +7,8 @@
     "fps": 30,
     "width": 960,
     "height": 540,
-    "duration": 1.717,
-    "frames": 52,
+    "duration": 0.7,
+    "frames": 39,
     "background": [
       19,
       22,
@@ -32,45 +32,45 @@
     ]
   },
   "crop": {
-    "x": 119.231,
-    "y": 53.103,
-    "w": 258,
-    "h": 133.258
+    "x": 4.508,
+    "y": 4.508,
+    "w": 295,
+    "h": 132.725
   },
   "atlas": {
     "file": "atlas.png",
     "cols": 8,
-    "rows": 7,
-    "frameW": 258,
+    "rows": 5,
+    "frameW": 295,
     "frameH": 133
   },
-  "frames": 52,
+  "frames": 39,
   "fps": 30,
-  "duration": 1.717,
-  "clipDuration": 2.116666555404663,
-  "attackAnimation": "attack/ranged/cast-fly",
-  "hitAnimation": "defense/hit-by-ranged-attack",
-  "isRanged": true,
-  "projectileTravel": 0.699999988079071,
+  "duration": 0.7,
+  "clipDuration": 0.7166666388511658,
+  "attackAnimation": "attack/melee/mouth-bite",
+  "hitAnimation": "defense/hit-by-normal",
+  "isRanged": false,
+  "projectileTravel": null,
   "anchor": {
-    "x": 21.698,
-    "y": 34.321,
+    "x": 136.387,
+    "y": 82.894,
     "space": "crop",
     "mapsTo": "defender"
   },
   "attackerInCrop": {
-    "x": 218.801,
-    "y": 87.703
+    "x": 333.442,
+    "y": 136.264
   },
   "captureAttacker": {
-    "x": 338.032,
-    "y": 140.806
+    "x": 337.95,
+    "y": 140.772
   },
   "captureDefender": {
-    "x": 140.929,
-    "y": 87.423
+    "x": 140.895,
+    "y": 87.402
   },
-  "peakFrame": 40,
+  "peakFrame": 15,
   "events": [
     {
       "time": 0,
@@ -79,39 +79,33 @@
       "float": 0
     },
     {
-      "time": 0.01666666753590107,
+      "time": 0.03333333507180214,
       "function": "OnAttack",
-      "string": "attack/ranged/cast-fly",
+      "string": "attack/melee/mouth-bite",
       "float": 0
     },
     {
-      "time": 0.5833333134651184,
-      "function": "OnThrow",
-      "string": null,
-      "float": 0.699999988079071
-    },
-    {
-      "time": 1.25,
+      "time": 0.36666667461395264,
       "function": "OnHit",
-      "string": "defense/hit-by-ranged-attack",
+      "string": "defense/hit-by-normal",
       "float": 0
     },
     {
-      "time": 2.0833332538604736,
+      "time": 0.6833333373069763,
       "function": "OnEndLoop",
       "string": null,
       "float": 0
     },
     {
-      "time": 2.116666555404663,
+      "time": 0.7166666388511658,
       "function": "OnBack",
       "string": null,
       "float": 0
     }
   ],
-  "systems": 27,
+  "systems": 9,
   "vendored": {
     "from": "axie-origins-asset-kit@069a59b772e54633d04a3d9d12ecde73b3e4be5d",
-    "downscale": 0.501
+    "downscale": 0.5008
   }
 }

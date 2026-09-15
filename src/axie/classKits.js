@@ -31,11 +31,14 @@ export const CLASS_KITS = {
       name: 'Horn Swipe', desc: 'Slow, wide, heavy',
       kind: 'cone', range: 112, arc: 115, damage: 360, cooldown: 720, knockback: 260,
       sfx: 'beast_bite_attack',
+      anim: 'attack/melee/horn-gore',
+      vfx: 'beast_bite',
     },
     special: {
       name: 'Impale', desc: 'Charge forward, goring everything you pass through',
       kind: 'charge', damage: 520, speed: 700, duration: 300,
       vfx: 'beast_gore', sfx: 'beast_gore_attack',
+      anim: 'attack/melee/horn-gore',
     },
   },
   aquatic: {
@@ -47,12 +50,15 @@ export const CLASS_KITS = {
       name: 'Tidal Slash', desc: 'Quick two-hit swipe',
       kind: 'cone', range: 94, arc: 95, damage: 140, cooldown: 460, knockback: 150, hits: 2,
       sfx: 'aquatic_slash_attack',
+      anim: 'attack/melee/tail-multi-slap',
+      vfx: 'aquatic_gore',
     },
     special: {
       name: 'Undertow', desc: 'A wave that knocks rivals back and slows them',
       kind: 'wave', damage: 400, range: 190, arc: 150,
       knockback: 380, slow: { factor: 0.5, duration: 2200 },
       vfx: 'aquatic_slash', sfx: 'aquatic_slash_attack',
+      anim: 'attack/melee/tail-thrash',
     },
   },
   plant: {
@@ -64,12 +70,15 @@ export const CLASS_KITS = {
       name: 'Chomp', desc: 'Short reach, steady damage',
       kind: 'cone', range: 92, arc: 75, damage: 330, cooldown: 600, knockback: 130,
       sfx: 'plant_bite_attack',
+      anim: 'attack/melee/mouth-bite',
+      vfx: 'plant_bite',
     },
     special: {
       name: 'Sporeburst', desc: 'Lob a seed that leaves a damaging patch',
       kind: 'lob', maxRange: 340, radius: 96,
       zoneDuration: 3200, tickDamage: 220, tickRate: 620,
       vfx: 'plant_projectile', sfx: 'plant_projectile_attack',
+      anim: 'attack/ranged/cast-high',
     },
   },
   bird: {
@@ -81,6 +90,8 @@ export const CLASS_KITS = {
       name: 'Peck', desc: 'Rapid jabs at range',
       kind: 'cone', range: 138, arc: 42, damage: 155, cooldown: 320, knockback: 90,
       sfx: 'bird_bite_attack',
+      anim: 'attack/melee/normal-attack',
+      vfx: 'bird_bite',
     },
     special: {
       name: 'Featherfall', desc: 'Fan five feathers across a wide spread',
@@ -89,6 +100,7 @@ export const CLASS_KITS = {
       // from typical engagement range. See docs/DESIGN.md.
       damage: 260, projectileSpeed: 460, projectileRange: 430,
       vfx: 'bird_throw', sfx: 'bird_throw_attack',
+      anim: 'attack/ranged/cast-multi',
     },
   },
   bug: {
@@ -103,12 +115,15 @@ export const CLASS_KITS = {
       // which would overshoot now that it ticks.
       poison: { damage: 90, ticks: 3, interval: 900 },
       sfx: 'bug_bite_attack',
+      anim: 'attack/melee/multi-attack',
+      vfx: 'bug_bite',
     },
     special: {
       name: 'Swarm', desc: 'A seeking shot that stuns on contact',
       kind: 'seeker', damage: 350, projectileSpeed: 330,
       projectileRange: 520, turnRate: 2.4, stun: 1000,
       vfx: 'bug_projectile', sfx: 'bug_projectile_attack',
+      anim: 'attack/melee/shrimp',
     },
   },
   reptile: {
@@ -120,11 +135,14 @@ export const CLASS_KITS = {
       name: 'Tail Whip', desc: 'Sweeps a wide arc',
       kind: 'cone', range: 98, arc: 205, damage: 340, cooldown: 660, knockback: 170,
       sfx: 'reptile_slash_attack',
+      anim: 'attack/melee/tail-smash',
+      vfx: 'reptile_slash',
     },
     special: {
       name: 'Tail Sweep', desc: 'Strike every rival around you at once',
       kind: 'radial', damage: 650, radius: 140, knockback: 300,
       vfx: 'reptile_projectile', sfx: 'reptile_projectile_attack',
+      anim: 'attack/melee/tail-roll',
     },
   },
 }

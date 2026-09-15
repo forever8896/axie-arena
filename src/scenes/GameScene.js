@@ -5,7 +5,7 @@ import { ARENA_PALETTE } from '../axie/palette.js'
 import Arena, { WORLD } from '../arena/Arena.js'
 import ClosingField from '../arena/ClosingField.js'
 import { createFxTextures, ambientMotes } from '../fx/Juice.js'
-import { playPlate } from '../fx/SkillVfx.js'
+import { playPlate, playBasicPlate } from '../fx/SkillVfx.js'
 
 
 export default class GameScene extends Phaser.Scene {
@@ -49,6 +49,8 @@ export default class GameScene extends Phaser.Scene {
     })
 
     this.fighters = [this.player, ...this.bots]
+    // Everyone arrives with the authored entrance.
+    this.fighters.forEach(f => f.sprite.playState('appear'))
     this.projectiles = []
     this.zones = []
 
@@ -118,18 +120,32 @@ export default class GameScene extends Phaser.Scene {
     g.clear()
     if (!p.alive) return
 
-    const ready = p.canAttack(this.time.now)
-    const color = ready ? p.colors.rim : 0x5b5470
-    const alpha = ready ? 0.5 : 0.22
+    // Out of the way while a swing plays, so the class's own strike reads.
+    const now = this.time.now
+    if (now - p.lastAttack < 260) return
 
-    g.fillStyle(color, alpha * 0.22)
-    g.slice(p.x, p.y, p.attackRange, p.aim - p.attackArc / 2, p.aim + p.attackArc / 2)
-    g.fillPath()
+    // A marker, not a shape. The old filled wedge was the same silhouette for
+    // every class and drowned out the strikes: it is why every attack looked
+    // alike. Now it is only the reach edge, plus two short ticks at the sides.
+    const ready = p.canAttack(now)
+    const color = ready ? p.colors.rim : 0x9aa88a
+    const alpha = ready ? 0.55 : 0.2
+    const r = p.attackRange
+    const a0 = p.aim - p.attackArc / 2
+    const a1 = p.aim + p.attackArc / 2
 
     g.lineStyle(2, color, alpha)
     g.beginPath()
-    g.arc(p.x, p.y, p.attackRange, p.aim - p.attackArc / 2, p.aim + p.attackArc / 2)
+    g.arc(p.x, p.y, r, a0, a1)
     g.strokePath()
+
+    g.lineStyle(2, color, alpha * 0.8)
+    for (const a of [a0, a1]) {
+      g.lineBetween(
+        p.x + Math.cos(a) * (r - 12), p.y + Math.sin(a) * (r - 12),
+        p.x + Math.cos(a) * r, p.y + Math.sin(a) * r,
+      )
+    }
   }
 
   updateAim() {
@@ -146,6 +162,11 @@ export default class GameScene extends Phaser.Scene {
   /** Called by the ability system when a special fires. */
   playSkillVfx(fighter, spec) {
     playPlate(this, fighter, spec)
+  }
+
+  /** Called by the ability system on every basic swing. */
+  playBasicVfx(fighter, spec) {
+    playBasicPlate(this, fighter, spec)
   }
 
   playerSpecial() {
@@ -181,6 +202,7 @@ export default class GameScene extends Phaser.Scene {
   endMatch(won) {
     this.matchOver = true
     this.reticle.clear()
+    if (won) this.player.sprite.playState('victory')
 
     this.time.delayedCall(won ? 700 : 900, () => {
       this.scene.pause()

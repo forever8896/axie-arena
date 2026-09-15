@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { initMixer, buildAxie, AXIE_CDN, CLASS_PART_SETS } from '../axie/AxieFactory.js'
 import { ARENA_PALETTE } from '../axie/palette.js'
 import { CLASS_KITS } from '../axie/classKits.js'
-import { loadSkillPlates } from '../fx/SkillVfx.js'
+import { loadSkillPlates, STATUS_PLATES } from '../fx/SkillVfx.js'
 import { loadSfx, SFX } from '../fx/Sfx.js'
 
 /**
@@ -36,9 +36,11 @@ export default class BootScene extends Phaser.Scene {
       }
     }
 
+    // Every attachment an Axie can show, not only its resting pose: attack
+    // clips swap in angry eyes, open mouths and the like.
     const paths = new Set()
     for (const build of Object.values(builds)) {
-      build.layers.forEach(l => paths.add(l.imagePath))
+      Object.values(build.textures).forEach(p => paths.add(p))
     }
 
     this.status.setText('LOADING AXIE PARTS')
@@ -46,9 +48,10 @@ export default class BootScene extends Phaser.Scene {
 
     this.status.setText('LOADING ORIGINS EFFECTS')
     this.setBar(0)
-    const vfxIds = [...new Set(
-      Object.values(CLASS_KITS).map(k => k.special.vfx).filter(Boolean),
-    )]
+    const vfxIds = [...new Set([
+      ...Object.values(CLASS_KITS).flatMap(k => [k.basic.vfx, k.special.vfx]),
+      ...STATUS_PLATES,
+    ].filter(Boolean))]
     let vfxDone = 0
     await loadSkillPlates(vfxIds, this, () => this.setBar(++vfxDone / vfxIds.length))
 
@@ -59,7 +62,8 @@ export default class BootScene extends Phaser.Scene {
 
     const missing = []
     for (const [axieClass, build] of Object.entries(builds)) {
-      if (build.layers.some(l => !this.textures.exists(l.imagePath))) missing.push(axieClass)
+      const rest = ['body', 'eyes', 'mouth'].map(slot => build.textures[`${slot}/${slot}`]).filter(Boolean)
+      if (rest.some(p => !this.textures.exists(p))) missing.push(axieClass)
     }
     if (missing.length === Object.keys(builds).length) {
       return this.fail('Could not reach the Axie CDN', new Error('no textures loaded'))

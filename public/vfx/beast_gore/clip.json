@@ -4,7 +4,7 @@
   "blend": "additive",
   "source": {
     "capture": "unity-SkillEffect",
-    "fps": 30.0,
+    "fps": 30,
     "width": 960,
     "height": 540,
     "duration": 0.9666666666666667,
@@ -17,7 +17,7 @@
     "camera": {
       "orthographicSize": 6.1,
       "position": [
-        0.0,
+        0,
         -0.35,
         -20
       ]
@@ -33,19 +33,19 @@
   },
   "crop": {
     "x": 0,
-    "y": 6,
-    "w": 628,
-    "h": 270
+    "y": 3,
+    "w": 314,
+    "h": 135
   },
   "atlas": {
     "file": "atlas.png",
     "cols": 8,
     "rows": 5,
-    "frameW": 628,
-    "frameH": 270
+    "frameW": 314,
+    "frameH": 135
   },
   "frames": 39,
-  "fps": 30.0,
+  "fps": 30,
   "duration": 0.9666666666666667,
   "clipDuration": 0.9166666865348816,
   "attackAnimation": "attack/melee/horn-gore",
@@ -53,22 +53,22 @@
   "isRanged": false,
   "projectileTravel": null,
   "anchor": {
-    "x": 281.312,
-    "y": 168.508,
+    "x": 140.656,
+    "y": 84.254,
     "space": "crop",
     "mapsTo": "defender"
   },
   "attackerInCrop": {
-    "x": 674.754,
-    "y": 275.066
+    "x": 337.377,
+    "y": 137.533
   },
   "captureAttacker": {
-    "x": 674.754,
-    "y": 281.066
+    "x": 337.377,
+    "y": 140.533
   },
   "captureDefender": {
-    "x": 281.312,
-    "y": 174.508
+    "x": 140.656,
+    "y": 87.254
   },
   "peakFrame": 15,
   "events": [
@@ -76,32 +76,36 @@
       "time": 0.01666666753590107,
       "function": "OnStartLoop",
       "string": null,
-      "float": 0.0
+      "float": 0
     },
     {
       "time": 0.03333333507180214,
       "function": "OnAttack",
       "string": "attack/melee/horn-gore",
-      "float": 0.0
+      "float": 0
     },
     {
       "time": 0.36666667461395264,
       "function": "OnHit",
       "string": "defense/hit-by-normal",
-      "float": 0.0
+      "float": 0
     },
     {
       "time": 0.8333333134651184,
       "function": "OnEndLoop",
       "string": null,
-      "float": 0.0
+      "float": 0
     },
     {
       "time": 0.9166666865348816,
       "function": "OnBack",
       "string": null,
-      "float": 0.0
+      "float": 0
     }
   ],
-  "systems": 17
+  "systems": 17,
+  "vendored": {
+    "from": "axie-origins-asset-kit@069a59b772e54633d04a3d9d12ecde73b3e4be5d",
+    "downscale": 0.5
+  }
 }

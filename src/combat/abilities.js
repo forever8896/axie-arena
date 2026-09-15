@@ -20,8 +20,9 @@ export function useBasic(fighter, targets, now) {
     fighter.scene.time.delayedCall(i * 150, () => {
       if (!fighter.alive) return
       if (spec.sfx) playVaried(fighter.scene, spec.sfx, 0.4)
-      swipeArc(fighter, spec)
-      fighter.sprite.playAttack(() => coneHit(fighter, spec, targets))
+      strikeShape(fighter, spec, i)
+      fighter.scene.playBasicVfx?.(fighter, spec)
+      fighter.sprite.playAttack(() => coneHit(fighter, spec, targets), spec.anim)
     })
   }
   return true
@@ -47,11 +48,15 @@ export function useSpecial(fighter, targets, now, aimPoint) {
   const lockedAim = fighter.aim
   const lockedPoint = { x: aimPoint.x, y: aimPoint.y }
   telegraph(fighter, spec, lockedAim, lockedPoint)
+  // The authored wind-up, squeezed into the telegraph window.
+  fighter.sprite.playState('prepare', { fit: TELEGRAPH_MS })
 
   fighter.scene.time.delayedCall(TELEGRAPH_MS, () => {
     fighter.casting = false
     if (!fighter.alive || fighter.stunned) return
     fighter.aim = lockedAim
+    // Beast's charge animates as a sprint and gores when it lands; see Fighter.
+    if (spec.kind !== 'charge') fighter.sprite.play(spec.anim, { kind: 'special' })
     fighter.scene.playSkillVfx?.(fighter, spec)
     if (spec.sfx) play(fighter.scene, spec.sfx, { volume: 0.6 })
     run(fighter, spec, targets, lockedPoint)
@@ -259,43 +264,126 @@ const SPECIALS = {
 }
 
 /**
- * A blade sweeping the attack cone. Gives the basic a readable shape and a
- * direction, which the body lunge alone never had.
+ * Each class draws its own strike, shaped to its real hitbox so the visual
+ * never lies about reach. The Origins plate for that class plays on top.
+ *
+ * Normal blending with a dark underline, not additive: additive artwork
+ * vanishes against a sunlit field.
  */
-function swipeArc(fighter, spec) {
+function strikeShape(fighter, spec, hitIndex = 0) {
   const scene = fighter.scene
+  const g = scene.add.graphics().setDepth(fighter.y + 3)
   const arc = Phaser.Math.DegToRad(spec.arc)
   const reach = spec.range
-  const from = fighter.aim - arc / 2
-  // Normal blending, not additive: an additive blade disappears against a
-  // sunlit field. A dark underline keeps it legible on any ground colour.
-  const g = scene.add.graphics().setDepth(fighter.y + 3)
-
+  const aim = fighter.aim
+  const rim = fighter.colors.rim
+  const body = fighter.colors.body
+  const cx = fighter.x
+  const cy = fighter.y - 10
+  const at = (a, r) => ({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r })
   const state = { t: 0 }
-  scene.tweens.add({
-    targets: state, t: 1, duration: 190, ease: 'Cubic.easeOut',
-    onUpdate: () => {
-      g.clear()
-      const head = from + arc * state.t
-      const segments = 8
-      const fade = 1 - state.t * state.t
 
-      for (let i = 0; i < segments; i++) {
-        const back = head - (arc * 0.34) * (i / segments)
-        if (back < from) continue
-        const r = reach * (0.8 + 0.2 * (1 - i / segments))
-        const taper = 1 - i / segments
+  const stroke = (width, color, alpha, draw) => {
+    g.lineStyle(width * 1.6 + 5, 0x1d2b12, alpha * 0.4); draw()
+    g.lineStyle(width * 1.6, color, Math.min(1, alpha * 1.15)); draw()
+    g.lineStyle(Math.max(1, width * 0.5), 0xffffff, alpha * 0.7); draw()
+  }
 
-        g.lineStyle(10 * taper + 2, 0x1d2b12, fade * taper * 0.35)
-        g.beginPath(); g.arc(fighter.x, fighter.y, r, back - 0.06, back); g.strokePath()
+  const shapes = {
+    // Heavy wedge driven forward: a horn going in.
+    beast: t => {
+      const len = reach * (0.35 + 0.65 * t)
+      const half = arc / 2 * (1 - t * 0.5)
+      const a = 1 - t
+      g.fillStyle(0x1d2b12, a * 0.3)
+      g.fillTriangle(cx, cy, at(aim - half, len).x, at(aim - half, len).y, at(aim + half, len).x, at(aim + half, len).y)
+      g.fillStyle(body, a * 0.55)
+      g.fillTriangle(cx, cy, at(aim - half * 0.7, len).x, at(aim - half * 0.7, len).y, at(aim + half * 0.7, len).x, at(aim + half * 0.7, len).y)
+      stroke(4, rim, a, () => { g.beginPath(); g.arc(cx, cy, len, aim - half, aim + half); g.strokePath() })
+    },
 
-        g.lineStyle(7 * taper + 1.5, fighter.colors.rim, fade * taper * 0.95)
-        g.beginPath(); g.arc(fighter.x, fighter.y, r, back - 0.05, back); g.strokePath()
-
-        g.lineStyle(3 * taper, 0xffffff, fade * taper * 0.8)
-        g.beginPath(); g.arc(fighter.x, fighter.y, r, back - 0.035, back); g.strokePath()
+    // Two crossing slashes, one per hit, alternating direction.
+    aquatic: t => {
+      const dir = hitIndex % 2 === 0 ? 1 : -1
+      const a = 1 - t * t
+      const sweep = arc * t
+      const from = aim - (arc / 2) * dir
+      for (let i = 0; i < 6; i++) {
+        const k = i / 6
+        const ang = from + sweep * dir * (1 - k * 0.3)
+        const r = reach * (0.55 + 0.45 * (1 - k))
+        stroke(5 * (1 - k) + 1, rim, a * (1 - k), () => {
+          g.beginPath(); g.arc(cx, cy, r, Math.min(ang, ang - 0.12 * dir), Math.max(ang, ang - 0.12 * dir)); g.strokePath()
+        })
       }
     },
+
+    // Jaws: an upper and lower crescent snapping shut on the aim line.
+    plant: t => {
+      const close = Math.min(1, t * 1.8)
+      const open = (arc / 2) * (1 - close)
+      const r = reach * 0.85
+      const a = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45
+      for (const side of [-1, 1]) {
+        const mid = aim + side * (open + 0.08)
+        stroke(6, rim, a, () => { g.beginPath(); g.arc(cx, cy, r, mid - 0.32, mid + 0.32); g.strokePath() })
+        // Teeth along each jaw.
+        g.fillStyle(0xffffff, a)
+        for (let k = -1; k <= 1; k++) {
+          const tooth = at(mid + k * 0.18, r - 6)
+          g.fillTriangle(tooth.x - 3, tooth.y, tooth.x + 3, tooth.y, at(mid + k * 0.18, r - 16 - 4 * close).x, at(mid + k * 0.18, r - 16 - 4 * close).y)
+        }
+      }
+    },
+
+    // A fast, thin jab along the full reach, with a flash at the tip.
+    bird: t => {
+      const reachNow = reach * Math.min(1, t * 2.2)
+      const a = 1 - t
+      const tip = at(aim, reachNow)
+      stroke(3, rim, a, () => { g.beginPath(); g.moveTo(cx, cy); g.lineTo(tip.x, tip.y); g.strokePath() })
+      g.fillStyle(0xffffff, a).fillCircle(tip.x, tip.y, 6 * (1 - t) + 2)
+      const side = aim + Math.PI / 2
+      g.lineStyle(2, rim, a * 0.8)
+      g.lineBetween(tip.x - Math.cos(side) * 8, tip.y - Math.sin(side) * 8, tip.x + Math.cos(side) * 8, tip.y + Math.sin(side) * 8)
+    },
+
+    // Jagged double puncture: two fangs going in.
+    bug: t => {
+      const a = 1 - t
+      const r = reach * (0.6 + 0.4 * Math.min(1, t * 2))
+      for (const side of [-1, 1]) {
+        const ang = aim + side * arc * 0.18
+        const pts = []
+        for (let k = 0; k <= 5; k++) {
+          const rr = r * (0.3 + 0.7 * (k / 5))
+          const jag = (k % 2 === 0 ? 1 : -1) * 0.1
+          pts.push(at(ang + jag, rr))
+        }
+        stroke(3, body, a, () => { g.beginPath(); g.moveTo(pts[0].x, pts[0].y); pts.slice(1).forEach(q => g.lineTo(q.x, q.y)); g.strokePath() })
+        g.fillStyle(0x9ff0bb, a).fillCircle(pts[5].x, pts[5].y, 4)
+      }
+    },
+
+    // A wide sweep that wraps round the body, trailing behind the tail.
+    reptile: t => {
+      const a = 1 - t * t
+      const head = aim - arc / 2 + arc * Math.min(1, t * 1.4)
+      for (let i = 0; i < 10; i++) {
+        const k = i / 10
+        const back = head - arc * 0.45 * k
+        if (back < aim - arc / 2) continue
+        stroke(9 * (1 - k) + 2, i < 3 ? 0xffffff : rim, a * (1 - k), () => {
+          g.beginPath(); g.arc(cx, cy, reach * (0.7 + 0.3 * (1 - k)), back - 0.07, back); g.strokePath()
+        })
+      }
+    },
+  }
+
+  const draw = shapes[fighter.axieClass] ?? shapes.beast
+  scene.tweens.add({
+    targets: state, t: 1, duration: 260, ease: 'Sine.easeOut',
+    onUpdate: () => { g.clear(); draw(state.t) },
     onComplete: () => g.destroy(),
   })
 }

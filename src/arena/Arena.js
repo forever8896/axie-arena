@@ -66,11 +66,41 @@ export default class Arena {
     this.bounds = { left: 70, top: 96, right: WORLD.width - 70, bottom: WORLD.height - 70 }
   }
 
+  /**
+   * Everything here is drawn once and baked into textures.
+   *
+   * Phaser rebuilds a Graphics object's geometry every frame. The arena used
+   * to leave ~60 of them live — hundreds of ellipses and rounded rects that
+   * never change — and they dominated frame time. Now the whole ground layer
+   * is one texture, and each wall and canopy is its own small texture so it
+   * still depth-sorts against the fighters.
+   */
   draw() {
+    const s = this.scene
+    this.ground = s.add.renderTexture(0, 0, WORLD.width, WORLD.height).setOrigin(0).setDepth(-99)
     this.drawGround()
     this.drawBushBases()
     this.drawWalls()
     this.drawBushCanopies()
+  }
+
+  /** Draw an off-list Graphics into the shared ground texture, then drop it. */
+  stamp(g) {
+    this.ground.draw(g)
+    g.destroy()
+  }
+
+  /** Bake an off-list Graphics into its own texture covering `box`, at `depth`. */
+  bake(g, box, depth) {
+    const rt = this.scene.add.renderTexture(box.x, box.y, Math.ceil(box.w), Math.ceil(box.h))
+      .setOrigin(0).setDepth(depth)
+    rt.draw(g, -box.x, -box.y)
+    g.destroy()
+    return rt
+  }
+
+  offList() {
+    return this.scene.make.graphics({ x: 0, y: 0, add: false })
   }
 
   drawGround() {
@@ -91,7 +121,7 @@ export default class Arena {
   /** Broad colour variation so the field is not one flat green. */
   drawMeadowPatches() {
     const rng = new Phaser.Math.RandomDataGenerator(['lunacia-patches'])
-    const g = this.scene.add.graphics().setDepth(-99)
+    const g = this.offList()
 
     for (let i = 0; i < 46; i++) {
       const x = rng.between(0, WORLD.width)
@@ -101,12 +131,13 @@ export default class Arena {
       g.fillStyle(rng.pick([FIELD.grassLight, FIELD.grassDeep, FIELD.grassPale]), rng.realInRange(0.1, 0.24))
       g.fillEllipse(x, y, rx, ry)
     }
+    this.stamp(g)
   }
 
   /** Worn dirt where the fighting happens, so the centre reads as an arena. */
   drawTrampledCentre() {
     const rng = new Phaser.Math.RandomDataGenerator(['lunacia-ring'])
-    const g = this.scene.add.graphics().setDepth(-98)
+    const g = this.offList()
 
     g.fillStyle(FIELD.dirt, 0.5)
     g.fillEllipse(this.cx, this.cy, 760, 560)
@@ -126,13 +157,13 @@ export default class Arena {
 
     g.fillStyle(FIELD.dirtDark, 0.22)
     g.fillEllipse(this.cx, this.cy, 320, 230)
+    this.stamp(g)
   }
 
   /** Tufts, stones and wildflowers, baked into one texture. */
   drawScatter() {
     const rng = new Phaser.Math.RandomDataGenerator(['lunacia-scatter'])
-    const rt = this.scene.add.renderTexture(0, 0, WORLD.width, WORLD.height)
-      .setOrigin(0).setDepth(-97)
+    const rt = this.ground
     const brush = this.scene.make.graphics({ x: 0, y: 0, add: false })
 
     for (let i = 0; i < 900; i++) {
@@ -184,7 +215,7 @@ export default class Arena {
   /** A hedge ring instead of a glowing line: the field has an edge you can see. */
   drawHedgeBorder() {
     const rng = new Phaser.Math.RandomDataGenerator(['lunacia-hedge'])
-    const g = this.scene.add.graphics().setDepth(-96)
+    const g = this.offList()
     const b = this.bounds
     const inset = 36
 
@@ -210,6 +241,7 @@ export default class Arena {
       g.fillStyle(FIELD.hedgeLight, 0.55)
       g.fillEllipse(p.x - w * 0.12, p.y - h * 0.2, w * 0.6, h * 0.45)
     }
+    this.stamp(g)
   }
 
   /**
@@ -221,7 +253,7 @@ export default class Arena {
     const radius = 9
 
     for (const w of this.walls) {
-      const g = this.scene.add.graphics().setDepth(w.bottom)
+      const g = this.offList()
 
       // Cast shadow on the ground.
       g.fillStyle(0x000000, 0.32)
@@ -248,22 +280,29 @@ export default class Arena {
       // Rim so blocks read against the dark floor.
       g.lineStyle(1, WALL.edge, 0.5)
       g.strokeRoundedRect(w.left, w.top - lift, w.w, w.h, radius)
+
+      const pad = 16
+      this.bake(g, {
+        x: w.left - pad, y: w.top - lift - pad,
+        w: w.w + pad * 2, h: w.h + lift + pad * 2,
+      }, w.bottom)
     }
   }
 
   drawBushBases() {
-    const g = this.scene.add.graphics().setDepth(-20)
+    const g = this.offList()
     for (const b of this.bushes) {
       g.fillStyle(0x000000, 0.2)
       g.fillEllipse(b.x + 6, b.y + 14, b.rx * 2, b.ry * 1.5)
     }
+    this.stamp(g)
   }
 
   /** Drawn above the fighters, so standing in one half-hides you. */
   drawBushCanopies() {
     const rng = new Phaser.Math.RandomDataGenerator(['axie-bush'])
     for (const b of this.bushes) {
-      const g = this.scene.add.graphics().setDepth(b.y + b.ry + 40)
+      const g = this.offList()
       g.fillStyle(FIELD.hedge, 0.72)
       g.fillEllipse(b.x, b.y, b.rx * 2, b.ry * 2)
       for (let i = 0; i < 18; i++) {
@@ -276,6 +315,11 @@ export default class Arena {
           rng.between(30, 62), rng.between(20, 38),
         )
       }
+
+      this.bake(g, {
+        x: b.x - b.rx - 40, y: b.y - b.ry - 30,
+        w: (b.rx + 40) * 2, h: (b.ry + 30) * 2,
+      }, b.y + b.ry + 40)
     }
   }
 

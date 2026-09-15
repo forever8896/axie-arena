@@ -1,83 +1,85 @@
 import Phaser from 'phaser'
+import AxieRig from './AxieRig.js'
 import { CLASS_COLORS } from './palette.js'
 
 /**
- * The seam between gameplay and however an Axie is drawn.
+ * The seam between gameplay and how an Axie is drawn.
  *
- * Draws official Axie art: flat layers from the mixer's exportAvatarLayers,
- * assembled and animated procedurally. No Spine runtime ships — see README.
+ * Draws official Axie art, posed every frame by AxieRig from the mixer's own
+ * authored clips — so a beast gores, a reptile spins its tail round, a bird
+ * hops up to cast, and faces change mid-attack. No Spine runtime ships.
  *
  * The mixer's art faces LEFT natively, so facing right flips the rig.
  */
+
+/** When a basic's blow lands, in ms. Gameplay was balanced against this. */
+export const CONNECT_MS = 165
+
+/** Shared state clips. Chosen by rendering all 46 and keeping the 38 with motion. */
+const STATE_CLIPS = {
+  idle: 'action/idle/normal',
+  run: 'action/run',
+  // The three hit-by-normal clips are empty in mixed skeletons; this one is not.
+  hit: 'defense/hit-by-ranged-attack',
+  dash: 'action/move-forward',
+  stun: 'battle/get-debuff',
+  ready: 'battle/get-buff',
+  prepare: 'activity/prepare',
+  appear: 'activity/appear',
+  victory: 'activity/victory-pose-back-flip',
+}
+
+const IDLE_FLOURISH = [
+  'action/idle/random-01', 'action/idle/random-02', 'action/idle/random-03',
+  'action/idle/random-04', 'action/idle/random-05',
+]
+
+/** Higher wins. A clip only interrupts one of equal or lower priority. */
+const PRIORITY = { locomotion: 0, flourish: 0, ready: 1, hit: 1, stun: 2, dash: 2, prepare: 2, appear: 2, attack: 3, special: 3, victory: 4 }
+
 export default class AxieSprite {
   constructor(scene, x, y, { build, axieClass = 'beast' } = {}) {
     this.scene = scene
     this.axieClass = axieClass
     this.colors = CLASS_COLORS[axieClass] ?? CLASS_COLORS.beast
     this.build = build
+    this.S = build.scale
 
     this.root = scene.add.container(x, y)
 
-    // Shadow sits outside the animated rig so it stays planted on the ground.
-    this.shadow = scene.add.ellipse(0, 0, 1, 1, 0x000000, 0.4)
-    this.glow = scene.add.ellipse(0, 0, 1, 1, this.colors.body, 0.12)
+    const b = build.bounds
+    this.width = b.width * this.S
+    this.height = b.height * this.S
+
+    // Shadow and glow sit outside the rig so they stay planted on the ground.
+    this.shadow = scene.add.ellipse(0, 0, this.width * 0.66, this.width * 0.2, 0x000000, 0.4)
+    this.glow = scene.add.ellipse(0, 0, this.width * 1.5, this.width * 0.5, this.colors.body, 0.12)
 
     this.facingWrap = scene.add.container(0, 0)
-    this.anim = scene.add.container(0, 0)
-    this.facingWrap.add(this.anim)
     this.root.add([this.glow, this.shadow, this.facingWrap])
 
-    this.parts = { legFront: [], legBack: [], tail: [], earLeft: [], earRight: [], head: [], body: [] }
-    this.images = []
+    this.rig = new AxieRig(build.skeleton)
 
-    this.assemble()
+    // One image per slot, created in slot order so draw order matches the rig.
+    this.images = []
+    this.slotImages = new Map()
+    for (const slot of this.rig.slots) {
+      if (slot.name === 'shadow' || slot.name === 'ball') continue
+      const img = scene.add.image(0, 0, '__DEFAULT').setVisible(false)
+      img.slotName = slot.name
+      this.facingWrap.add(img)
+      this.images.push(img)
+      this.slotImages.set(slot.name, img)
+    }
 
     this.facing = -1
-    this.runPhase = 0
-    this.blinkAt = scene.time.now + Phaser.Math.Between(1200, 4000)
-  }
+    this.action = null
+    this.idleSince = scene.time.now
+    this.nextFlourish = scene.time.now + Phaser.Math.Between(3500, 7000)
 
-  assemble() {
-    const { layers, scale } = this.build
-    const scene = this.scene
-
-    // Measure first, so the rig is centred on the body and stands on its feet
-    // rather than floating from the mixer's own canvas origin.
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
-    for (const l of layers) {
-      minX = Math.min(minX, l.px)
-      maxX = Math.max(maxX, l.px + l.w)
-      minY = Math.min(minY, l.py)
-      maxY = Math.max(maxY, l.py + l.h)
-    }
-
-    const cx = (minX + maxX) / 2
-    const cy = maxY
-
-    for (const l of layers) {
-      // Pivot per part: limbs swing from where they meet the body.
-      const [ox, oy] = PIVOTS[l.part] ?? [0.5, 0.5]
-      const img = scene.add.image(0, 0, l.imagePath)
-        .setOrigin(ox, oy)
-        .setDisplaySize(l.w, l.h)
-        .setPosition(l.px - cx + l.w * ox, l.py - cy + l.h * oy)
-
-      img.baseX = img.x
-      img.baseY = img.y
-      img.baseScaleY = img.scaleY
-      this.anim.add(img)
-      this.images.push(img)
-
-      const bucket = HEAD_PARTS.has(l.part) ? 'head' : (this.parts[l.part] ? l.part : 'body')
-      this.parts[bucket].push(img)
-    }
-
-    this.height = maxY - minY
-    this.width = maxX - minX
-
-    // Ground furniture is sized from the assembled body, not guessed at.
-    this.shadow.setSize(this.width * 0.66, this.width * 0.2)
-    this.glow.setSize(this.width * 1.5, this.width * 0.5)
+    this.rig.play(STATE_CLIPS.idle, { loop: true })
+    this.locomotion = 'idle'
+    this.draw()
   }
 
   get x() { return this.root.x }
@@ -102,77 +104,120 @@ export default class AxieSprite {
     })
   }
 
-  update(delta, speed) {
-    const moving = speed > 8
-    const gait = Phaser.Math.Clamp(speed / 215, 0, 1.3)
-
-    this.runPhase += (delta / 1000) * (moving ? 9 + gait * 6 : 2.4)
-    const p = this.runPhase
-    const amp = moving ? 1 : 0.25
-
-    // Whole-body bob, and a squash that compresses at the bottom of the arc.
-    const bob = Math.sin(p * 2) * 7 * amp
-    const squash = 1 + Math.sin(p * 2 + Math.PI) * 0.05 * amp
-    this.anim.setY(bob)
-    this.anim.setScale(2 - squash, squash)
-    this.anim.rotation = Phaser.Math.Linear(
-      this.anim.rotation, moving ? -0.05 * gait : 0, 0.12,
-    )
-
-    // Legs alternate; the pair on each side is half a cycle out of phase.
-    const stride = moving ? 9 : 0
-    this.parts.legFront.forEach((img, i) => {
-      img.y = img.baseY - Math.max(0, Math.sin(p + i * Math.PI)) * stride
-      img.rotation = Math.sin(p + i * Math.PI) * 0.18 * amp
-    })
-    this.parts.legBack.forEach((img, i) => {
-      img.y = img.baseY - Math.max(0, Math.sin(p + Math.PI + i * Math.PI)) * stride
-      img.rotation = Math.sin(p + Math.PI + i * Math.PI) * 0.18 * amp
-    })
-
-    // Ears and tail lag the body — the overlap is what makes it read as alive.
-    this.parts.tail.forEach(img => { img.rotation = Math.sin(p * 1.4 - 0.5) * 0.16 * amp })
-    this.parts.earLeft.forEach(img => { img.rotation = Math.sin(p - 0.7) * 0.13 * amp })
-    this.parts.earRight.forEach(img => { img.rotation = Math.sin(p - 0.9) * 0.15 * amp })
-
-    // Shadow tightens as the body lifts.
-    const lift = 1 - Math.abs(bob) / (7 * Math.max(amp, 0.01))
-    this.shadow.setScale(0.88 + lift * 0.16).setAlpha(0.24 + lift * 0.18)
-    this.glow.setScale(0.95 + lift * 0.1)
-
-    this.updateBlink()
-  }
-
-  updateBlink() {
-    const t = this.scene.time.now
-    if (t < this.blinkAt || this.blinking) return
-    this.blinking = true
-    const eyes = this.parts.head.filter(i => i.texture.key.includes('eyes'))
-    eyes.forEach(e => e.setScale(e.scaleX, e.baseScaleY * 0.1))
-    this.scene.time.delayedCall(95, () => {
-      eyes.forEach(e => e.setScale(e.scaleX, e.baseScaleY))
-      this.blinking = false
-      this.blinkAt = t + Phaser.Math.Between(1800, 5200)
-    })
-  }
-
-  /** Wind-up then lunge, in the direction the Axie faces. */
-  playAttack(onConnect) {
-    this.scene.tweens.chain({
-      targets: this.anim,
-      tweens: [
-        { x: 14, duration: 95, ease: 'Quad.easeOut' },
-        { x: -22, duration: 70, ease: 'Back.easeOut', onComplete: () => onConnect?.() },
-        { x: 0, duration: 190, ease: 'Quad.easeOut' },
-      ],
-    })
-  }
-
   setAlpha(a) {
     this.facingWrap.setAlpha(a)
   }
 
-  /** Afterimages along the dash direction. */
+  /**
+   * Play a clip that takes over from walking and idling.
+   *
+   * `fit` time-scales the clip to last that many ms. `peakAt` instead scales it
+   * so the moment `peakFraction` of the way through lands at `peakAt` ms —
+   * which is how an attack's visual impact is lined up with gameplay.
+   */
+  play(clip, { kind = 'attack', loop = false, fit, peakAt, peakFraction = 0.4, holdMs } = {}) {
+    if (!clip || !this.rig.has(clip)) return false
+
+    const priority = PRIORITY[kind] ?? 1
+    if (this.action && !this.actionDone() && priority < this.action.priority) return false
+
+    const length = this.rig.duration(clip)
+    let speed = 1
+    if (fit && length > 0) speed = length / (fit / 1000)
+    else if (peakAt && length > 0) speed = Math.max(1, (length * peakFraction) / (peakAt / 1000))
+
+    this.rig.play(clip, { loop, speed })
+    this.action = {
+      clip, kind, priority, loop,
+      until: holdMs ? this.scene.time.now + holdMs : null,
+    }
+    return true
+  }
+
+  actionDone() {
+    if (!this.action) return true
+    if (this.action.until != null) return this.scene.time.now >= this.action.until
+    return this.rig.playing !== this.action.clip || this.rig.finished
+  }
+
+  playState(state, options) {
+    return this.play(STATE_CLIPS[state], { kind: state, ...options })
+  }
+
+  update(delta, speed = 0) {
+    const now = this.scene.time.now
+
+    if (this.action && this.actionDone()) {
+      this.action = null
+      this.locomotion = null
+    }
+
+    if (!this.action) {
+      const moving = speed > 12
+      const want = moving ? 'run' : 'idle'
+      if (want !== this.locomotion) {
+        this.rig.play(STATE_CLIPS[want], { loop: true })
+        this.locomotion = want
+        this.idleSince = now
+      }
+      // Run cadence follows actual speed, so a slowed Axie visibly trudges.
+      if (moving && this.rig.track) this.rig.track.speed = Phaser.Math.Clamp(speed / 200, 0.55, 1.6)
+
+      // Standing around long enough earns one of the authored idle flourishes.
+      if (!moving && now >= this.nextFlourish && now - this.idleSince > 2500) {
+        this.play(Phaser.Utils.Array.GetRandom(IDLE_FLOURISH), { kind: 'flourish' })
+        this.nextFlourish = now + Phaser.Math.Between(5000, 9000)
+      }
+    }
+
+    this.rig.update(delta / 1000)
+    this.draw()
+
+    // Shadow tightens as the body lifts off the ground in a leap.
+    const root = this.rig.boneByName.get('@pivot-main')
+    const lift = root ? Phaser.Math.Clamp(-root.y * this.S / 30, 0, 1) : 0
+    this.shadow.setScale(1 - lift * 0.35).setAlpha(0.4 - lift * 0.2)
+  }
+
+  /** Pose every slot's image from the rig. */
+  draw() {
+    const S = this.S
+    const b = this.build.bounds
+    const seen = new Set()
+
+    for (const p of this.rig.parts()) {
+      const img = this.slotImages.get(p.slot)
+      if (!img) continue
+      const key = this.build.textures[`${p.slot}/${p.attachment}`]
+      if (!key || !this.scene.textures.exists(key) || p.width < 1) continue
+
+      if (img.texture.key !== key) img.setTexture(key)
+      img
+        .setPosition((p.x - b.cx) * S, (p.y - b.bottom) * S)
+        .setRotation(p.rotation)
+        .setDisplaySize(p.width * S, p.height * S)
+        .setVisible(true)
+      seen.add(p.slot)
+    }
+
+    for (const img of this.images) if (!seen.has(img.slotName)) img.setVisible(false)
+  }
+
+  /**
+   * A basic attack. The clip is sped up so its impact lands at CONNECT_MS,
+   * the timing the combat was balanced on, then `onConnect` fires.
+   */
+  playAttack(onConnect, clip) {
+    const attackClip = clip ?? 'attack/melee/normal-attack'
+    // A multi-hit basic calls this again mid-swing; let the clip carry on.
+    const midSwing = this.action?.clip === attackClip && !this.actionDone() &&
+      this.rig.time < this.rig.duration(attackClip) * 0.6
+    if (!midSwing) this.play(attackClip, { kind: 'attack', peakAt: CONNECT_MS })
+
+    this.scene.time.delayedCall(CONNECT_MS, () => onConnect?.())
+  }
+
+  /** Afterimages of the current pose along the dash direction. */
   dashTrail(dir) {
     const scene = this.scene
     for (let i = 0; i < 4; i++) {
@@ -180,21 +225,21 @@ export default class AxieSprite {
         if (!this.root.active) return
         const ghost = scene.add.container(this.root.x, this.root.y).setDepth(this.root.y - 2)
         for (const img of this.images) {
-          const copy = scene.add.image(img.x, img.y, img.texture.key)
-            .setOrigin(img.originX, img.originY)
-            .setScale(img.scaleX * this.facingWrap.scaleX, img.scaleY)
-            .setRotation(img.rotation)
-            .setTintFill(this.colors.rim)
-            .setAlpha(0.4)
-          ghost.add(copy)
+          if (!img.visible) continue
+          ghost.add(
+            // Bake the facing flip into position, scale and rotation, since the
+            // ghost is not inside the flipped container.
+            scene.add.image(img.x * this.facingWrap.scaleX, img.y, img.texture.key)
+              .setScale(img.scaleX * this.facingWrap.scaleX, img.scaleY)
+              .setRotation(img.rotation * this.facingWrap.scaleX)
+              .setTintFill(this.colors.rim)
+              .setAlpha(0.4),
+          )
         }
         scene.tweens.add({
-          targets: ghost,
-          alpha: 0,
-          x: ghost.x - dir.x * 16,
-          y: ghost.y - dir.y * 16,
-          duration: 260,
-          onComplete: () => ghost.destroy(),
+          targets: ghost, alpha: 0,
+          x: ghost.x - dir.x * 16, y: ghost.y - dir.y * 16,
+          duration: 260, onComplete: () => ghost.destroy(),
         })
       })
     }
@@ -208,15 +253,4 @@ export default class AxieSprite {
   destroy() {
     this.root.destroy()
   }
-}
-
-const HEAD_PARTS = new Set(['eyes', 'mouth', 'horn'])
-
-/** Origin per part, so rotation happens at the joint rather than the corner. */
-const PIVOTS = {
-  legFront: [0.5, 0.1],
-  legBack: [0.5, 0.1],
-  tail: [0.1, 0.5],
-  earLeft: [0.5, 0.9],
-  earRight: [0.5, 0.9],
 }
