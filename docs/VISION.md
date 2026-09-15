@@ -67,6 +67,34 @@ Bots already play every class, parry, chase, heal and race for power-ups
 (src/ai/BotBrain.js). In the Wilds they keep a room alive until people arrive,
 then step out as humans fill their seats. Bots are **always labelled as bots**.
 
+### 2b. The prototype, playable now
+
+Choose **The Endless Wilds** on the home screen. It plays the design in this
+document end to end, with the money simulated:
+
+| In the design | In the prototype |
+| --- | --- |
+| Lobby shows live rooms | Four rooms (free, 0.1, 1 and 5 AXS), each with hunters, open seats and top bounty moving live |
+| Stake buys a bounty, at most 10% fee | A practice wallet (25 simulated AXS, kept in this browser) pays the stake; you carry 90% |
+| Kill takes the whole bounty | Yes, including falls to poison or zones, which pay whoever hit last |
+| Extract at a Moon Gate | Two gates open at a time, one relocating every 40s with an 8s warning; stand in one 3s, a hit or your own attack restarts it |
+| Leaving without a gate forfeits | Esc drops your bounty on the ground as a cache anyone can take |
+| Spawn protection | 2.5s arrival shield: you cannot be hurt or strike |
+| Moon cycles force fights | A Blood Moon every 70s puts a Moonwell and two power-ups in a red ring |
+| Bots fill quiet hours | AI stand-ins arrive and leave (population moves between the room's bounds); each has its own bounty target and patience, and walks to a gate to cash out |
+| The leader is the target | Bounty glow grows with bounty; nameplates and a top-bounties list show it |
+
+The AI stand-ins carry simulated stakes so the model can be played alone. In
+a live staked room those seats would be people: the live design keeps bots out
+of staked rooms entirely (section 3).
+
+**Verified by `scripts/headless/check-wilds.mjs` (33 checks).** It covers the
+stake and fee, arrival shield, bounty transfer on kills and falls, re-entry,
+extraction and interruption, dropped caches, and a room that never ends. It
+also runs a four-minute living room and checks that **no value is ever created
+or destroyed**: every bounty that entered is still carried, lying in a cache,
+or left through a gate, to within floating-point error.
+
 ---
 
 ## 3. Stakes: designing the money before spending any
@@ -205,7 +233,8 @@ parry verification are exactly the foundation a server needs.
 | Phase | When | Delivers | Money |
 | --- | --- | --- | --- |
 | **Round 1** | by Sep 21, 2026 | Showdown: six classes, parry, power-ups, Moonwells, balance simulation | None |
-| **Round 2** | Oct 4–31, 2026 | Endless Wilds prototype (drop-in rooms with bots, Moon Gate extraction, bounty as score); bring your own Axie; live approved mixer | None |
+| **Round 1, extended** | done | Playable Endless Wilds prototype: lobby, drop-in rooms, bounty stakes with simulated balances, Moon Gates, Blood Moons, AI stand-ins (section 2b) | Simulated only |
+| **Round 2** | Oct 4–31, 2026 | Wilds polish from playtests; bring your own Axie; live approved mixer; stake tiers and matchmaking in the prototype | Simulated only |
 | **Online beta** | after the Vibeathon, with Sky Mavis approval | Authoritative multiplayer, free rooms, seasonal leaderboard with a fixed pool | Fixed-pool rewards only |
 | **Staked rooms** | only once every gate in section 4 is met | Bounty stakes, tiers, skill-matched rooms | Player stakes, 10% fee at most |
 

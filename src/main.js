@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import BootScene from './scenes/BootScene.js'
 import GameScene from './scenes/GameScene.js'
 import HomeScene from './scenes/HomeScene.js'
+import LobbyScene from './scenes/LobbyScene.js'
 import MenuScene from './scenes/MenuScene.js'
 import ResultScene from './scenes/ResultScene.js'
 import UIScene from './scenes/UIScene.js'
@@ -32,7 +33,7 @@ async function start() {
     // parry could expire before the blow it was meant to catch. Unsmoothed,
     // timers advance on real elapsed time and the two agree.
     fps: { smoothStep: false },
-    scene: [BootScene, HomeScene, MenuScene, GameScene, UIScene, ResultScene],
+    scene: [BootScene, HomeScene, MenuScene, LobbyScene, GameScene, UIScene, ResultScene],
   })
 
   // Dev-only handle for poking at the running game from the console.

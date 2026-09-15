@@ -104,13 +104,15 @@ export default class BootScene extends Phaser.Scene {
 
   /** The logo, as SVG rasterised at its authored size so it stays crisp. */
   loadBrand() {
-    if (this.textures.exists('brand-logo')) return Promise.resolve()
-    return new Promise(resolve => {
+    const one = (key, file) => new Promise(resolve => {
+      if (this.textures.exists(key)) return resolve()
       const img = new Image()
-      img.onload = () => { this.textures.addImage('brand-logo', img); resolve() }
-      img.onerror = () => { console.warn('logo failed to load'); resolve() }
-      img.src = `${import.meta.env.BASE_URL}brand/lunacy-logo.svg`
+      img.onload = () => { this.textures.addImage(key, img); resolve() }
+      img.onerror = () => { console.warn(`${file} failed to load`); resolve() }
+      img.src = `${import.meta.env.BASE_URL}brand/${file}`
     })
+    // The moon mark crowns every Moon Gate in the Wilds.
+    return Promise.all([one('brand-logo', 'lunacy-logo.svg'), one('brand-mark', 'lunacy-mark.svg')])
   }
 
   loadTexture(path) {

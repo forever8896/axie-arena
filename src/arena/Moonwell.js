@@ -242,7 +242,7 @@ class Well {
 }
 
 /** A soft radial glow, drawn once per game. */
-function ensureTexture(scene) {
+export function ensureTexture(scene) {
   if (scene.textures.exists('fx-moonwell')) return
   const size = 256
   const tex = scene.textures.createCanvas('fx-moonwell', size, size)

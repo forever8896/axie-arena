@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { WORLD } from '../arena/Arena.js'
 import { PARRY } from '../axie/classKits.js'
 import { POWERUPS } from '../arena/PowerUps.js'
+import WildsHud from '../wilds/WildsHud.js'
 
 const MINIMAP = { size: 186, pad: 22 }
 
@@ -91,6 +92,8 @@ export default class UIScene extends Phaser.Scene {
     })
 
     this.buildMinimap()
+
+    this.wildsHud = this.game_.wilds ? new WildsHud(this) : null
 
     this.layoutHintPlate()
     this.scale.on('resize', this.layout, this)
@@ -182,6 +185,25 @@ export default class UIScene extends Phaser.Scene {
       if (o.dead) continue
       this.mmDots.fillStyle(o.def.color, o.live ? 1 : 0.35 * pulse)
       this.mmDots.fillRect(o.x * s - 2.5, o.y * s - 2.5, 5, 5)
+    }
+
+    const wilds = game.wilds
+    if (wilds) {
+      if (wilds.hotspot) {
+        this.mmDots.lineStyle(2, 0xff8098, pulse)
+        this.mmDots.strokeCircle(wilds.hotspot.x * s, wilds.hotspot.y * s, wilds.hotspot.radius * s)
+      }
+      for (const g of wilds.gates) {
+        if (!g.open) continue
+        this.mmDots.fillStyle(g.closing ? 0xff8098 : 0xc9b8ff, g.closing ? pulse : 1)
+        this.mmDots.fillCircle(g.x * s, g.y * s, 5)
+        this.mmDots.lineStyle(1.5, 0xffffff, 0.9)
+        this.mmDots.strokeCircle(g.x * s, g.y * s, 5)
+      }
+      for (const c of wilds.caches) {
+        this.mmDots.fillStyle(0xffd964, pulse)
+        this.mmDots.fillCircle(c.x * s, c.y * s, 3)
+      }
     }
 
     for (const bot of game.bots) {
@@ -283,9 +305,12 @@ export default class UIScene extends Phaser.Scene {
 
     this.drawAnnouncement()
     this.drawBuffRow(player)
+    this.wildsHud?.update(player)
 
-    const alive = this.game_.bots.filter(b => b.alive).length
-    this.status.setText(String(alive).padStart(2, '0'))
+    if (!this.wildsHud) {
+      const alive = this.game_.bots.filter(b => b.alive).length
+      this.status.setText(String(alive).padStart(2, '0'))
+    }
 
     const now = this.game_.time.now
     const charge = Phaser.Math.Clamp((now - player.lastDash) / player.dashCooldown, 0, 1)

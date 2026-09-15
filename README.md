@@ -27,11 +27,23 @@ npm run build    # static build in dist/
 node scripts/headless/check-flow.mjs      # full loop in headless Chromium (dev server running)
 node scripts/headless/check-parry.mjs     # 17 parry rules, in real matches
 node scripts/headless/check-boons.mjs     # 22 power-up and Moonwell rules
+node scripts/headless/check-wilds.mjs     # 33 Endless Wilds rules, incl. a 4-minute value-conservation run
 node scripts/vendor-origins-vfx.mjs       # re-vendor Origins effect plates, icons and sounds
 node scripts/brand/build-logo.mjs         # rebuild the logo SVG and PNG exports
 node scripts/economy/model.mjs            # stake-mode economy model used in docs/VISION.md
 # balance: open http://localhost:5173/?sim=120 in a browser
 ```
+
+## Modes
+
+- **Showdown**: six Axies, one closing field, last one standing.
+- **The Endless Wilds** *(prototype)*: a room that never ends. Pick a room in
+  the lobby and you are in, with no queue. Your stake buys a bounty (a 10% fee
+  is taken). A kill takes the victim's whole bounty. Stand in a Moon Gate for
+  3s to cash out. Hunters arrive and leave, gates move, and Blood Moons pull
+  everyone together. Balances are **simulated practice money with no real
+  value**, and every other hunter is an AI stand-in, marked as such. The design
+  and economics behind it are in [docs/VISION.md](docs/VISION.md).
 
 ## Controls
 
@@ -45,6 +57,9 @@ node scripts/economy/model.mjs            # stake-mode economy model used in doc
 | `Space` / `Shift` | Dash |
 | Walk over an orb | Power-up: Fury, Bulwark, Tailwind or Moonrise |
 | Stand in a Moonwell | Heal 8%/s; a rival's hit pauses it |
+| Stand in a Moon Gate *(Wilds)* | Cash out your bounty after 3s; a hit or your own attack restarts it |
+| `Esc` *(Wilds)* | Leave; without a gate your bounty drops for others |
+| `Enter` *(Wilds, after a fall)* | Re-enter the same room |
 
 ## Where things are
 
@@ -58,6 +73,11 @@ src/
   ai/BotBrain.js        wander → chase → strike → backoff
   arena/PowerUps.js     orbs: Fury, Bulwark, Tailwind, Moonrise
   arena/Moonwell.js     healing wells that bloom mid-match
+  scenes/LobbyScene.js  Endless Wilds lobby: live rooms, practice wallet
+  wilds/WildsDirector.js a never-ending room: arrivals, bounties, gates, Blood Moons, ledger
+  wilds/MoonGate.js     extraction gates
+  wilds/WildsHud.js     bounty, gate compass, top bounties, feed, panels
+  wilds/Wallet.js       simulated practice balance, kept in this browser only
   axie/AxieFactory.js   mixer setup and layer export
   axie/AxieSprite.js    assembles and animates the layers
   fx/Juice.js           impact, dust, motes, damage numbers, hit-stop

@@ -64,6 +64,20 @@ export default class BotBrain {
       return
     }
 
+    // Endless Wilds: heading for a Moon Gate to cash out, or a dropped bounty.
+    // A hunter on its way out only turns to fight something already on it.
+    const wildsGoal = me.scene.wilds?.botGoal(me)
+    if (wildsGoal && (me.wilds.leaving ? dist > me.attackRange * 0.9 || me.hp / me.maxHp < 0.35 : dist > 180)) {
+      me.intent.set(wildsGoal.x - me.x, wildsGoal.y - me.y)
+      const far = me.intent.length()
+      if (far <= wildsGoal.stop) me.intent.set(0, 0)
+      else {
+        me.intent.normalize()
+        if (me.wilds.leaving && far > 400 && dist < 320 && me.canDash(now)) me.dash(me.intent, now)
+      }
+      return
+    }
+
     // Moonwells and power-ups, when nobody is close enough to punish the detour.
     if (dist > 180) {
       const goal = this.boonGoal(now, targets, dist)
@@ -263,7 +277,13 @@ export default class BotBrain {
         Phaser.Math.Distance.Between(me.x, me.y, this.wanderTarget.x, this.wanderTarget.y) < 30) {
       const b = me.scene.arenaBounds
       const field = me.scene.field
-      if (field?.active) {
+      const hot = me.scene.wilds?.hotspot
+      if (hot && Math.random() < 0.75) {
+        // A Blood Moon draws the room together.
+        const a = Math.random() * Math.PI * 2
+        const r = Math.random() * hot.radius * 0.8
+        this.wanderTarget = { x: hot.x + Math.cos(a) * r, y: hot.y + Math.sin(a) * r }
+      } else if (field?.active) {
         // Wander inside the safe field, never toward the edge of it.
         const a = Math.random() * Math.PI * 2
         const r = Math.random() * field.radius * 0.7
@@ -283,7 +303,7 @@ export default class BotBrain {
     let best = null
     let bestDist = Infinity
     for (const t of targets) {
-      if (t === this.fighter || !t.alive) continue
+      if (t === this.fighter || !t.alive || t.shielded) continue
       const d = Phaser.Math.Distance.Between(this.fighter.x, this.fighter.y, t.x, t.y)
       // Foliage hides you unless you are almost on top of them.
       if (t.hidden && d > 150) continue

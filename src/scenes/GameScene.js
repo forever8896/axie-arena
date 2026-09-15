@@ -10,6 +10,7 @@ import { createFxTextures, ambientMotes } from '../fx/Juice.js'
 import { playPlate, playBasicPlate, playStatusPlate } from '../fx/SkillVfx.js'
 import { play as playSfx } from '../fx/Sfx.js'
 import { PARRY } from '../axie/classKits.js'
+import WildsDirector from '../wilds/WildsDirector.js'
 
 
 export default class GameScene extends Phaser.Scene {
@@ -20,6 +21,10 @@ export default class GameScene extends Phaser.Scene {
   init(data) {
     this.builds = data.builds
     this.playerClass = data.playerClass
+    // 'showdown' (last one standing, closing field) or 'wilds' (endless room).
+    this.mode = data.mode ?? 'showdown'
+    this.room = data.room ?? null
+    this.roomSnapshot = data.snapshot ?? null
   }
 
   create() {
@@ -39,24 +44,34 @@ export default class GameScene extends Phaser.Scene {
     const available = Object.keys(this.builds)
     const playerClass = available.includes(this.playerClass) ? this.playerClass : available[0]
 
-    this.player = new Fighter(this, WORLD.width / 2, WORLD.height / 2, {
-      axieClass: playerClass, build: this.builds[playerClass], isPlayer: true, name: 'you',
-    })
-
-    this.bots = available.filter(c => c !== playerClass).map((axieClass, i) => {
-      const spot = this.findSpawn()
-      const bot = new Fighter(this, spot.x, spot.y, {
-        axieClass, build: this.builds[axieClass], name: `${axieClass}-${i + 1}`,
-      })
-      bot.brain = new BotBrain(bot)
-      return bot
-    })
-
-    this.fighters = [this.player, ...this.bots]
-    // Everyone arrives with the authored entrance.
-    this.fighters.forEach(f => f.sprite.playState('appear'))
     this.projectiles = []
     this.zones = []
+    this.wilds = null
+    this.player = null
+    this.bots = []
+    this.fighters = []
+
+    if (this.mode === 'wilds') {
+      this.wilds = new WildsDirector(this, this.room, this.roomSnapshot ?? {})
+      this.wilds.begin(playerClass)
+    } else {
+      this.player = new Fighter(this, WORLD.width / 2, WORLD.height / 2, {
+        axieClass: playerClass, build: this.builds[playerClass], isPlayer: true, name: 'you',
+      })
+
+      this.bots = available.filter(c => c !== playerClass).map((axieClass, i) => {
+        const spot = this.findSpawn()
+        const bot = new Fighter(this, spot.x, spot.y, {
+          axieClass, build: this.builds[axieClass], name: `${axieClass}-${i + 1}`,
+        })
+        bot.brain = new BotBrain(bot)
+        return bot
+      })
+
+      this.fighters = [this.player, ...this.bots]
+      // Everyone arrives with the authored entrance.
+      this.fighters.forEach(f => f.sprite.playState('appear'))
+    }
 
     ambientMotes(this, { left: 0, top: 0, right: WORLD.width, bottom: WORLD.height })
     this.cameras.main.setBackgroundColor(0x24401c)
@@ -72,14 +87,22 @@ export default class GameScene extends Phaser.Scene {
     // Q sits under the left hand next to WASD, so a parry never means letting go of movement.
     this.input.keyboard.on('keydown-Q', () => this.playerParry())
     this.input.keyboard.on('keydown-F', () => this.playerParry())
+    // In the Wilds there is no match to lose, only a room to leave.
+    this.input.keyboard.on('keydown-ESC', () => this.wilds?.requestLeave())
     this.input.mouse?.disableContextMenu()
 
     this.buildReticle()
 
     this.matchOver = false
-    this.startedAt = this.time.now
+    // Stamped on the first frame, not here. A scene's clock only advances in
+    // its own update, so during create() time.now still reads the moment the
+    // previous match paused. "Fight again" after sitting on the result screen
+    // then started a match that believed it was already that far in: 26s on
+    // the result screen opened a match with the field active and 9% closed.
+    this.startedAt = null
     this.kills = 0
-    this.field = new ClosingField(this)
+    // The Wilds never close: Moon Gates and Blood Moons do the field's job.
+    this.field = this.mode === 'wilds' ? null : new ClosingField(this)
     this.powerUps = new PowerUps(this)
     this.moonwells = new Moonwells(this)
     // Read by the HUD for its centre-screen callouts.
@@ -87,7 +110,7 @@ export default class GameScene extends Phaser.Scene {
 
     const cam = this.cameras.main
     cam.setBounds(0, 0, WORLD.width, WORLD.height)
-    cam.startFollow(this.player.sprite.root, true, 0.11, 0.11)
+    if (!this.wilds) cam.startFollow(this.player.sprite.root, true, 0.11, 0.11)
     cam.setZoom(1.15)
     // Small dead zone so tiny movements do not drag the whole view.
     cam.setDeadzone(140, 110)
@@ -165,7 +188,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   playerSwing() {
-    if (this.matchOver) return
+    if (this.matchOver || this.wilds?.panel) return
     this.player.swing(this.fighters, this.time.now)
   }
 
@@ -180,19 +203,19 @@ export default class GameScene extends Phaser.Scene {
   }
 
   playerSpecial() {
-    if (this.matchOver) return
+    if (this.matchOver || this.wilds?.panel) return
     const pointer = this.input.activePointer
     const aimPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y)
     this.player.special(this.fighters, this.time.now, aimPoint)
   }
 
   playerDash() {
-    if (this.matchOver) return
+    if (this.matchOver || this.wilds?.panel) return
     this.player.dash(this.player.intent, this.time.now)
   }
 
   playerParry() {
-    if (this.matchOver) return
+    if (this.matchOver || this.wilds?.panel) return
     this.player.parry(this.time.now)
   }
 
@@ -256,6 +279,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   onFighterDown(fighter, killer) {
+    if (this.wilds) return this.wilds.onDown(fighter, killer)
     if (this.matchOver) return
     if (killer === this.player && fighter !== this.player) this.kills++
 
@@ -286,6 +310,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    if (this.startedAt === null) {
+      this.startedAt = time
+      if (this.field) this.field.startedAt = time
+    }
     // Hit-stop is per fighter now (Fighter.freeze), so the loop always runs.
     {
       const k = this.keys
@@ -306,9 +334,10 @@ export default class GameScene extends Phaser.Scene {
 
       for (const bot of this.bots) bot.brain.update(time, this.fighters)
       for (const f of this.fighters) f.update(delta)
-      if (!this.matchOver) this.field.update(this.fighters)
+      if (!this.matchOver) this.field?.update(this.fighters)
       this.powerUps.update(this.fighters)
       this.moonwells.update(this.fighters)
+      this.wilds?.update()
 
       for (const p of this.projectiles) p.update(delta, this.fighters)
       for (const z of this.zones) z.update(delta, this.fighters)
@@ -316,7 +345,8 @@ export default class GameScene extends Phaser.Scene {
       this.zones = this.zones.filter(z => !z.dead)
     }
 
-    if (!this.matchOver) this.drawReticle()
+    if (!this.matchOver && this.player?.alive) this.drawReticle()
+    else this.reticle.clear()
 
   }
 }

@@ -92,8 +92,8 @@ export default class PowerUps {
     return this.bag.pop()
   }
 
-  spawn(fighters) {
-    const spot = findOpenSpot(this.scene, {
+  spawn(fighters, at) {
+    const spot = at ?? findOpenSpot(this.scene, {
       clearance: 60,
       lifetimeMs: POWERUP_RULES.warnMs + 6000,
       avoid: this.orbs,

@@ -88,6 +88,11 @@ export default class Fighter {
     this.buffIcons = {}
     // Last time a rival hurt us. Moonwells stop healing for a moment after.
     this.lastHurtAt = -Infinity
+    // The rival who hit us last: in the Wilds, a fall to poison or a zone
+    // still pays whoever caused it.
+    this.lastHitBy = null
+    // Endless Wilds: freshly arrived, cannot hurt or be hurt.
+    this.spawnShieldUntil = 0
   }
 
   get x() { return this.pos.x }
@@ -352,13 +357,18 @@ export default class Fighter {
     return Boolean(this.scene.arena?.inBush(this.pos.x, this.pos.y))
   }
 
+  /** Arrived in the Wilds moments ago: protected, and not yet allowed to strike. */
+  get shielded() {
+    return this.spawnShieldUntil > this.scene.time.now
+  }
+
   canAttack(now) {
-    return this.alive && !this.dashing && !this.stunned && !this.chargeState && !this.casting &&
+    return this.alive && !this.shielded && !this.dashing && !this.stunned && !this.chargeState && !this.casting &&
       !this.parryCommitted && now - this.lastAttack >= this.attackCooldown
   }
 
   canSpecial() {
-    return this.alive && this.specialReady && !this.dashing && !this.stunned && !this.chargeState && !this.casting &&
+    return this.alive && !this.shielded && this.specialReady && !this.dashing && !this.stunned && !this.chargeState && !this.casting &&
       !this.parryCommitted
   }
 
@@ -558,7 +568,10 @@ export default class Fighter {
   takeDamage(amount, from, knockback = 210, { projectile = false } = {}) {
     if (!this.alive || this.invulnerable) return
     amount = Math.round(amount * (from?.damageMult ?? 1))
-    if (from && from !== this) this.lastHurtAt = this.scene.time.now
+    if (from && from !== this) {
+      this.lastHurtAt = this.scene.time.now
+      this.lastHitBy = from
+    }
     const dealt = this.absorb(amount)
     if (dealt < amount) {
       damageNumber(this.scene, this.x + 18, this.y - 30, String(amount - dealt), '#7ce8ff', (amount - dealt) * 0.6)
@@ -583,15 +596,38 @@ export default class Fighter {
     if (this.hp <= 0) this.die(from)
   }
 
-  die(from) {
-    this.alive = false
-    this.dust.emitting = false
-    impact(this.scene, this.x, this.y - 8, this.colors.body, 1.8)
+  clearOverlays() {
     this.healthBar.destroy()
     this.parryFx.destroy()
     this.buffFx.destroy()
     Object.values(this.buffIcons).forEach(i => i.destroy())
+    this.buffIcons = {}
     this.buffs = {}
+    this.nameplate?.destroy()
+    this.nameplate = null
+  }
+
+  /**
+   * Leaves the arena alive — a Moon Gate extraction, or walking away. Not a
+   * death: no kill, no onFighterDown.
+   */
+  vanish() {
+    if (!this.alive) return
+    this.alive = false
+    this.dust.emitting = false
+    this.clearOverlays()
+    this.scene.tweens.add({
+      targets: this.sprite.root, alpha: 0, scaleX: 0.6, scaleY: 1.5, y: this.pos.y - 60,
+      duration: 520, ease: 'Cubic.easeIn',
+      onComplete: () => { this.sprite.destroy(); this.dust.destroy() },
+    })
+  }
+
+  die(from) {
+    this.alive = false
+    this.dust.emitting = false
+    impact(this.scene, this.x, this.y - 8, this.colors.body, 1.8)
+    this.clearOverlays()
 
     this.scene.tweens.add({
       targets: this.sprite.root,

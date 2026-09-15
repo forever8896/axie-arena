@@ -31,11 +31,13 @@ export default class HomeScene extends Phaser.Scene {
     this.buildField()
     this.buildTitle()
     this.buildPlay()
+    this.buildWilds()
     this.buildAbout()
     this.buildFooter()
 
-    this.input.keyboard.on('keydown-ENTER', () => this.start())
-    this.input.keyboard.on('keydown-SPACE', () => this.start())
+    this.input.keyboard.on('keydown-ENTER', () => this.start('showdown'))
+    this.input.keyboard.on('keydown-SPACE', () => this.start('showdown'))
+    this.input.keyboard.on('keydown-W', () => this.start('wilds'))
 
     this.scale.on('resize', this.layout, this)
     this.layout()
@@ -104,7 +106,37 @@ export default class HomeScene extends Phaser.Scene {
     this.playLift = 0
     this.playZone.on('pointerover', () => this.tweenPlay(6))
     this.playZone.on('pointerout', () => this.tweenPlay(0))
-    this.playZone.on('pointerdown', () => this.start())
+    this.playZone.on('pointerdown', () => this.start('showdown'))
+  }
+
+  /** The second door: the always-on mode. */
+  buildWilds() {
+    this.wildsFace = this.add.graphics().setDepth(1011)
+    this.wildsText = this.add.text(0, 0, 'THE ENDLESS WILDS', {
+      fontFamily: HEAD, fontSize: '20px', color: '#241a4a',
+    }).setOrigin(0.5).setDepth(1012)
+    this.wildsTag = this.add.text(0, 0, 'NEW  ·  PROTOTYPE', {
+      fontFamily: MONO, fontSize: '10px', color: '#fff8d8',
+    }).setOrigin(0.5).setDepth(1012)
+    this.wildsTag.setShadow(0, 1, 'rgba(35,48,15,0.8)', 2, false, true)
+    this.wildsZone = this.add.zone(0, 0, 300, 50).setInteractive({ useHandCursor: true }).setDepth(1012)
+    this.wildsZone.on('pointerdown', () => this.start('wilds'))
+  }
+
+  drawWilds() {
+    const w = 300
+    const h = 50
+    const x = this.playX - w / 2
+    const y = this.wildsY - h / 2
+    const g = this.wildsFace
+    g.clear()
+    g.fillStyle(0x1d2b12, 0.34).fillRoundedRect(x + 4, y + 10, w - 8, h, 16)
+    g.fillStyle(0x8e7ad6, 1).fillRoundedRect(x, y + 5, w, h, 16)
+    g.fillStyle(0xc9b8ff, 1).fillRoundedRect(x, y, w, h, 16)
+    g.fillStyle(0xefe8ff, 0.5).fillRoundedRect(x + 12, y + 6, w - 24, h * 0.3, 10)
+    this.wildsText.setPosition(this.playX, this.wildsY + 1)
+    this.wildsTag.setPosition(this.playX, this.wildsY + h / 2 + 18)
+    this.wildsZone.setPosition(this.playX, this.wildsY)
   }
 
   tweenPlay(lift) {
@@ -196,7 +228,7 @@ export default class HomeScene extends Phaser.Scene {
 
   buildFooter() {
     this.footer = this.add.text(0, 0,
-      'ENTER TO PLAY  ·  BUILT FOR AXIE VIBEATHON 2026', {
+      'ENTER  SHOWDOWN  ·  W  THE ENDLESS WILDS  ·  BUILT FOR AXIE VIBEATHON 2026', {
         fontFamily: MONO, fontSize: '11px', color: '#e8f0d6',
       }).setOrigin(0.5).setDepth(1012).setAlpha(0.85)
     this.footer.setShadow(0, 2, 'rgba(35,48,15,0.6)', 3, false, true)
@@ -246,7 +278,10 @@ export default class HomeScene extends Phaser.Scene {
     this.playZone?.setPosition(this.playX, this.playY)
     this.drawPlay()
 
-    this.aboutY = this.playY + 78
+    this.wildsY = this.playY + 80
+    this.drawWilds()
+
+    this.aboutY = this.wildsY + 80
     this.aboutToggle?.setPosition(cx, this.aboutY)
     this.drawAbout()
 
@@ -261,12 +296,12 @@ export default class HomeScene extends Phaser.Scene {
     })
   }
 
-  start() {
+  start(mode = 'showdown') {
     if (this.leaving) return
     this.leaving = true
     this.cameras.main.fadeOut(220)
     this.time.delayedCall(240, () => {
-      this.scene.start('MenuScene', { builds: this.builds })
+      this.scene.start('MenuScene', { builds: this.builds, mode })
     })
   }
 
