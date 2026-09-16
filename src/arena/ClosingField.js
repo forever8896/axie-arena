@@ -1,30 +1,10 @@
 import Phaser from 'phaser'
 import { WORLD } from './Arena.js'
 import { damageNumber } from '../fx/Juice.js'
+import { CLOSE } from './boonConfig.js'
 
-/**
- * The Wilds close in.
- *
- * After Brawl Stars' Showdown gas: from a set time the safe field shrinks
- * toward the centre, and anyone outside it takes damage that escalates the
- * longer they stay. Matches end because the arena makes them end.
- *
- * Tuned gentler than Showdown's 20% max health per second at the start, and
- * capped there, since here most rivals are bots that should still get a fight.
- */
-export const CLOSE = {
-  // Showdown starts its gas at 20s. At 30s, a 60-match simulation averaged
-  // 132s per match with most fighters surviving until the field forced it.
-  startsAt: 20000,
-  // Closes all the way. A 280u floor let several fighters survive inside
-  // indefinitely: half of a 60-match simulation ended in a stalemate.
-  duration: 70000,
-  minRadius: 0,
-  tickMs: 500,
-  baseFrac: 0.04,        // of max health per second, on first stepping out
-  growthPerSec: 0.025,   // added per second spent outside
-  maxFrac: 0.2,          // Showdown's rate, as the ceiling
-}
+// The numbers live in boonConfig.js so the headless simulation can read them.
+export { CLOSE }
 
 export default class ClosingField {
   constructor(scene) {

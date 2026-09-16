@@ -2,46 +2,10 @@ import Phaser from 'phaser'
 import { WORLD } from './Arena.js'
 import { play as playSfx } from '../fx/Sfx.js'
 import { playStatusPlate } from '../fx/SkillVfx.js'
+import { POWERUPS, POWERUP_RULES, POWERUP_ICONS } from './boonConfig.js'
 
-/**
- * Power-ups: orbs that appear on the field, taken by walking over them.
- *
- * After Dota's power runes and Quake's timed items (docs/DESIGN.md, section 6):
- * they spawn on a schedule, never repeat a type until every type has appeared,
- * and whoever holds one shows it, so rivals can choose to run or to fight it.
- * Timed buffs are short because matches are: about a minute, with a ~5.5s
- * time-to-kill.
- */
-export const POWERUPS = {
-  fury: {
-    name: 'FURY', desc: '+30% damage', icon: 'buff_dmg_boost', plate: 'dmg_boost', sfx: 'damage_boost',
-    color: 0xff7a4a, durationMs: 7000, damageMult: 1.3,
-  },
-  bulwark: {
-    name: 'BULWARK', desc: 'Shield of 25% max health', icon: 'buff_shield_boost', plate: 'shield_boost', sfx: 'shield',
-    color: 0x7ce8ff, durationMs: 8000, shieldFrac: 0.25,
-  },
-  tailwind: {
-    name: 'TAILWIND', desc: '+35% speed, dash twice as often', icon: 'buff_summerbreeze', plate: 'buff_apply', sfx: 'buff',
-    color: 0x9dffb0, durationMs: 7000, speedMult: 1.35, dashCooldownMult: 0.5,
-  },
-  moonrise: {
-    name: 'MOONRISE', desc: 'Special fully charged', icon: 'power_energy_master', plate: 'power_awaken', sfx: 'power_awaken',
-    color: 0xffd964, instant: true,
-  },
-}
-
-export const POWERUP_RULES = {
-  firstAt: 8000,       // before the field starts at 20s, so the opening has a point of interest
-  every: 11000,
-  maxOnField: 2,
-  warnMs: 1500,        // a shimmer on the ground before it can be taken: a race, not a lottery
-  lifetimeMs: 20000,
-  pickupRadius: 30,    // added to the fighter's body radius
-}
-
-/** Icons the HUD and the orbs draw, loaded at boot. */
-export const POWERUP_ICONS = [...Object.values(POWERUPS).map(p => p.icon), 'buff_leaf', 'buff_mushroom']
+// The numbers live in boonConfig.js so the headless simulation can read them.
+export { POWERUPS, POWERUP_RULES, POWERUP_ICONS }
 
 export default class PowerUps {
   constructor(scene) {

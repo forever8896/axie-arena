@@ -13,7 +13,10 @@ import { CLASS_COLORS } from './palette.js'
  */
 
 /** When a basic's blow lands, in ms. Gameplay was balanced against this. */
-export const CONNECT_MS = 165
+// Re-exported from the simulation, which owns the timing the server resolves
+// hits on; the clip below is squeezed so its impact frame lands there.
+export { CONNECT_MS } from '../sim/constants.js'
+import { CONNECT_MS } from '../sim/constants.js'
 
 /** Shared state clips. Chosen by rendering all 46 and keeping the 38 with motion. */
 const STATE_CLIPS = {

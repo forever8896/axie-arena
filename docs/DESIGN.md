@@ -541,3 +541,33 @@ baked ground, the real bush art and the real blocks, so a glance at it matches
 what is on screen. Everything that moves is drawn over that each frame, and the
 Axies are drawn as themselves — each class is posed once at boot and rendered
 into a small round portrait.
+
+---
+
+## 10. The simulation the server runs
+
+The combat logic moved out of Phaser into `src/sim/`: pure rules with no
+renderer, so the same code can run in a Node server, in a test, or in the page.
+Only the maths helpers and the drawing had to change; every number stayed.
+
+Two things came out of the port that the browser version had hidden:
+
+**Bots could not get round a wall.** Chasing a rival with a block between them,
+a bot pushed into the wall and stayed there. It shows up as bots spending 58%
+of a match in "chase" and under 1% in "strike". They now notice they are
+pushing and going nowhere, and commit to sliding along the wall for half a
+second, which is what a person does without thinking. Plant, the class that
+least needs to close, fell from 45% of wins to 28%.
+
+**Leaving with a bounty destroyed it.** A fighter that left the room any way
+other than a Moon Gate took its bounty out of the world: the conservation check
+caught it as soon as the test made a hunter walk away carrying one. Whatever is
+carried is now dropped where they stood, which is also what a lost connection
+must do.
+
+`node scripts/check-sim.mjs` runs 42 rule checks in under a second, and
+`node scripts/sim-balance.mjs 300` measures balance over 300 matches in five —
+the same measurement took two and a half minutes in the browser. With that, the
+last flag was tuned out: plant 3800 → 3550 health and 355 → 330 damage brings
+the spread to 22.0% plant, 20.7% beast, 16.3% bug, 14.7% bird, 13.3% reptile,
+12.7% aquatic, worst gap 2.5σ.

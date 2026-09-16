@@ -88,11 +88,11 @@ export const CLASS_KITS = {
   plant: {
     title: 'Plant',
     tagline: 'Denies ground and outlasts',
-    hp: 3800, speed: 220,
+    hp: 3550, speed: 220,
     hitSfx: 'plant_projectile_hit',
     basic: {
       name: 'Chomp', desc: 'Short reach, steady damage',
-      kind: 'cone', range: 92, arc: 75, damage: 355, cooldown: 600, knockback: 130,
+      kind: 'cone', range: 92, arc: 75, damage: 330, cooldown: 600, knockback: 130,
       sfx: 'plant_bite_attack',
       anim: 'attack/melee/mouth-bite',
       vfx: 'plant_bite',

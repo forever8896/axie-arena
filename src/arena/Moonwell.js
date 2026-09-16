@@ -3,32 +3,10 @@ import { play as playSfx } from '../fx/Sfx.js'
 import { playStatusPlate } from '../fx/SkillVfx.js'
 import { damageNumber } from '../fx/Juice.js'
 import { findOpenSpot, floatLabel } from './PowerUps.js'
+import { MOONWELL } from './boonConfig.js'
 
-/**
- * Moonwells: healing ground that blooms somewhere on the field now and then.
- *
- * Built from four researched rules (docs/DESIGN.md, section 6):
- * - It blooms visibly before it heals, like Brawl Stars' Healing Mushrooms, so
- *   it is a place to race to rather than a free top-up for whoever stood there.
- * - It favours lone fighters over crowds, as Showdown's mushrooms do.
- * - Taking damage from a rival shuts your healing off for a moment, as damage
- *   cuts Dota's Regeneration rune: it rewards disengaging, it cannot win a
- *   trade on its own.
- * - It holds a limited pool shared by everyone inside, and shrinks as it
- *   drains, so it can be contested and denied, like League's Honeyfruit.
- */
-export const MOONWELL = {
-  firstAt: 15000,
-  every: 17000,
-  jitter: 3000,
-  bloomMs: 2500,
-  activeMs: 7000,
-  radius: 115,
-  healFracPerSec: 0.08,   // of max health: between HotS fountains (2%/s) and Showdown's mushrooms
-  tickMs: 250,
-  hurtLockoutMs: 1200,
-  pool: 2400,             // total health it can give, shared
-}
+// The numbers live in boonConfig.js so the headless simulation can read them.
+export { MOONWELL }
 
 export default class Moonwells {
   constructor(scene) {
