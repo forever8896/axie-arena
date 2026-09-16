@@ -1,5 +1,6 @@
 import { CLASS_KITS, CHARGE_PER_SECOND, PARRY } from '../axie/classKits.js'
 import { Vec2, clamp, distance, wrapAngle, degToRad } from './math.js'
+import { FLAGS } from './constants.js'
 
 /**
  * One Axie, as the simulation sees it: position, health, timers and the rules
@@ -412,9 +413,10 @@ export default class SimFighter {
       charge: Math.round(this.charge * 100) / 100,
       alive: this.alive,
       speed: Math.round(this.vel.length()),
-      flags: (this.dashing ? 1 : 0) | (this.stunned ? 2 : 0) | (this.parrying ? 4 : 0) |
-        (this.parryRecovering ? 8 : 0) | (this.casting ? 16 : 0) | (this.shielded ? 32 : 0) |
-        (this.chargeState ? 64 : 0) | (this.hidden ? 128 : 0),
+      flags: (this.dashing ? FLAGS.DASHING : 0) | (this.stunned ? FLAGS.STUNNED : 0) |
+        (this.parrying ? FLAGS.PARRYING : 0) | (this.parryRecovering ? FLAGS.PARRY_RECOVER : 0) |
+        (this.casting ? FLAGS.CASTING : 0) | (this.shielded ? FLAGS.SHIELDED : 0) |
+        (this.chargeState ? FLAGS.CHARGING : 0) | (this.hidden ? FLAGS.HIDDEN : 0),
       shield: Math.round(this.shieldHp),
       buffs: Object.entries(this.buffs)
         .filter(([, b]) => b && this.now < b.until)

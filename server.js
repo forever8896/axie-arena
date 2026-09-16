@@ -1,15 +1,19 @@
 #!/usr/bin/env node
 /**
- * Serves the built game. Dependency-free on purpose: the whole thing is
- * static files, and a deploy should not pull in a web framework to hand out
- * a few megabytes of art.
+ * Serves the built game, and hosts the rooms it connects to.
  *
- * Fingerprinted bundles under /assets are cached hard; everything else is
- * revalidated, so a redeploy is picked up without a stale index.
+ * The file server is still what it was: static files, no framework, with
+ * fingerprinted bundles under /assets cached hard and everything else
+ * revalidated so a redeploy is picked up without a stale index.
+ *
+ * Alongside it, /ws carries the room authority (src/net) and /api/rooms is
+ * what the lobby reads. The rooms run on this process's clock whether or not
+ * anybody is connected, which is what makes the Wilds endless.
  */
 import { createServer } from 'node:http'
 import { createReadStream, statSync } from 'node:fs'
 import { join, extname, normalize } from 'node:path'
+import { attachNet } from './src/net/wsServer.js'
 
 const ROOT = join(process.cwd(), 'dist')
 const PORT = Number(process.env.PORT) || 8080
@@ -37,12 +41,19 @@ const send = (res, status, body, headers = {}) => {
   res.end(body)
 }
 
-createServer((req, res) => {
+const server = createServer((req, res) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'Method not allowed')
 
   // Health check for the platform, before touching the disk.
   const url = new URL(req.url, 'http://localhost')
   if (url.pathname === '/healthz') return send(res, 200, 'ok')
+
+  // What the lobby reads: the live rooms, as the authority sees them.
+  if (url.pathname === '/api/rooms') {
+    return send(res, 200, JSON.stringify({ rooms: net.host.roomList() }), {
+      'Content-Type': 'application/json; charset=utf-8',
+    })
+  }
 
   // Never serve outside dist/, whatever the path says.
   const rel = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, '')
@@ -77,6 +88,11 @@ createServer((req, res) => {
   res.writeHead(200, headers)
   if (req.method === 'HEAD') return res.end()
   createReadStream(file).pipe(res)
-}).listen(PORT, () => {
+})
+
+const net = attachNet(server)
+
+server.listen(PORT, () => {
   console.log(`Lunacy is being served from ${ROOT} on :${PORT}`)
+  console.log(`Rooms are live on ws://…:${PORT}/ws — ${net.host.defs.length} in the lobby`)
 })

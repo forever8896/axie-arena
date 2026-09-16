@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@axieinfinity/mixer": "^1.4.9",
-    "phaser": "^3.90.0"
+    "phaser": "^3.90.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "opentype.js": "^1.3.4",
