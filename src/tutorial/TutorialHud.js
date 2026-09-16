@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { bindButton } from '../fx/UiSound.js'
 
 const HEAD = 'Rowdies, ui-sans-serif, system-ui, sans-serif'
 const MONO = 'ui-monospace, monospace'

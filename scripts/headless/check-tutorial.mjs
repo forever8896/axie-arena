@@ -138,6 +138,35 @@ try {
     check('cashing out at the gate finishes the tutorial', t.finished, 'finished ' + t.finished)
     check('finishing is remembered', localStorage.getItem('lunacy.tutorial.done.v1') === '1', '')
 
+    // The finish panel, with the overlay actually running. The checks above
+    // stop UIScene, so a crash while building that panel went unseen: it threw
+    // every frame inside the scene update and froze the whole game.
+    {
+      ;['UIScene', 'GameScene'].forEach(k => g.scene.stop(k))
+      g.scene.start('GameScene', { builds, playerClass: 'plant', mode: 'tutorial' })
+      // GameScene launches UIScene from create(), which the manual stepping
+      // below never processes on its own.
+      g.scene.processQueue()
+      const s3 = g.scene.getScene('GameScene')
+      const ui3 = g.scene.getScene('UIScene')
+      const both = () => {
+        s3.sys.step((clock += 1000 / 60), 1000 / 60)
+        ui3.sys.step(clock, 1000 / 60)
+      }
+      both()
+      check('the tutorial overlay is up', Boolean(ui3.tutorialHud), String(Boolean(ui3.tutorialHud)))
+      const t3 = s3.tutorial
+      for (let i = 0; i < 9; i++) t3.skip()
+      check('skipping reaches the Moon Gate', t3.step?.id === 'gate', t3.step?.id)
+      s3.player.pos.set(t3.gate.x, t3.gate.y)
+      const end = s3.time.now + 6000
+      while (!t3.finished && s3.time.now < end) both()
+      check('standing in the gate finishes the tutorial', t3.finished, 'channel ' + t3.channel?.toFixed(2))
+      for (let i = 0; i < 20; i++) both()
+      check('the finish panel opens without crashing', Boolean(ui3.tutorialHud.panel), String(Boolean(ui3.tutorialHud.panel)))
+      check('it offers the Wilds', typeof ui3.tutorialHud.primary === 'function', typeof ui3.tutorialHud.primary)
+    }
+
     // Skipping.
     ;['GameScene'].forEach(k => g.scene.stop(k))
     g.scene.start('GameScene', { builds, playerClass: 'bird', mode: 'tutorial' })
