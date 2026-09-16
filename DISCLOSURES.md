@@ -27,6 +27,18 @@ No code copied verbatim so far.
 | --- | --- | --- |
 | Rowdies (Google Fonts) | SIL Open Font License 1.1 | in-game text; logo lettering, converted to outlines. `scripts/brand/Rowdies-Bold.ttf` with its `OFL.txt` |
 
+## Organizer confirmations
+
+Asked in the Vibeathon Discord and answered by **Jaatster (Sky Mavis and Axie
+Limited team)** on 2026-09-16: "yes to all three. no issues".
+
+1. **Multiplayer may ship in Round 1** as long as no wallet connection is
+   required to play.
+2. **Assets may be generated from the Axie art** — attack animations and the
+   like — rather than being limited to the files in the resource kits.
+3. **Rendering Axies without any Spine runtime**, using our own reader of the
+   mixer's animation JSON, is fine under Official Rules §5.
+
 ## Axie assets
 
 **In use.** Axie bodies are composed with `@axieinfinity/mixer` (MIT) via
@@ -79,7 +91,8 @@ under one screen pixel with it enabled.
 **No Spine runtime code is shipped.** `pixi-spine` and equivalents are avoided
 deliberately: Official Rules §5 and Esoteric Software's Spine Runtimes License
 require each user integrating the runtimes to hold a Spine Editor licence. See
-README for what that costs us.
+README for what that costs us. Confirmed acceptable by the Axie team on
+2026-09-16 (see Organizer confirmations above).
 
 ## Generated assets
 
