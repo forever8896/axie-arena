@@ -16,6 +16,9 @@
 import { launch } from './cdp.mjs'
 
 const PAGE = process.env.PAGE ?? 'http://localhost:5173'
+// Point the local page at a room server elsewhere to measure a real connection:
+//   SERVER=wss://lunacy.up.railway.app/ws node scripts/headless/check-net-feel.mjs
+const SERVER = process.env.SERVER ? `&server=${encodeURIComponent(process.env.SERVER)}` : ''
 let pass = 0
 let fail = 0
 const check = (name, ok, detail = '') => {
@@ -26,7 +29,7 @@ const check = (name, ok, detail = '') => {
 
 const b = await launch({ width: 1000, height: 640 })
 try {
-  await b.goto(`${PAGE}/?net=glade&cls=beast&name=Feel`)
+  await b.goto(`${PAGE}/?net=glade&cls=beast&name=Feel${SERVER}`)
   await b.waitFor("!!window.__game?.scene.getScene('NetScene')?.scene.isActive()", 90000)
   await b.eval('window.__game.loop.wake(); true')
   await b.waitFor("window.__game.scene.getScene('NetScene').client?.status === 'playing'", 60000)

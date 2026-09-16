@@ -78,13 +78,25 @@ export default class NetScene extends Phaser.Scene {
     this.buildHud()
     this.bindInput()
 
-    this.client = new RoomClient({ name: this.playerName })
+    this.client = this.connection()
     this.client.on('bye', why => this.onBye(why))
     this.client.on('close', () => this.onClose())
     this.status = 'connecting'
     this.join()
 
     this.events.once('shutdown', () => this.teardown())
+  }
+
+  /**
+   * A development build can be pointed at another room server, which is how the
+   * feel of a real connection gets measured: the page served from here, the room
+   * running where it actually runs. Never in a built game, where a socket that
+   * a link can redirect is a way to lie to a player about who they are playing
+   * with.
+   */
+  connection() {
+    const server = import.meta.env.DEV ? new URLSearchParams(location.search).get('server') : null
+    return new RoomClient({ name: this.playerName, ...(server ? { url: server } : {}) })
   }
 
   /**
@@ -118,7 +130,7 @@ export default class NetScene extends Phaser.Scene {
     this.status = 'connecting'
     this.staked = false
     this.client.close()
-    this.client = new RoomClient({ name: this.playerName })
+    this.client = this.connection()
     this.client.on('bye', why => this.onBye(why))
     this.client.on('close', () => this.onClose())
     this.view.destroy()
