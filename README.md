@@ -13,6 +13,8 @@ Where it goes next (an always-on arena, and how stakes could work without
 repeating play-to-earn's mistakes): **[docs/VISION.md](docs/VISION.md)**.
 How the combat numbers were chosen: [docs/DESIGN.md](docs/DESIGN.md).
 
+**Play it: https://lunacy.up.railway.app**
+
 ## Run it
 
 ```bash
@@ -35,6 +37,17 @@ node scripts/vendor-origins-vfx.mjs       # re-vendor Origins effect plates, ico
 node scripts/brand/build-logo.mjs         # rebuild the logo SVG and PNG exports
 node scripts/economy/model.mjs            # stake-mode economy model used in docs/VISION.md
 # balance: open http://localhost:5173/?sim=120 in a browser
+```
+
+## Deploy
+
+The build is static; `server.js` serves `dist/` with no dependencies (long
+cache on fingerprinted assets, single-page fallback, `/healthz` for the
+platform). On Railway, `npm run build` then `npm start`:
+
+```bash
+railway up            # build and deploy the linked project
+railway domain list   # the public URL
 ```
 
 ## Modes
