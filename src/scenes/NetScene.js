@@ -15,6 +15,7 @@ import Arena, { WORLD } from '../arena/Arena.js'
 import RoomClient from '../net/client.js'
 import RoomView from '../net/RoomView.js'
 import NetWilds from '../net/NetWilds.js'
+import Prediction from '../net/predict.js'
 import { createFxTextures, ambientMotes } from '../fx/Juice.js'
 import { play as playMusic } from '../fx/Music.js'
 import { POWERUPS } from '../arena/boonConfig.js'
@@ -47,6 +48,8 @@ export default class NetScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(0x24401c)
 
     this.view = new RoomView(this, this.builds)
+    this.predict = new Prediction()
+    this.lastSnapT = -1
     this.reticle = this.add.graphics().setDepth(-20)
 
     // The surface UIScene and WildsHud read. They were written against the
@@ -120,6 +123,8 @@ export default class NetScene extends Phaser.Scene {
     this.client.on('close', () => this.onClose())
     this.view.destroy()
     this.view = new RoomView(this, this.builds)
+    this.predict = new Prediction()
+    this.lastSnapT = -1
     this.scene.stop('UIScene')
     this.join()
   }
@@ -127,14 +132,14 @@ export default class NetScene extends Phaser.Scene {
   bindInput() {
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,SHIFT')
     this.input.on('pointerdown', p => {
-      if (p.leftButtonDown()) this.client?.act('attack')
-      else if (p.rightButtonDown()) this.client?.act('special')
+      if (p.leftButtonDown()) this.want('attack')
+      else if (p.rightButtonDown()) this.want('special')
     })
-    this.input.keyboard.on('keydown-SPACE', () => this.client?.act('dash'))
-    this.input.keyboard.on('keydown-SHIFT', () => this.client?.act('dash'))
-    this.input.keyboard.on('keydown-E', () => this.client?.act('special'))
-    this.input.keyboard.on('keydown-Q', () => this.client?.act('parry'))
-    this.input.keyboard.on('keydown-F', () => this.client?.act('parry'))
+    this.input.keyboard.on('keydown-SPACE', () => this.want('dash'))
+    this.input.keyboard.on('keydown-SHIFT', () => this.want('dash'))
+    this.input.keyboard.on('keydown-E', () => this.want('special'))
+    this.input.keyboard.on('keydown-Q', () => this.want('parry'))
+    this.input.keyboard.on('keydown-F', () => this.want('parry'))
     this.input.keyboard.on('keydown-ESC', () => this.wilds?.requestLeave() ?? this.backToLobby())
     // A panel is waiting for an answer; Enter takes the one it recommends.
     this.input.keyboard.on('keydown-ENTER', () => {
@@ -170,8 +175,15 @@ export default class NetScene extends Phaser.Scene {
     const view = client.view()
     if (!view) return
 
+    // Your own Axie is drawn where this client has worked out it is, not where
+    // the room said it was a round trip ago. Everyone else is interpolated,
+    // because the room's word is all there is about them.
     const events = client.drainEvents()
-    this.view.render(view, events, delta)
+    this.reconcile(view, client)
+    this.predict.settle(delta)
+    this.view.render(view, events, delta, this.predict.fighter ? {
+      id: client.you, x: this.predict.x, y: this.predict.y, speed: this.predict.speed,
+    } : null)
 
     // The shapes the HUD reads, refreshed from this frame's snapshot.
     this.fighters = [...this.view.actors.values()]
@@ -189,11 +201,12 @@ export default class NetScene extends Phaser.Scene {
 
     const me = view.me
     if (me) {
-      // The camera follows the drawn position rather than a sprite, because the
-      // sprite is only ever a picture of where the room said we were.
-      this.follow(me, delta)
-      this.drawReticle(me)
-      this.sendInput(me)
+      // The camera and the reach marker follow the predicted body, or they
+      // would lag behind the Axie the player is actually steering.
+      const here = this.predict.fighter ? { ...me, x: this.predict.x, y: this.predict.y } : me
+      this.follow(here, delta)
+      this.drawReticle(here)
+      this.sendInput(here, delta)
     } else {
       this.reticle.clear()
     }
@@ -211,19 +224,55 @@ export default class NetScene extends Phaser.Scene {
     cam.scrollY += (wantY - cam.scrollY) * t
   }
 
-  sendInput(me) {
+  /**
+   * An action the player asked for: queued for the room, and — when this
+   * client's own copy of the rules says it is allowed — shown immediately.
+   *
+   * Waiting a round trip to see your own Axie move is what made this feel
+   * broken. The room still decides what the swing did; this only decides that
+   * you swung, which you did, because you pressed the button.
+   */
+  want(action) {
+    if (!this.client || this.status !== 'playing') return
+    this.client.act(action)
+    if (!this.predict.allows(action)) return
+    const actor = this.view.actors.get(this.client.you)
+    if (action === 'attack') this.view.echo('swing', actor, this.aim ?? 0)
+    else if (action === 'dash') this.view.echo('dash', actor, this.aim ?? 0)
+    else if (action === 'parry') this.view.echo('parry', actor, this.aim ?? 0)
+  }
+
+  /**
+   * What the player wants, at the room's own rate. Every input sent is also
+   * run through the prediction, so the two stay in step.
+   */
+  sendInput(me, delta) {
     const k = this.keys
     const pointer = this.input.activePointer
     const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y)
     this.aim = Math.atan2(world.y - me.y, world.x - me.x)
-    this.client.sendInput({
+    const sent = this.client.pump({
       move: {
         x: (k.D.isDown ? 1 : 0) - (k.A.isDown ? 1 : 0),
         y: (k.S.isDown ? 1 : 0) - (k.W.isDown ? 1 : 0),
       },
       aim: this.aim,
       point: { x: world.x, y: world.y },
-    })
+    }, delta)
+    for (const input of sent) this.predict.step(input, input.seq)
+  }
+
+  /** Line the prediction back up with the room, every time it speaks. */
+  reconcile(view, client) {
+    const latest = client.buffer.at(-1)
+    const snap = latest?.fighters.find(f => f.id === client.you)
+    if (!snap) return
+    if (!this.predict.fighter) this.predict.begin(snap, this.time.now)
+    // Once per snapshot: reconciling against one already answered would rewind
+    // the same correction every frame and fight the player's own input.
+    if (latest.t === this.lastSnapT) return
+    this.lastSnapT = latest.t
+    this.predict.reconcile(snap, client.acked)
   }
 
   /** The reach of your next swing, drawn where the room thinks you are. */
@@ -240,8 +289,9 @@ export default class NetScene extends Phaser.Scene {
 
   updateHud() {
     const live = this.status === 'playing'
-    this.hud.link.setText(`MULTIPLAYER · ${this.status.toUpperCase()} · ${Math.round(this.client.latency)}ms`)
-      .setColor(live ? '#7f8c6a' : '#ffc22e')
+    const ping = Math.round(this.client.latency)
+    this.hud.link.setText(`MULTIPLAYER · ${this.status.toUpperCase()} · ${ping}ms · PREDICTED`)
+      .setColor(live ? (ping > 250 ? '#ffc22e' : '#7f8c6a') : '#ffc22e')
     this.hud.banner.setText(this.status === 'dropped'
       ? 'CONNECTION LOST — your Axie stays in the room for a few seconds'
       : '')

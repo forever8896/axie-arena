@@ -413,6 +413,10 @@ export default class SimFighter {
       charge: Math.round(this.charge * 100) / 100,
       alive: this.alive,
       speed: Math.round(this.vel.length()),
+      // Velocity, so a client predicting its own movement can carry on from
+      // exactly where the authority was rather than guessing from positions.
+      vx: Math.round(this.vel.x),
+      vy: Math.round(this.vel.y),
       flags: (this.dashing ? FLAGS.DASHING : 0) | (this.stunned ? FLAGS.STUNNED : 0) |
         (this.parrying ? FLAGS.PARRYING : 0) | (this.parryRecovering ? FLAGS.PARRY_RECOVER : 0) |
         (this.casting ? FLAGS.CASTING : 0) | (this.shielded ? FLAGS.SHIELDED : 0) |

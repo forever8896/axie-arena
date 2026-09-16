@@ -168,24 +168,42 @@ export default class RoomClient {
   }
 
   /**
-   * Called every frame with what the player is doing. Sends at most one input
-   * per simulation step: more would be noise, since the room cannot read them
-   * any faster than it steps.
+   * One input per simulation step, whatever the frame rate.
+   *
+   * The room steps at a fixed rate, so inputs are produced at that same rate
+   * and each one stands for exactly one step. That is what lets the client
+   * predict its own movement by running those same inputs through the same
+   * code, and replay the ones the room has not answered yet.
+   *
+   * Returns each input it sent, so the caller can predict with it.
    */
-  sendInput({ move = { x: 0, y: 0 }, aim = 0, point = null } = {}, now = Date.now()) {
-    if (this.status !== 'playing') return
-    const due = now - this.lastSendAt >= P.TICK_MS
-    if (!due && !this.actions.size) return
-    this.lastSendAt = now
-    const act = [...this.actions]
-    this.actions.clear()
-    this.send(P.input({
-      seq: ++this.seq,
-      mv: [move.x, move.y],
-      aim,
-      act,
-      pt: point ? [Math.round(point.x), Math.round(point.y)] : null,
-    }))
+  pump({ move = { x: 0, y: 0 }, aim = 0, point = null } = {}, delta = P.TICK_MS) {
+    if (this.status !== 'playing') return []
+    // A long stall (an alt-tab, a slow load) is not a backlog of intent worth
+    // replaying: catch up a little, then carry on from now.
+    this.carry = Math.min((this.carry ?? 0) + delta, P.TICK_MS * 5)
+    const sent = []
+    while (this.carry >= P.TICK_MS) {
+      this.carry -= P.TICK_MS
+      const act = [...this.actions]
+      this.actions.clear()
+      const input = {
+        seq: ++this.seq,
+        move: { x: move.x, y: move.y },
+        aim,
+        act,
+        point,
+      }
+      this.send(P.input({
+        seq: input.seq,
+        mv: [move.x, move.y],
+        aim,
+        act,
+        pt: point ? [Math.round(point.x), Math.round(point.y)] : null,
+      }))
+      sent.push(input)
+    }
+    return sent
   }
 
   ping() {

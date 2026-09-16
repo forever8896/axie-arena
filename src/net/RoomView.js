@@ -32,6 +32,7 @@ export default class RoomView {
     this.actors = new Map()
     this.shots = new Map()
     this.props = new Map()
+    this.echoes = new Map()
     this.you = null
 
     this.layer = scene.add.container(0, 0)
@@ -69,14 +70,20 @@ export default class RoomView {
    * One frame. `view` is the interpolated room; `events` is what the authority
    * says happened since the last one.
    */
-  render(view, events, delta) {
+  render(view, events, delta, self = null) {
     if (!view) return
     this.you = view.me?.id ?? null
 
     const now = this.scene.time.now
     const seen = new Set()
-    for (const f of view.fighters) {
-      seen.add(f.id)
+    for (const raw of view.fighters) {
+      seen.add(raw.id)
+      // Your own body comes from the prediction: the room's word about you is
+      // a round trip old, and watching your own Axie lag your hands is the one
+      // thing no amount of smoothing forgives.
+      const f = self && raw.id === self.id && raw.alive
+        ? { ...raw, x: self.x, y: self.y, speed: self.speed }
+        : raw
       const actor = this.actor(f)
       actor.sprite.setPosition(f.x, f.y)
       // Facing follows aim, not travel: an Axie backing away still faces you.
@@ -232,6 +239,36 @@ export default class RoomView {
     }
   }
 
+  /**
+   * Play your own action the instant you asked for it, rather than when the
+   * room's word gets back. Only ever animation: no damage, no charge spent, no
+   * bounty moved. If the room disagrees, the worst that happens is an Axie that
+   * swung at nothing, which is also what happens when you mistime a swing.
+   */
+  echo(kind, actor, aim) {
+    if (!actor) return
+    this.echoes.set(kind, this.scene.time.now)
+    const kit = CLASS_KITS[actor.cls]
+    if (kind === 'swing' && kit) {
+      actor.sprite.setFacing(Math.cos(aim) >= 0 ? 1 : -1)
+      actor.sprite.playAttack(null, kit.basic.anim)
+    } else if (kind === 'dash') {
+      actor.sprite.playState('dash', { fit: 300 })
+      actor.sprite.dashTrail({ x: Math.cos(aim), y: Math.sin(aim) })
+    } else if (kind === 'parry') {
+      actor.sprite.play('defense/hit-with-shield', { kind: 'parry', peakAt: PARRY.windowMs, peakFraction: 0.4 })
+    }
+  }
+
+  /** True if this client already played that action for itself, recently. */
+  echoed(kind) {
+    const at = this.echoes.get(kind)
+    if (at == null) return false
+    // Long enough to cover a round trip and the room's own step, short enough
+    // that the next press is not swallowed.
+    return this.scene.time.now - at < 900
+  }
+
   /** One room event, turned into something you can see or hear. */
   play(e, view) {
     const actor = e.id ? this.actors.get(e.id) : null
@@ -240,8 +277,10 @@ export default class RoomView {
     const kit = f ? CLASS_KITS[f.cls] : null
 
     switch (e.t) {
+      // Your own swing was already played the moment you clicked; playing the
+      // room's copy of it would restart the animation a round trip later.
       case 'swing':
-        if (actor && kit) {
+        if (actor && kit && !(mine && this.echoed('swing'))) {
           actor.sprite.setFacing(Math.cos(e.aim) >= 0 ? 1 : -1)
           actor.sprite.playAttack(null, kit.basic.anim)
         }
@@ -274,6 +313,7 @@ export default class RoomView {
         }
         break
       case 'dash':
+        if (mine && this.echoed('dash')) break
         actor?.sprite.playState('dash', { fit: 300 })
         actor?.sprite.dashTrail(e.dir ?? { x: Math.cos(f?.aim ?? 0), y: Math.sin(f?.aim ?? 0) })
         break

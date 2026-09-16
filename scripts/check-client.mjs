@@ -46,7 +46,7 @@ async function frames(client, ms, input = {}, fps = 60) {
   while (Date.now() < end) {
     await sleep(step)
     client.advance(step)
-    client.sendInput(input)
+    client.pump(input, step)
     const v = client.view()
     if (v) seen.push(v)
   }
@@ -87,8 +87,17 @@ try {
     const hops = mine.slice(1).map((m, i) => Math.hypot(m.x - mine[i].x, m.y - mine[i].y))
     const moved = hops.filter(h => h > 0.01).length
     const biggest = Math.max(...hops)
-    check('a walk is drawn smoothly, not in snapshot jumps', moved > hops.length * 0.7,
-      `${moved} of ${hops.length} frames moved`)
+    // A frame here and there repeats a position: the render clock has not
+    // crossed into new data yet. What would be seen as a stutter is a run of
+    // them, so that is what this measures rather than a ratio of frames.
+    let stall = 0
+    let worstStall = 0
+    for (const h of hops) {
+      stall = h > 0.01 ? 0 : stall + 1
+      worstStall = Math.max(worstStall, stall)
+    }
+    check('a walk is drawn smoothly, not in snapshot jumps', worstStall <= 4,
+      `${moved} of ${hops.length} frames moved, longest pause ${worstStall} frames`)
     check('and no frame jumps a whole snapshot', biggest < 40, `biggest hop ${biggest.toFixed(1)}px`)
     check('the walk actually went somewhere', mine.at(-1).x - mine[0].x > 40,
       `${Math.round(mine.at(-1).x - mine[0].x)}px`)
@@ -122,7 +131,7 @@ try {
     mine.spawnShieldUntil = sim.now + 5000
     client.drainEvents()
     client.act('attack')
-    client.sendInput({ move: { x: 0, y: 0 }, aim: 0 })
+    client.pump({ move: { x: 0, y: 0 }, aim: 0 }, 1000 / 60)
     await sleep(200)
     check('a shielded fighter cannot attack', !client.events.some(e => e.t === 'swing' && e.id === client.you),
       'refused by the room')
@@ -130,7 +139,7 @@ try {
 
     client.drainEvents()
     client.act('attack')
-    client.sendInput({ move: { x: 0, y: 0 }, aim: 0 })
+    client.pump({ move: { x: 0, y: 0 }, aim: 0 }, 1000 / 60)
     const swing = await waitFor(() => {
       const evs = client.events
       return evs.find(e => e.t === 'swing' && e.id === client.you)
@@ -144,7 +153,7 @@ try {
   // --- Flags are read the same on both sides -------------------------------
   {
     client.act('dash')
-    client.sendInput({ move: { x: 1, y: 0 }, aim: 0 })
+    client.pump({ move: { x: 1, y: 0 }, aim: 0 }, 1000 / 60)
     // The view is a frame of a clock that only moves when a scene drives it, so
     // the wait has to keep drawing, exactly as the game loop would.
     const dashing = await waitFor(() => {
