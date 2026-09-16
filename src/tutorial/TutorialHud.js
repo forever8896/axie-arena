@@ -34,7 +34,7 @@ export default class TutorialHud {
 
     ui.status?.setVisible(false)
     ui.statusSub?.setVisible(false)
-    ui.hint?.setText('TAB  SKIP THIS STEP      ESC  LEAVE THE TUTORIAL')
+    ui.hint?.setText('TAB  SKIP THIS STEP      ESC  LEAVE THE TUTORIAL      M  MUTE')
     ui.layoutHintPlate?.()
 
     this.panel = null
@@ -171,7 +171,7 @@ export default class TutorialHud {
     root.add(bg)
     root.add(ui.add.text(0, -ph / 2 + 24, 'TUTORIAL COMPLETE', { fontFamily: HEAD, fontSize: '34px', color: '#ffd964' }).setOrigin(0.5, 0))
     root.add(ui.add.text(0, -ph / 2 + 80,
-      'You can move, hit, dash, charge a special, parry,\ngrab power-ups, heal, hide, win a fight and cash out.\nThat is the whole game. Go and play it.', {
+      'You can move, hit, dash, charge a special, parry, grab power-ups,\nheal, hide, win a fight and cash out at a Moon Gate.\nThat is the whole game. The Wilds are open.', {
         fontFamily: MONO, fontSize: '13px', color: '#f4f8e8', align: 'center', lineSpacing: 5,
       }).setOrigin(0.5, 0))
 
@@ -180,10 +180,9 @@ export default class TutorialHud {
       ui.scene.start(key, data)
     }
     const builds = this.game.builds
-    this.primary = () => go('MenuScene', { builds, mode: 'showdown' })
-    root.add(button(ui, -180, ph / 2 - 56, 'PLAY SHOWDOWN', 0xffc22e, this.primary))
-    root.add(button(ui, 0, ph / 2 - 56, 'THE ENDLESS WILDS', 0xc9b8ff, () => go('MenuScene', { builds, mode: 'wilds' })))
-    root.add(button(ui, 180, ph / 2 - 56, 'PLAY IT AGAIN', 0x9aa88a, () => go('GameScene', { builds, mode: 'tutorial', playerClass: this.game.playerClass })))
+    this.primary = () => go('MenuScene', { builds, mode: 'wilds' })
+    root.add(button(ui, -95, ph / 2 - 56, 'ENTER THE WILDS', 0xffc22e, this.primary))
+    root.add(button(ui, 95, ph / 2 - 56, 'PLAY IT AGAIN', 0x9aa88a, () => go('GameScene', { builds, mode: 'tutorial', playerClass: this.game.playerClass })))
   }
 }
 
@@ -195,8 +194,8 @@ function button(ui, x, y, label, color, onClick) {
   g.fillStyle(0x000000, 0.25).fillRoundedRect(-w / 2 + 3, -h / 2 + 6, w, h, 12)
   g.fillStyle(color, 1).fillRoundedRect(-w / 2, -h / 2, w, h, 12)
   const t = ui.add.text(0, 0, label, { fontFamily: HEAD, fontSize: '14px', color: '#2b2200' }).setOrigin(0.5)
-  const zone = ui.add.zone(0, 0, w, h).setInteractive({ useHandCursor: true })
-  zone.on('pointerdown', onClick)
+  const zone = ui.add.zone(0, 0, w, h)
+  bindButton(ui, zone, onClick)
   c.add([g, t, zone])
   return c
 }

@@ -5,6 +5,8 @@ import { CLASS_KITS } from '../axie/classKits.js'
 import { ambientMotes } from '../fx/Juice.js'
 import { ROOMS, WILDS, money } from '../wilds/config.js'
 import { wallet } from '../wilds/Wallet.js'
+import { play as playMusic } from '../fx/Music.js'
+import { bindButton, uiSound } from '../fx/UiSound.js'
 
 const HEAD = 'Rowdies, ui-sans-serif, system-ui, sans-serif'
 const MONO = 'ui-monospace, monospace'
@@ -33,6 +35,7 @@ export default class LobbyScene extends Phaser.Scene {
 
   create() {
     this.leaving = false
+    playMusic('theme')
     const { width, height } = this.scale
     makeGrassTexture(this)
     this.add.tileSprite(0, 0, width, height, 'field-grass').setOrigin(0).setDepth(-100)
@@ -57,7 +60,7 @@ export default class LobbyScene extends Phaser.Scene {
     this.buildSide(pad, 118, leftW, height - 150)
     this.buildRooms(pad * 2 + leftW, 118, width - pad * 3 - leftW, height - 150)
 
-    this.input.keyboard.on('keydown-ESC', () => this.go('HomeScene', { builds: this.builds }))
+    this.input.keyboard.on('keydown-ESC', () => { uiSound(this, 'back'); this.go('HomeScene', { builds: this.builds }) })
     this.input.keyboard.on('keydown-C', () => this.changeAxie())
     ;['ONE', 'TWO', 'THREE', 'FOUR'].forEach((key, i) => this.input.keyboard.on(`keydown-${key}`, () => this.enter(i)))
 
@@ -81,7 +84,7 @@ export default class LobbyScene extends Phaser.Scene {
     this.add.text(x + 20, y + 32, kit?.title ?? this.playerClass, { fontFamily: HEAD, fontSize: '22px', color: CREAM })
     const change = this.add.text(x + w - 20, y + 38, 'CHANGE  (C)', { fontFamily: MONO, fontSize: '11px', color: '#ffd964' })
       .setOrigin(1, 0).setInteractive({ useHandCursor: true })
-    change.on('pointerdown', () => this.changeAxie())
+    bindButton(this, change, () => this.changeAxie())
 
     if (this.builds?.[this.playerClass]) {
       this.hero = new AxieSprite(this, x + w / 2, y + 150, { build: this.builds[this.playerClass], axieClass: this.playerClass })
@@ -97,7 +100,7 @@ export default class LobbyScene extends Phaser.Scene {
     if (wallet.balance('AXS') < WILDS.startingBalance) {
       const top = this.add.text(x + w - 20, yy + 30, 'RESET TO 25', { fontFamily: MONO, fontSize: '11px', color: '#ffd964' })
         .setOrigin(1, 0).setInteractive({ useHandCursor: true })
-      top.on('pointerdown', () => { wallet.topUp(); this.scene.restart({ builds: this.builds, playerClass: this.playerClass, live: this.live }) })
+      bindButton(this, top, () => { wallet.topUp(); this.scene.restart({ builds: this.builds, playerClass: this.playerClass, live: this.live }) })
     }
 
     const s = wallet.session
@@ -174,8 +177,7 @@ export default class LobbyScene extends Phaser.Scene {
       fontFamily: HEAD, fontSize: '17px', color: afford ? '#2b2200' : '#9aa88a',
     }).setOrigin(0.5)
     if (afford) {
-      this.add.zone(bx + bw / 2, by + 21, bw, 42).setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => this.enter(i))
+      bindButton(this, this.add.zone(bx + bw / 2, by + 21, bw, 42), () => this.enter(i), { sound: 'start' })
     }
     const dots = this.add.graphics()
     const view = { room, hunters, top, dots, x, y: y + h - 38 }
@@ -210,7 +212,10 @@ export default class LobbyScene extends Phaser.Scene {
 
   enter(i) {
     const room = ROOMS[i]
-    if (!room || !wallet.canAfford(room)) return
+    if (!room || !wallet.canAfford(room)) {
+      uiSound(this, 'deny')
+      return
+    }
     this.go('GameScene', {
       builds: this.builds, playerClass: this.playerClass, mode: 'wilds', room, snapshot: { ...this.live[i] },
     })

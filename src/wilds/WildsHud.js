@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { WILDS, money } from './config.js'
 import { wallet } from './Wallet.js'
+import { bindButton } from '../fx/UiSound.js'
 
 const HEAD = 'Rowdies, ui-sans-serif, system-ui, sans-serif'
 const MONO = 'ui-monospace, monospace'
@@ -53,7 +54,7 @@ export default class WildsHud {
     ui.input.keyboard.on('keydown-ENTER', () => this.primary?.())
 
     ui.statusSub?.setText('HUNTERS IN THE ROOM')
-    ui.hint?.setText('WASD  MOVE     MOUSE  AIM     LEFT  ATTACK     RIGHT / E  SPECIAL     Q  PARRY     SPACE  DASH     ESC  LEAVE')
+    ui.hint?.setText('WASD  MOVE     MOUSE  AIM     LEFT  ATTACK     RIGHT / E  SPECIAL     Q  PARRY     SPACE  DASH     ESC  LEAVE     M  MUTE')
     ui.layoutHintPlate?.()
   }
 
@@ -254,8 +255,8 @@ function button(ui, x, y, label, color, enabled, onClick) {
   }).setOrigin(0.5)
   c.add([g, t])
   if (enabled && onClick) {
-    const zone = ui.add.zone(0, 0, w, h).setInteractive({ useHandCursor: true })
-    zone.on('pointerdown', () => onClick())
+    const zone = ui.add.zone(0, 0, w, h)
+    bindButton(ui, zone, onClick)
     c.add(zone)
   }
   return c

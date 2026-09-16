@@ -3,6 +3,8 @@ import AxieSprite from '../axie/AxieSprite.js'
 import { CLASS_KITS } from '../axie/classKits.js'
 import { CLASS_COLORS, ARENA_PALETTE } from '../axie/palette.js'
 import { ambientMotes } from '../fx/Juice.js'
+import { play as playMusic } from '../fx/Music.js'
+import { uiSound } from '../fx/UiSound.js'
 
 const CARD = { w: 228, h: 424, gap: 18 }
 const HEAD = 'Rowdies, ui-sans-serif, system-ui, sans-serif'
@@ -29,6 +31,7 @@ export default class MenuScene extends Phaser.Scene {
     const P = ARENA_PALETTE
     this.cameras.main.setBackgroundColor(P.deep)
 
+    playMusic('theme')
     this.classes = Object.keys(this.builds).filter(c => CLASS_KITS[c])
     this.selected = 0
     this.cards = []
@@ -43,7 +46,10 @@ export default class MenuScene extends Phaser.Scene {
       fontFamily: MONO, fontSize: '13px', color: '#8b83ad',
     }).setOrigin(0.5)
 
-    this.input.keyboard.on('keydown-ESC', () => this.scene.start('HomeScene', { builds: this.builds }))
+    this.input.keyboard.on('keydown-ESC', () => {
+      uiSound(this, 'back')
+      this.scene.start('HomeScene', { builds: this.builds })
+    })
 
     this.footer = this.add.text(0, 0, '← →  BROWSE      ENTER  FIGHT      ESC  BACK', {
       fontFamily: MONO, fontSize: '12px', color: '#5f5980',
@@ -206,12 +212,14 @@ export default class MenuScene extends Phaser.Scene {
 
   move(step) {
     this.selected = Phaser.Math.Wrap(this.selected + step, 0, this.classes.length)
+    uiSound(this, 'hover')
     this.highlight()
   }
 
   choose(cls) {
     if (this.leaving) return
     this.leaving = true
+    uiSound(this, 'start')
 
     const card = this.cards.find(c => c.cls === cls)
     card?.sprite.playState('victory')

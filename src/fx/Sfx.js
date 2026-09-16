@@ -6,6 +6,8 @@
  * public/vfx/LICENSE.md for the terms these ship under.
  */
 
+import { sfxVolume } from './Music.js'
+
 const BASE = `${import.meta.env.BASE_URL}sfx/`
 let ready = false
 
@@ -18,6 +20,8 @@ export const SFX = [
   'bird_throw_hit', 'bug_projectile_hit', 'reptile_projectile_hit',
   'poison', 'stunned', 'shield',
   'heal', 'power_awaken', 'bubble', 'damage_boost', 'buff',
+  // Menu: hover tick, confirm, back, start, denied.
+  'ui_hover', 'ui_select', 'ui_back', 'ui_start', 'ui_deny',
 ]
 
 /**
@@ -48,12 +52,18 @@ export async function loadSfx(scene, onOne) {
   ready = true
 }
 
-/** Safe to call before audio is ready, or when the browser has blocked it. */
+/**
+ * Safe to call before audio is ready, or when the browser has blocked it.
+ * Every effect goes through the master level in Music.js, so effects and music
+ * are mixed against each other rather than each picking its own loudness.
+ */
 export function play(scene, id, { volume = 0.5, rate = 1, detune = 0 } = {}) {
   const key = `sfx-${id}`
   if (!scene.cache?.audio?.exists(key)) return
+  const level = sfxVolume(volume)
+  if (level <= 0) return
   try {
-    scene.sound.play(key, { volume, rate, detune })
+    scene.sound.play(key, { volume: level, rate, detune })
   } catch {
     // Audio context not unlocked yet; silence is an acceptable outcome.
   }

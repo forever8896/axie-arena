@@ -4,6 +4,8 @@ import { makeGrassTexture } from '../arena/Arena.js'
 import { FIELD } from '../axie/palette.js'
 import { ambientMotes } from '../fx/Juice.js'
 import { tutorialDone } from '../tutorial/TutorialDirector.js'
+import { play as playMusic } from '../fx/Music.js'
+import { bindButton, uiSound } from '../fx/UiSound.js'
 
 const HEAD = 'Rowdies, ui-sans-serif, system-ui, sans-serif'
 const MONO = 'ui-monospace, monospace'
@@ -29,6 +31,7 @@ export default class HomeScene extends Phaser.Scene {
     this.aboutOpen = false
     this.wanderers = []
 
+    playMusic('theme')
     this.buildField()
     this.buildTitle()
     this.buildPlay()
@@ -107,7 +110,7 @@ export default class HomeScene extends Phaser.Scene {
     this.playLift = 0
     this.playZone.on('pointerover', () => this.tweenPlay(6))
     this.playZone.on('pointerout', () => this.tweenPlay(0))
-    this.playZone.on('pointerdown', () => this.start('wilds'))
+    bindButton(this, this.playZone, () => this.start('wilds'), { sound: 'start' })
   }
 
   /** The way in for new players: loud until the tutorial has been finished once. */
@@ -117,7 +120,7 @@ export default class HomeScene extends Phaser.Scene {
       fontFamily: HEAD, fontSize: fresh ? '17px' : '14px', color: fresh ? '#ffd964' : '#fff8d8',
     }).setOrigin(0.5).setDepth(1012).setInteractive({ useHandCursor: true })
     this.tutorialText.setShadow(0, 2, 'rgba(35,48,15,0.8)', 3, false, true)
-    this.tutorialText.on('pointerdown', () => this.start('tutorial'))
+    bindButton(this, this.tutorialText, () => this.start('tutorial'), { sound: 'start' })
     if (fresh) this.tweens.add({ targets: this.tutorialText, scale: 1.06, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
   }
 
@@ -157,60 +160,24 @@ export default class HomeScene extends Phaser.Scene {
   }
 
   buildAbout() {
-    this.aboutPanel = this.add.graphics().setDepth(1010)
-
-    this.aboutToggle = this.add.text(0, 0, 'ABOUT  +', {
-      fontFamily: MONO, fontSize: '13px', color: '#f2f7e4',
+    this.aboutToggle = this.add.text(0, 0, 'ABOUT  ·  HOW IT WORKS  ▸', {
+      fontFamily: MONO, fontSize: '12px', color: '#e8f0d6',
     }).setOrigin(0.5).setDepth(1012).setInteractive({ useHandCursor: true })
-    this.aboutToggle.setShadow(0, 2, 'rgba(35,48,15,0.6)', 3, false, true)
-    this.aboutToggle.on('pointerdown', () => this.toggleAbout())
-
-    this.aboutBody = this.add.text(0, 0, ABOUT, {
-      fontFamily: MONO, fontSize: '12.5px', color: INK,
-      align: 'left', lineSpacing: 7, wordWrap: { width: 560 },
-    }).setOrigin(0.5, 0).setDepth(1012).setVisible(false)
-
-    this.aboutAlpha = 0
+    this.aboutToggle.setShadow(0, 2, 'rgba(35,48,15,0.7)', 3, false, true)
+    bindButton(this, this.aboutToggle, () => this.openAbout())
+    this.input.keyboard.on('keydown-A', () => this.openAbout())
   }
 
-  toggleAbout() {
-    this.aboutOpen = !this.aboutOpen
-    this.aboutToggle.setText(this.aboutOpen ? 'ABOUT  −' : 'ABOUT  +')
-    this.aboutBody.setVisible(true)
-
-    this.tweens.add({
-      targets: this,
-      aboutAlpha: this.aboutOpen ? 1 : 0,
-      duration: 220,
-      ease: 'Quad.easeOut',
-      onUpdate: () => this.drawAbout(),
-      onComplete: () => {
-        if (!this.aboutOpen) this.aboutBody.setVisible(false)
-      },
-    })
-  }
-
-  drawAbout() {
-    const a = this.aboutAlpha
-    this.aboutPanel.clear()
-    if (a <= 0.01) return
-
-    const w = 620
-    const h = this.aboutBody.height + 48
-    const x = this.scale.width / 2 - w / 2
-    const y = this.aboutY + 22
-
-    this.aboutPanel.fillStyle(0x1d2b12, 0.22 * a)
-    this.aboutPanel.fillRoundedRect(x + 5, y + 9, w, h, 18)
-    this.aboutPanel.fillStyle(0xfdf6e3, 0.95 * a)
-    this.aboutPanel.fillRoundedRect(x, y, w, h, 18)
-
-    this.aboutBody.setAlpha(a).setPosition(this.scale.width / 2, y + 24)
+  openAbout() {
+    if (this.leaving) return
+    this.leaving = true
+    this.cameras.main.fadeOut(180)
+    this.time.delayedCall(200, () => this.scene.start('AboutScene', { builds: this.builds }))
   }
 
   buildFooter() {
     this.footer = this.add.text(0, 0,
-      'ENTER  PLAY  ·  T  TUTORIAL  ·  BUILT FOR AXIE VIBEATHON 2026', {
+      'ENTER  PLAY  ·  T  TUTORIAL  ·  A  ABOUT  ·  M  MUTE  ·  BUILT FOR AXIE VIBEATHON 2026', {
         fontFamily: MONO, fontSize: '11px', color: '#e8f0d6',
       }).setOrigin(0.5).setDepth(1012).setAlpha(0.85)
     this.footer.setShadow(0, 2, 'rgba(35,48,15,0.6)', 3, false, true)
@@ -263,7 +230,6 @@ export default class HomeScene extends Phaser.Scene {
     this.tutorialText?.setPosition(this.playX, this.playY + 74)
     this.aboutY = this.playY + 128
     this.aboutToggle?.setPosition(cx, this.aboutY)
-    this.drawAbout()
 
     this.footer?.setPosition(cx, height - 26)
 
@@ -302,19 +268,3 @@ export default class HomeScene extends Phaser.Scene {
     }
   }
 }
-
-const ABOUT =
-  'An arena that never closes. Drop into a room, fight whoever is there, and\n' +
-  'leave when you choose: reach a Moon Gate and cash out the bounty you carry.\n\n' +
-  'Every class fights its own way. Beast charges through you. Bird pokes from\n' +
-  'range and dies if you catch it. Plant poisons the ground you want to stand\n' +
-  'on. Bug wears you down. Aquatic shoves you where it wants you. Reptile\n' +
-  'punishes anyone who crowds it.\n\n' +
-  'Aim with the mouse, dash to escape, parry a blow you saw coming, and spend\n' +
-  'your special when it counts. Grab power-ups, heal in a Moonwell, and hide in\n' +
-  'the long grass if the fight is going badly.\n\n' +
-  'Your stake buys a bounty; a kill takes the whole bounty its owner carried.\n' +
-  'In this prototype the balances are simulated and have no real value, and the\n' +
-  'other hunters are AI standing in for players.\n\n' +
-  'Axie bodies are built with the official 2D mixer. Battle effects and sounds\n' +
-  'come from the Axie Origins Battle Kit. No wallet, no account, no download.'

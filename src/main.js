@@ -3,8 +3,10 @@ import BootScene from './scenes/BootScene.js'
 import GameScene from './scenes/GameScene.js'
 import HomeScene from './scenes/HomeScene.js'
 import LobbyScene from './scenes/LobbyScene.js'
+import AboutScene from './scenes/AboutScene.js'
 import MenuScene from './scenes/MenuScene.js'
 import UIScene from './scenes/UIScene.js'
+import * as music from './fx/Music.js'
 
 // Rowdies must be available before Phaser measures any text, or headings
 // render in the fallback face and never re-lay out.
@@ -32,12 +34,17 @@ async function start() {
     // parry could expire before the blow it was meant to catch. Unsmoothed,
     // timers advance on real elapsed time and the two agree.
     fps: { smoothStep: false },
-    scene: [BootScene, HomeScene, MenuScene, LobbyScene, GameScene, UIScene],
+    scene: [BootScene, HomeScene, MenuScene, LobbyScene, AboutScene, GameScene, UIScene],
   })
 
   // Dev-only handle for poking at the running game from the console.
   // Dead-code eliminated from the production build.
-  if (import.meta.env.DEV) window.__game = game
+  if (import.meta.env.DEV) {
+    window.__game = game
+    // The live module, so checks inspect the mixer the game is using rather
+    // than a second copy of it (the dev server hands out ?t= versions).
+    window.__music = music
+  }
 }
 
 start()

@@ -9,6 +9,7 @@ import Moonwells from '../arena/Moonwell.js'
 import { createFxTextures, ambientMotes } from '../fx/Juice.js'
 import { playPlate, playImpactPlate, playStatusPlate } from '../fx/SkillVfx.js'
 import { play as playSfx } from '../fx/Sfx.js'
+import { play as playMusic } from '../fx/Music.js'
 import { PARRY } from '../axie/classKits.js'
 import WildsDirector from '../wilds/WildsDirector.js'
 import TutorialDirector from '../tutorial/TutorialDirector.js'
@@ -38,6 +39,7 @@ export default class GameScene extends Phaser.Scene {
       return
     }
 
+    playMusic('arena')
     createFxTextures(this)
 
     this.arena = new Arena(this)

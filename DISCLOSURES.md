@@ -83,6 +83,20 @@ README for what that costs us.
 
 ## Generated assets
 
+**Menu sounds** (`public/sfx/ui_*.ogg`). Five short interface sounds — hover,
+confirm, back, start, denied — generated with the Venice AI audio API
+(ElevenLabs Sound Effects v2), trimmed, levelled and transcoded to Ogg Vorbis.
+Prompts are in `scripts/audio/generate-music.mjs`.
+
+**Music** (`public/music/`). Three instrumental tracks generated with the
+**Venice AI** audio API and kept in the repository: `theme` (front end),
+`arena` (in a room) and `bloodmoon` (the Blood Moon event). Models:
+ElevenLabs Music 2.5 for the first two, Stable Audio 2.5 for the third.
+The prompts, models and durations are in `scripts/audio/generate-music.mjs`,
+which regenerates them from an API key held in the environment (no key is
+stored in this repository). Each track was loudness-normalised to -20 LUFS and
+transcoded to Ogg Vorbis with ffmpeg. No third-party recordings are involved.
+
 **Lunacy logo** (`public/brand/`). Original artwork authored as code with AI
 assistance (Claude) in `scripts/brand/build-logo.mjs`: Rowdies letter outlines,
 a crescent moon, a leaf and sparkles drawn as SVG paths, rendered to PNG with

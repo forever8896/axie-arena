@@ -5,6 +5,7 @@ import { WORLD } from '../arena/Arena.js'
 import { findOpenSpot, floatLabel } from '../arena/PowerUps.js'
 import { CLASS_KITS } from '../axie/classKits.js'
 import { play as playSfx } from '../fx/Sfx.js'
+import { play as playMusic } from '../fx/Music.js'
 import MoonGate from './MoonGate.js'
 import { HUD_DEPTH } from '../entities/Fighter.js'
 import { WILDS, hunterName, money } from './config.js'
@@ -402,6 +403,7 @@ export default class WildsDirector {
     if (this.bloodMoon && now >= this.bloodMoon.until) {
       this.bloodMoon.parts.forEach(p => scene.tweens.add({ targets: p, alpha: 0, duration: 800, onComplete: () => p.destroy() }))
       this.bloodMoon = null
+      playMusic('arena')
     }
     if (!this.bloodMoon && now >= this.nextBloodMoon) {
       this.nextBloodMoon = now + WILDS.bloodMoonEvery
@@ -415,6 +417,7 @@ export default class WildsDirector {
       for (const a of [0, Math.PI]) {
         scene.powerUps.spawn(scene.fighters, { x: spot.x + Math.cos(a) * 170, y: spot.y + Math.sin(a) * 60 })
       }
+      playMusic('bloodmoon')
       scene.announce('BLOOD MOON RISES', '#ff8098')
       this.log('Blood Moon: healing and power-ups gather', '#ff8098')
     }

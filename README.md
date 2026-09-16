@@ -30,6 +30,7 @@ node scripts/headless/check-boons.mjs     # 22 power-up and Moonwell rules
 node scripts/headless/check-wilds.mjs     # 33 Endless Wilds rules, incl. a 4-minute value-conservation run
 node scripts/headless/check-tutorial.mjs  # plays all ten tutorial steps through the real mechanics
 node scripts/check-terrain.mjs            # no fake passages, all floor connected (no browser needed)
+node scripts/headless/check-audio.mjs     # music per scene, looping, mixing and mute
 node scripts/vendor-origins-vfx.mjs       # re-vendor Origins effect plates, icons and sounds
 node scripts/brand/build-logo.mjs         # rebuild the logo SVG and PNG exports
 node scripts/economy/model.mjs            # stake-mode economy model used in docs/VISION.md
@@ -55,6 +56,29 @@ first.
 
 There is no separate arena match any more. The last-one-standing mode with the
 closing field is kept only as the balance simulation's harness (`/?sim=120`).
+
+## The front end
+
+The loading screen is the field itself: the logo, a moon that fills as each
+stage loads, and a rotating tip, because the Axie parts come off a CDN. **About**
+(`A` on the home screen) is a full page explaining the game and the whole money
+model — what a stake buys, where the fee goes, why bots never carry money, and
+what is simulated in this build. Its numbers are read from the game's own
+config, so the page cannot drift from the code.
+
+## Sound
+
+Battle effects come from the Origins kit. Menu sounds (hover, confirm, back,
+start, denied) and the three music tracks are generated
+(see DISCLOSURES) and crossfade into themselves so they loop without a seam:
+the theme plays on the front end, an arena loop inside a room, and a tense bed
+while a Blood Moon is up. `M` mutes everything, and the setting is remembered.
+Effects and music share one master mix in `src/fx/Music.js`.
+
+```bash
+VENICE_API_KEY=... node scripts/audio/generate-music.mjs --quote   # price first
+VENICE_API_KEY=... node scripts/audio/generate-music.mjs           # regenerate
+```
 
 ## Reading the fight
 
