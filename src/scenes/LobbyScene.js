@@ -7,6 +7,7 @@ import { ROOMS, WILDS, money } from '../wilds/config.js'
 import { wallet } from '../wilds/Wallet.js'
 import { play as playMusic } from '../fx/Music.js'
 import { bindButton, uiSound } from '../fx/UiSound.js'
+import { available, remembered, remember, measureAll, suggestion, roomsUrl, FAR_MS } from '../net/regions.js'
 
 const HEAD = 'Rowdies, ui-sans-serif, system-ui, sans-serif'
 const MONO = 'ui-monospace, monospace'
@@ -30,6 +31,10 @@ export default class LobbyScene extends Phaser.Scene {
     // happening in them right now, people included. Otherwise the rooms run in
     // this page, and the numbers are a plausible picture of one that would be.
     this.net = Boolean(data.net)
+    // Which server's rooms are being listed. Remembered between visits, and
+    // defaulting to whatever is serving this page until a ping says otherwise.
+    const regions = available()
+    this.region = regions.find(r => r.id === (data.regionId ?? remembered())) ?? regions[0]
     this.live = data.live ?? ROOMS.map(r => ({
       hunters: Phaser.Math.Between(...r.hunters),
       topBounty: (r.free ? r.stake : r.stake * (1 - WILDS.feeRate)) * Phaser.Math.FloatBetween(2, 5),
@@ -83,7 +88,7 @@ export default class LobbyScene extends Phaser.Scene {
     } else {
       this.time.addEvent({ delay: 2600, loop: true, callback: () => this.drift() })
     }
-    const relayout = () => this.scene.restart({ builds: this.builds, playerClass: this.playerClass, live: this.live, net: this.net })
+    const relayout = () => this.scene.restart({ builds: this.builds, playerClass: this.playerClass, live: this.live, net: this.net, regionId: this.region.id })
     this.scale.once('resize', relayout)
     this.events.once('shutdown', () => this.scale.off('resize', relayout))
   }
@@ -135,6 +140,9 @@ export default class LobbyScene extends Phaser.Scene {
     this.add.text(x + 20, yy + 18, lines.join('\n'), { fontFamily: MONO, fontSize: '12px', color: '#e8f0d6', lineSpacing: 4 })
 
     yy += 150
+    if (this.net) {
+      yy = this.buildRegions(x + 20, yy, w - 40)
+    }
     if (yy + 120 < y + h) {
       this.add.text(x + 20, yy, 'HOW IT WORKS', { fontFamily: MONO, fontSize: '11px', color: '#b9c4a6' })
       this.add.text(x + 20, yy + 18, [
@@ -146,6 +154,98 @@ export default class LobbyScene extends Phaser.Scene {
         `   ${WILDS.extractMs / 1000}s to cash out. Hits reset it.`,
       ].join('\n'), { fontFamily: MONO, fontSize: '12px', color: '#e8f0d6', lineSpacing: 3 })
     }
+  }
+
+  /**
+   * Which server you are playing on, with the distance to each one measured
+   * while you look at it.
+   *
+   * Each region is its own set of rooms, so this is not a preference — two
+   * friends who pick differently are in different worlds. It says so, it
+   * measures rather than guesses, and it offers the nearer one when the one you
+   * are on is meaningfully further away.
+   */
+  buildRegions(x, y, w) {
+    this.add.text(x, y, 'SERVER', { fontFamily: MONO, fontSize: '11px', color: '#b9c4a6' })
+    this.add.text(x + w, y, 'PING', { fontFamily: MONO, fontSize: '10px', color: '#7f8c6a' }).setOrigin(1, 0)
+
+    this.regionRows = available().map((region, i) => {
+      const ry = y + 20 + i * 26
+      const row = {
+        region,
+        plate: this.add.graphics(),
+        name: this.add.text(x + 10, ry + 4, region.name, { fontFamily: HEAD, fontSize: '15px', color: CREAM }),
+        where: this.add.text(x + 10, ry + 4, '', { fontFamily: MONO, fontSize: '10px', color: '#9aa88a' }),
+        ping: this.add.text(x + w - 10, ry + 6, '· · ·', { fontFamily: MONO, fontSize: '12px', color: '#9aa88a' }).setOrigin(1, 0),
+        y: ry,
+      }
+      row.where.setPosition(x + 14 + row.name.width, ry + 8)
+      const zone = this.add.zone(x + w / 2, ry + 11, w, 24).setInteractive({ useHandCursor: true })
+      bindButton(this, zone, () => this.chooseRegion(region))
+      return row
+    })
+
+    const bottom = y + 20 + this.regionRows.length * 26
+    this.regionNote = this.add.text(x, bottom + 4, 'measuring…', {
+      fontFamily: MONO, fontSize: '11px', color: '#9aa88a', wordWrap: { width: w },
+    })
+    this.regionSwitch = this.add.text(x, bottom + 22, '', {
+      fontFamily: MONO, fontSize: '11px', color: '#ffd964',
+    }).setInteractive({ useHandCursor: true })
+    bindButton(this, this.regionSwitch, () => {
+      if (this.suggested) this.chooseRegion(this.suggested)
+    })
+
+    this.drawRegions()
+    this.pingRegions()
+    return bottom + 48
+  }
+
+  drawRegions() {
+    for (const row of this.regionRows ?? []) {
+      const mine = row.region.id === this.region.id
+      const g = row.plate
+      g.clear()
+      g.fillStyle(mine ? 0x2f4420 : 0x1a2612, mine ? 1 : 0.6)
+      g.fillRoundedRect(row.name.x - 10, row.y, row.ping.x - row.name.x + 20, 24, 8)
+      if (mine) g.lineStyle(2, 0xffd964, 0.9).strokeRoundedRect(row.name.x - 10, row.y, row.ping.x - row.name.x + 20, 24, 8)
+      row.name.setColor(mine ? CREAM : '#c9d6b0')
+      row.where.setText(mine ? `${row.region.where} · playing here` : row.region.where)
+    }
+  }
+
+  /** Measure every region, then say something only if it is worth saying. */
+  async pingRegions() {
+    const measured = await measureAll()
+    if (!this.regionRows) return
+    for (const row of this.regionRows) {
+      const found = measured.find(m => m.region.id === row.region.id)
+      const ping = found?.ping
+      row.ping.setText(ping == null ? 'unreachable' : `${ping}ms`)
+        .setColor(ping == null ? '#ff8098' : ping > FAR_MS ? '#ffc22e' : '#9dffd8')
+    }
+
+    const advice = suggestion(measured, this.region.id)
+    this.suggested = advice?.region ?? null
+    const mine = measured.find(m => m.region.id === this.region.id)
+    if (!advice) {
+      this.regionNote.setText(mine?.ping == null
+        ? 'This server is not answering.'
+        : `${mine.ping}ms to ${this.region.where}. Each server has its own rooms.`)
+      this.regionSwitch.setText('')
+      return
+    }
+    this.regionNote.setText(advice.why === 'unreachable'
+      ? `${this.region.name} is not answering. ${advice.region.name} is ${advice.ping}ms away.`
+      : `${advice.region.name} is ${advice.ping}ms away — ${advice.was - advice.ping}ms closer than ${this.region.name}.`)
+    this.regionSwitch.setText(`▸ PLAY ON ${advice.region.name.toUpperCase()} INSTEAD`)
+  }
+
+  /** Switching server means switching worlds, so the lobby reloads with it. */
+  chooseRegion(region) {
+    if (region.id === this.region.id) return
+    remember(region.id)
+    this.scene.restart({ builds: this.builds, playerClass: this.playerClass, net: true, regionId: region.id })
   }
 
   buildRooms(x, y, w, h) {
@@ -211,7 +311,7 @@ export default class LobbyScene extends Phaser.Scene {
    */
   async pollRooms() {
     try {
-      const res = await fetch('/api/rooms', { cache: 'no-store' })
+      const res = await fetch(roomsUrl(this.region), { cache: 'no-store' })
       if (!res.ok) throw new Error(String(res.status))
       const { rooms } = await res.json()
       ROOMS.forEach((room, i) => {
@@ -220,12 +320,12 @@ export default class LobbyScene extends Phaser.Scene {
         this.live[i] = { hunters: live.hunters, topBounty: live.topBounty, players: live.players }
         if (this.roomViews?.[i]) this.renderRoom(this.roomViews[i], i)
       })
-      this.netTag?.setText('MULTIPLAYER  ·  EXPERIMENTAL').setColor('#c9b8ff')
+      this.netTag?.setText(`MULTIPLAYER  ·  EXPERIMENTAL  ·  ${this.region.name.toUpperCase()}`).setColor('#c9b8ff')
     } catch {
       // The page can be served without the room server behind it — a static
       // copy, or the server restarting. Say so rather than showing stale rooms
       // as though they were live.
-      this.netTag?.setText('MULTIPLAYER  ·  CANNOT REACH THE ROOMS').setColor('#ff8098')
+      this.netTag?.setText(`MULTIPLAYER  ·  CANNOT REACH ${this.region.name.toUpperCase()}`).setColor('#ff8098')
     }
   }
 
@@ -264,7 +364,9 @@ export default class LobbyScene extends Phaser.Scene {
       return
     }
     if (this.net) {
-      this.go('NetScene', { builds: this.builds, playerClass: this.playerClass, roomId: room.id })
+      this.go('NetScene', {
+        builds: this.builds, playerClass: this.playerClass, roomId: room.id, regionId: this.region.id,
+      })
       return
     }
     this.go('GameScene', {

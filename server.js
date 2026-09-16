@@ -41,17 +41,30 @@ const send = (res, status, body, headers = {}) => {
   res.end(body)
 }
 
+/**
+ * The health check and the room list are read by the game running on the other
+ * region's origin: that is how a player is shown what each server costs them in
+ * milliseconds before they pick one. Both are public and read-only — a room
+ * count and the word "ok" — so they are readable from anywhere. Nothing that
+ * changes anything is exposed this way, and /ws is not subject to this at all.
+ */
+const PUBLIC = {
+  'Access-Control-Allow-Origin': '*',
+  'Timing-Allow-Origin': '*',
+}
+
 const server = createServer((req, res) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'Method not allowed')
 
   // Health check for the platform, before touching the disk.
   const url = new URL(req.url, 'http://localhost')
-  if (url.pathname === '/healthz') return send(res, 200, 'ok')
+  if (url.pathname === '/healthz') return send(res, 200, 'ok', PUBLIC)
 
   // What the lobby reads: the live rooms, as the authority sees them.
   if (url.pathname === '/api/rooms') {
     return send(res, 200, JSON.stringify({ rooms: net.host.roomList() }), {
       'Content-Type': 'application/json; charset=utf-8',
+      ...PUBLIC,
     })
   }
 

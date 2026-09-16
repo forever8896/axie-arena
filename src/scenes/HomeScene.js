@@ -6,6 +6,7 @@ import { ambientMotes } from '../fx/Juice.js'
 import { tutorialDone } from '../tutorial/TutorialDirector.js'
 import { play as playMusic } from '../fx/Music.js'
 import { bindButton, uiSound } from '../fx/UiSound.js'
+import { measureAll, nearest, roomsUrl, remember, remembered } from '../net/regions.js'
 
 const HEAD = 'Rowdies, ui-sans-serif, system-ui, sans-serif'
 const MONO = 'ui-monospace, monospace'
@@ -171,22 +172,54 @@ export default class HomeScene extends Phaser.Scene {
       fontFamily: HEAD, fontSize: '15px', color: '#c9b8ff',
     }).setOrigin(0.5).setDepth(1012).setInteractive({ useHandCursor: true })
     this.netToggle.setShadow(0, 2, 'rgba(35,48,15,0.8)', 3, false, true)
-    bindButton(this, this.netToggle, () => this.start('net'), { sound: 'start' })
-    this.input.keyboard.on('keydown-N', () => this.start('net'))
+    bindButton(this, this.netToggle, () => this.playNet(), { sound: 'start' })
+    this.input.keyboard.on('keydown-N', () => this.playNet())
 
-    fetch('/api/rooms', { cache: 'no-store' })
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then(({ rooms }) => {
-        const players = rooms.reduce((s, r) => s + r.players, 0)
-        const hunters = rooms.reduce((s, r) => s + r.hunters, 0)
-        this.netToggle.setText(players
-          ? `MULTIPLAYER  ·  ${players} ${players === 1 ? 'PLAYER' : 'PLAYERS'} IN ${rooms.length} LIVE ROOMS  ▸`
-          : `MULTIPLAYER  ·  ${rooms.length} LIVE ROOMS, ${hunters} HUNTERS  ▸`)
-      })
-      .catch(() => {
-        this.netToggle.setText('MULTIPLAYER  ·  ROOMS OFFLINE').setColor('#9aa88a').disableInteractive()
-      })
+    // Measure the servers and list the nearest one's rooms, so the switch says
+    // where you would be playing and how far away it is before you press it.
+    this.findRooms()
   }
+
+  /**
+   * The nearest server that answers, and what is happening on it. Measured
+   * before anyone clicks, because "multiplayer" is a promise worth checking:
+   * if no server answers, the switch says so instead of leading somewhere that
+   * cannot be reached.
+   */
+  async findRooms() {
+    const measured = await measureAll()
+    // A server chosen before wins, as long as it still answers; otherwise the
+    // nearest one that does. Nobody should have to pick twice.
+    const saved = remembered()
+    const best = measured.find(m => m.region.id === saved && m.ping != null) ?? nearest(measured)
+    if (!this.netToggle) return
+    if (!best) {
+      this.netToggle.setText('MULTIPLAYER  ·  ROOMS OFFLINE').setColor('#9aa88a').disableInteractive()
+      return
+    }
+    this.region = best.region
+    try {
+      const res = await fetch(roomsUrl(best.region), { cache: 'no-store' })
+      if (!res.ok) throw new Error(String(res.status))
+      const { rooms } = await res.json()
+      const players = rooms.reduce((s, r) => s + r.players, 0)
+      const hunters = rooms.reduce((s, r) => s + r.hunters, 0)
+      const where = `${best.region.name.toUpperCase()} ${best.ping}MS`
+      this.netToggle.setText(players
+        ? `MULTIPLAYER  ·  ${players} ${players === 1 ? 'PLAYER' : 'PLAYERS'} ON ${where}  ▸`
+        : `MULTIPLAYER  ·  ${rooms.length} LIVE ROOMS, ${hunters} HUNTERS  ·  ${where}  ▸`)
+    } catch {
+      this.netToggle.setText('MULTIPLAYER  ·  ROOMS OFFLINE').setColor('#9aa88a').disableInteractive()
+    }
+  }
+
+  /** Into multiplayer, on whichever server answered fastest. */
+  playNet() {
+    if (this.region) remember(this.region.id)
+    this.start('net')
+  }
+
+  /** The menu carries the chosen server through to the lobby. */
 
   buildAbout() {
     this.aboutToggle = this.add.text(0, 0, 'ABOUT  ·  HOW IT WORKS  ▸', {

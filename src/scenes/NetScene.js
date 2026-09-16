@@ -20,6 +20,7 @@ import { createFxTextures, ambientMotes } from '../fx/Juice.js'
 import { play as playMusic } from '../fx/Music.js'
 import { POWERUPS } from '../arena/boonConfig.js'
 import { wallet } from '../wilds/Wallet.js'
+import { available, wsUrl } from '../net/regions.js'
 
 export default class NetScene extends Phaser.Scene {
   constructor() {
@@ -30,6 +31,7 @@ export default class NetScene extends Phaser.Scene {
     this.builds = data.builds
     this.playerClass = data.playerClass ?? 'beast'
     this.roomId = data.roomId ?? 'glade'
+    this.regionId = data.regionId ?? null
     this.playerName = data.name ?? 'You'
   }
 
@@ -95,8 +97,12 @@ export default class NetScene extends Phaser.Scene {
    * with.
    */
   connection() {
-    const server = import.meta.env.DEV ? new URLSearchParams(location.search).get('server') : null
-    return new RoomClient({ name: this.playerName, ...(server ? { url: server } : {}) })
+    const override = import.meta.env.DEV ? new URLSearchParams(location.search).get('server') : null
+    // Each region is its own set of rooms, so the room the lobby showed only
+    // exists on the server the lobby was listing.
+    const region = available().find(r => r.id === this.regionId)
+    const url = override ?? (region ? wsUrl(region) : null)
+    return new RoomClient({ name: this.playerName, ...(url ? { url } : {}) })
   }
 
   /**
@@ -328,7 +334,7 @@ export default class NetScene extends Phaser.Scene {
   backToLobby() {
     this.teardown()
     this.scene.stop('UIScene')
-    this.scene.start('LobbyScene', { builds: this.builds, playerClass: this.playerClass, net: true })
+    this.scene.start('LobbyScene', { builds: this.builds, playerClass: this.playerClass, net: true, regionId: this.regionId })
   }
 
   teardown() {
