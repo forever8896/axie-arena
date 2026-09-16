@@ -38,18 +38,33 @@ node scripts/economy/model.mjs            # stake-mode economy model used in doc
 
 ## Modes
 
-- **Tutorial**: ten short playable steps: move, attack, dash, special, parry
-  (with a timing ring), power-ups, Moonwells, bushes, a real fight, and a Moon
-  Gate. You cannot go down, `Tab` skips a step, and the home screen offers it
-  until it has been finished once.
-- **Showdown**: six Axies, one closing field, last one standing.
-- **The Endless Wilds** *(prototype)*: a room that never ends. Pick a room in
+One button: **Play** drops you into the Endless Wilds. **Tutorial** teaches it
+first.
+
+- **The Endless Wilds**: a room that never ends. Pick a room in
   the lobby and you are in, with no queue. Your stake buys a bounty (a 10% fee
   is taken). A kill takes the victim's whole bounty. Stand in a Moon Gate for
   3s to cash out. Hunters arrive and leave, gates move, and Blood Moons pull
   everyone together. Balances are **simulated practice money with no real
   value**, and every other hunter is an AI stand-in, marked as such. The design
   and economics behind it are in [docs/VISION.md](docs/VISION.md).
+- **Tutorial**: ten short playable steps: move, attack, dash, special, parry
+  (with a timing ring), power-ups, Moonwells, bushes, a real fight, and a Moon
+  Gate. You cannot go down, `Tab` skips a step, and the home screen offers it
+  until it has been finished once.
+
+There is no separate arena match any more. The last-one-standing mode with the
+closing field is kept only as the balance simulation's harness (`/?sim=120`).
+
+## Reading the fight
+
+Health, the shield, and dash / parry / special readiness are drawn **above your
+own Axie**, each icon filling as it returns, so everything is where your eyes
+already are. Power-ups add their own icon with its time left. Rivals show a
+health bar and a gold spark when their special is up. The map, top right, is
+drawn from the arena itself — the same grass, bushes and blocks — with each
+Axie as a little portrait of itself, and power-ups, Moonwells and Moon Gates
+as their own icons.
 
 ## Controls
 

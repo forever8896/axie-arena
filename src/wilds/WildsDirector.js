@@ -6,6 +6,7 @@ import { findOpenSpot, floatLabel } from '../arena/PowerUps.js'
 import { CLASS_KITS } from '../axie/classKits.js'
 import { play as playSfx } from '../fx/Sfx.js'
 import MoonGate from './MoonGate.js'
+import { HUD_DEPTH } from '../entities/Fighter.js'
 import { WILDS, hunterName, money } from './config.js'
 import { wallet } from './Wallet.js'
 
@@ -473,17 +474,18 @@ export default class WildsDirector {
 
     // Name and bounty over every hunter. Stand-ins are marked as AI.
     for (const f of this.scene.fighters) {
-      if (!f.alive || !f.wilds) continue
+      // Your own bounty is already the biggest thing on screen; no plate.
+      if (!f.alive || !f.wilds || f.isPlayer) continue
       if (!f.nameplate) {
         f.nameplate = this.scene.add.text(0, 0, '', {
           fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif', fontSize: '13px', color: '#fff8d8',
           stroke: '#16200f', strokeThickness: 4, align: 'center',
         }).setOrigin(0.5, 1)
       }
-      const label = `${f.isPlayer ? 'YOU' : `${f.name} · AI`}\n${money(f.wilds.bounty, this.currency)}`
+      const label = `${f.name} · AI\n${money(f.wilds.bounty, this.currency)}`
       if (f.nameplate.text !== label) f.nameplate.setText(label)
-      f.nameplate.setPosition(f.x, f.y - 84).setDepth(f.y + 62)
-        .setColor(f.isPlayer ? '#ffd964' : f.wilds.leaving ? '#c9b8ff' : '#fff8d8')
+      f.nameplate.setPosition(f.x, f.y - 104).setDepth(HUD_DEPTH + 2)
+        .setColor(f.wilds.leaving ? '#c9b8ff' : '#fff8d8')
     }
   }
 

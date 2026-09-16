@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { WORLD } from '../arena/Arena.js'
-import { PARRY } from '../axie/classKits.js'
-import { POWERUPS } from '../arena/PowerUps.js'
+import { FIELD } from '../axie/palette.js'
+import { PORTRAIT_KEY } from '../fx/MiniPortrait.js'
 import WildsHud from '../wilds/WildsHud.js'
 import TutorialHud from '../tutorial/TutorialHud.js'
 
@@ -30,22 +30,7 @@ export default class UIScene extends Phaser.Scene {
     this.mmRoot = null
     this.mmDots = null
 
-    // The field is bright, so the readouts sit on their own dark plate.
-    this.plate = this.add.graphics().setDepth(-1)
-    this.plate.fillStyle(0x16200f, 0.62)
-    this.plate.fillRoundedRect(18, 20, 190, 158, 12)
-
     this.hintPlate = this.add.graphics().setDepth(-1)
-
-    this.hpBg = this.add.rectangle(34, 40, 170, 14, 0x0b0f07, 0.8).setOrigin(0, 0.5)
-    this.hpBar = this.add.rectangle(34, 40, 170, 14, 0x7ce85a).setOrigin(0, 0.5)
-    this.hpText = this.add.text(119, 40, '', {
-      fontFamily: MONO, fontSize: '11px', color: '#ffffff',
-    }).setOrigin(0.5)
-
-    this.label = this.add.text(34, 66, 'HP', {
-      fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
-    })
 
     this.status = this.add.text(this.scale.width - 34, MINIMAP.size + 34, '', {
       fontFamily: MONO, fontSize: '15px', color: '#f4f8e8',
@@ -55,42 +40,10 @@ export default class UIScene extends Phaser.Scene {
       fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
     }).setOrigin(1, 0).setDepth(500)
 
-    // Dash cooldown, read at a glance under the health bar.
-    this.dashBg = this.add.rectangle(34, 92, 130, 5, 0x2a2440).setOrigin(0, 0.5)
-    this.dashBar = this.add.rectangle(34, 92, 0, 5, 0x7ce8ff).setOrigin(0, 0.5)
-    this.dashLabel = this.add.text(34, 102, 'DASH', {
-      fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
-    })
-
-    // Parry readiness, under dash.
-    this.parryBg = this.add.rectangle(34, 152, 130, 5, 0x2a2440).setOrigin(0, 0.5)
-    this.parryBar = this.add.rectangle(34, 152, 0, 5, 0xffffff).setOrigin(0, 0.5)
-    this.parryLabel = this.add.text(34, 162, 'PARRY', {
-      fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
-    })
-
-    // Special charge, named so you always know what it will do.
-    this.specialBg = this.add.rectangle(34, 122, 130, 5, 0x2a2440).setOrigin(0, 0.5)
-    this.specialBar = this.add.rectangle(34, 122, 0, 5, 0xffb812).setOrigin(0, 0.5)
-    this.specialLabel = this.add.text(34, 132, 'SPECIAL', {
-      fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
-    })
-
     this.hint = this.add.text(34, this.scale.height - 40,
       'WASD  MOVE     MOUSE  AIM     LEFT  ATTACK     RIGHT / E  SPECIAL     Q  PARRY     SPACE  DASH', {
         fontFamily: MONO, fontSize: '12px', color: '#b9c4a6',
       })
-
-    // Your active power-ups, under the readout plate: icon, name, time left.
-    this.buffRow = this.add.graphics()
-    this.buffSlots = ['fury', 'bulwark', 'tailwind'].map(type => {
-      const def = POWERUPS[type]
-      const key = `icon-${def.icon}`
-      const icon = this.textures.exists(key) ? this.add.image(0, 0, key) : null
-      icon?.setScale(26 / Math.max(icon.frame.width, icon.frame.height))
-      const text = this.add.text(0, 0, def.name, { fontFamily: MONO, fontSize: '11px', color: hex(def.color) })
-      return { type, def, icon, text }
-    })
 
     this.buildMinimap()
 
@@ -109,121 +62,182 @@ export default class UIScene extends Phaser.Scene {
   }
 
   /**
-   * Top-right minimap. Cover and foliage are painted once; only the dots and
-   * the viewport box are redrawn each frame.
+   * Top-right map, drawn from the arena itself: the baked ground, the real
+   * bushes and the real walls, so what you glance at matches what you are
+   * standing in. Everything that moves is drawn over it each frame — Axies as
+   * little portraits of themselves, power-ups as their own icons.
    */
   buildMinimap() {
     const game = this.game_
-    if (!game?.arena) return
+    if (!game?.arena?.ground) return
 
     this.mmScale = MINIMAP.size / Math.max(WORLD.width, WORLD.height)
     this.mmW = WORLD.width * this.mmScale
     this.mmH = WORLD.height * this.mmScale
-
     this.mmRoot = this.add.container(0, 0).setDepth(500)
 
-    const bg = this.add.graphics()
-    bg.fillStyle(0x16200f, 0.78)
-    bg.fillRoundedRect(0, 0, this.mmW, this.mmH, 10)
-    bg.lineStyle(1, 0x5f9330, 0.9)
-    bg.strokeRoundedRect(0, 0, this.mmW, this.mmH, 10)
+    const frame = this.add.graphics()
+    frame.fillStyle(0x16200f, 0.92)
+    frame.fillRoundedRect(-5, -5, this.mmW + 10, this.mmH + 10, 12)
 
-    const terrain = this.add.graphics()
-    for (const b of game.arena.bushes) {
-      terrain.fillStyle(0x2f6b33, 0.75)
-      terrain.fillEllipse(b.x * this.mmScale, b.y * this.mmScale,
-        b.rx * 2 * this.mmScale, b.ry * 2 * this.mmScale)
+    // One snapshot of the ground, plus the canopies and blocks over it.
+    const terrain = this.add.renderTexture(0, 0, this.mmW, this.mmH).setOrigin(0)
+    // The field's grass is a tiled sprite, not part of the baked ground, so
+    // the map starts with the same tile before the ground layer goes over it.
+    if (this.textures.exists('field-grass')) {
+      const tile = this.make.tileSprite({ x: 0, y: 0, width: this.mmW, height: this.mmH, key: 'field-grass', add: false })
+        .setOrigin(0).setTileScale(this.mmScale)
+      terrain.draw(tile)
+      tile.destroy()
+    } else {
+      terrain.fill(FIELD.grassBase)
     }
+
+    // Draw the arena's own ground texture in, shrunk. Saving it under a key
+    // and removing the old one broke the render texture it belongs to.
+    const ground = game.arena.ground
+    const scale = { x: ground.scaleX, y: ground.scaleY }
+    ground.setScale(this.mmScale)
+    terrain.draw(ground, 0, 0)
+    ground.setScale(scale.x, scale.y)
+    for (const c of game.arena.canopies ?? []) {
+      const img = this.make.image({ key: c.image.texture.key, add: false })
+      img.setScale(this.mmScale).setPosition(c.bush.x * this.mmScale, c.bush.y * this.mmScale)
+      terrain.draw(img)
+      img.destroy()
+    }
+    const blocks = this.make.graphics({ add: false })
     for (const w of game.arena.walls) {
-      terrain.fillStyle(0xd9bd85, 0.85)
-      terrain.fillRect(w.left * this.mmScale, w.top * this.mmScale,
-        w.w * this.mmScale, w.h * this.mmScale)
+      blocks.fillStyle(0x3a2a18, 0.9)
+      blocks.fillRoundedRect(w.left * this.mmScale - 1, w.top * this.mmScale - 1, w.w * this.mmScale + 2, w.h * this.mmScale + 2, 2)
+      blocks.fillStyle(FIELD.stoneFace, 1)
+      blocks.fillRoundedRect(w.left * this.mmScale, w.top * this.mmScale, w.w * this.mmScale, w.h * this.mmScale, 2)
+      blocks.fillStyle(FIELD.stoneTop, 0.8)
+      blocks.fillRoundedRect(w.left * this.mmScale, w.top * this.mmScale, w.w * this.mmScale, Math.max(1, w.h * this.mmScale * 0.35), 2)
     }
+    terrain.draw(blocks)
+    blocks.destroy()
+
+    // Rounded corners, and a rim so it sits on the field rather than in it.
+    const mask = this.make.graphics({ add: false })
+    mask.fillStyle(0xffffff).fillRoundedRect(0, 0, this.mmW, this.mmH, 9)
+    terrain.setMask(mask.createGeometryMask())
+    this.mmMaskShape = mask
+
+    const rim = this.add.graphics()
+    rim.lineStyle(2, 0xf0e4bb, 0.9).strokeRoundedRect(0, 0, this.mmW, this.mmH, 9)
 
     this.mmViewport = this.add.graphics()
     this.mmDots = this.add.graphics()
-
-    this.mmRoot.add([bg, terrain, this.mmViewport, this.mmDots])
+    this.mmIcons = new Map()
+    this.mmRoot.add([frame, terrain, this.mmViewport, this.mmDots, rim])
     this.layoutMinimap()
   }
 
   layoutMinimap() {
     if (!this.mmRoot) return
-    this.mmRoot.setPosition(this.scale.width - this.mmW - MINIMAP.pad, MINIMAP.pad)
+    const x = this.scale.width - this.mmW - MINIMAP.pad
+    const y = MINIMAP.pad
+    this.mmRoot.setPosition(x, y)
+    // A geometry mask works in screen space, so it follows the container.
+    this.mmMaskShape?.setPosition(x, y)
+  }
+
+  /** An image inside the map, reused between frames. */
+  mmIcon(id, key, size) {
+    let img = this.mmIcons.get(id)
+    if (!img) {
+      if (!this.textures.exists(key)) return null
+      img = this.add.image(0, 0, key)
+      this.mmRoot.add(img)
+      this.mmIcons.set(id, img)
+    }
+    if (img.texture.key !== key) img.setTexture(key)
+    img.setScale(size / Math.max(img.frame.width, img.frame.height)).setVisible(true)
+    return img
   }
 
   drawMinimap() {
     const game = this.game_
     if (!this.mmDots || !game?.player) return
-
     const s = this.mmScale
     const cam = game.cameras.main
+    const now = game.time.now
+    const pulse = 0.6 + Math.sin(now / 180) * 0.4
+    const unused = new Set(this.mmIcons.keys())
+    const place = (id, key, size, x, y, opts = {}) => {
+      const img = this.mmIcon(id, key, size)
+      if (!img) return null
+      unused.delete(id)
+      img.setPosition(x * s, y * s).setAlpha(opts.alpha ?? 1).setDepth(opts.depth ?? 1)
+      return img
+    }
 
     this.mmViewport.clear()
-    this.mmViewport.lineStyle(1, 0xb9b2d4, 0.55)
-    this.mmViewport.strokeRect(
-      cam.worldView.x * s, cam.worldView.y * s,
-      cam.worldView.width * s, cam.worldView.height * s,
-    )
+    this.mmViewport.lineStyle(1, 0xfdf6e3, 0.5)
+    this.mmViewport.strokeRect(cam.worldView.x * s, cam.worldView.y * s, cam.worldView.width * s, cam.worldView.height * s)
 
     this.mmDots.clear()
 
-    // The safe field, once it starts closing.
     if (game.field?.active) {
       this.mmDots.lineStyle(1.5, 0xd9c2ff, 0.9)
       this.mmDots.strokeCircle(game.field.cx * s, game.field.cy * s, game.field.radius * s)
     }
 
-    // Moonwells and power-ups: the places worth going.
-    const pulse = 0.6 + Math.sin(game.time.now / 180) * 0.4
     for (const w of game.moonwells?.wells ?? []) {
       if (w.dead) continue
-      this.mmDots.fillStyle(0x9dffd8, w.blooming ? 0.25 * pulse : 0.45)
-      this.mmDots.fillCircle(w.x * s, w.y * s, Math.max(4, w.radius * s))
-      this.mmDots.lineStyle(1.5, 0xd9fff0, w.blooming ? pulse : 0.9)
-      this.mmDots.strokeCircle(w.x * s, w.y * s, Math.max(4, w.radius * s) + (w.blooming ? 3 * pulse : 0))
+      this.mmDots.fillStyle(0x9dffd8, w.blooming ? 0.3 * pulse : 0.5)
+      this.mmDots.fillCircle(w.x * s, w.y * s, Math.max(5, w.radius * s))
+      place(w, 'icon-buff_leaf', 13, w.x, w.y, { alpha: w.blooming ? pulse : 1 })
     }
     for (const o of game.powerUps?.orbs ?? []) {
       if (o.dead) continue
-      this.mmDots.fillStyle(o.def.color, o.live ? 1 : 0.35 * pulse)
-      this.mmDots.fillRect(o.x * s - 2.5, o.y * s - 2.5, 5, 5)
+      this.mmDots.fillStyle(o.def.color, o.live ? 0.55 : 0.25 * pulse)
+      this.mmDots.fillCircle(o.x * s, o.y * s, 8)
+      place(o, `icon-${o.def.icon}`, 13, o.x, o.y, { alpha: o.live ? 1 : pulse })
+    }
+    for (const c of game.wilds?.caches ?? []) {
+      place(c, 'icon-power_energy_master', 12, c.x, c.y, { alpha: pulse })
+    }
+    for (const gate of game.wilds?.gates ?? []) {
+      if (!gate.open) continue
+      this.mmDots.fillStyle(gate.closing ? 0xff8098 : 0xc9b8ff, gate.closing ? pulse : 0.8)
+      this.mmDots.fillCircle(gate.x * s, gate.y * s, 9)
+      place(gate, 'brand-mark', 14, gate.x, gate.y, { alpha: gate.closing ? pulse : 1 })
+    }
+    if (game.wilds?.hotspot) {
+      const h = game.wilds.hotspot
+      this.mmDots.lineStyle(2, 0xff8098, pulse)
+      this.mmDots.strokeCircle(h.x * s, h.y * s, h.radius * s)
+    }
+    if (game.tutorial?.goal) {
+      const goal = game.tutorial.goal
+      this.mmDots.fillStyle(0xffd964, pulse)
+      this.mmDots.fillCircle(goal.x * s, goal.y * s, 5)
     }
 
-    const wilds = game.wilds
-    if (wilds) {
-      if (wilds.hotspot) {
-        this.mmDots.lineStyle(2, 0xff8098, pulse)
-        this.mmDots.strokeCircle(wilds.hotspot.x * s, wilds.hotspot.y * s, wilds.hotspot.radius * s)
+    // Everyone on the field, as themselves.
+    for (const f of game.fighters ?? []) {
+      if (!f.alive || (f.hidden && !f.isPlayer)) continue
+      this.mmDots.fillStyle(0x16200f, 0.85)
+      this.mmDots.fillCircle(f.x * s, f.y * s, f.isPlayer ? 11 : 9.5)
+      this.mmDots.fillStyle(f.isPlayer ? 0xfff8d8 : f.colors.body, f.isPlayer ? 1 : 0.9)
+      this.mmDots.fillCircle(f.x * s, f.y * s, f.isPlayer ? 9.5 : 8)
+      const portrait = place(f, PORTRAIT_KEY(f.axieClass), f.isPlayer ? 20 : 17, f.x, f.y, { depth: f.isPlayer ? 3 : 2 })
+      if (!portrait) {
+        this.mmDots.fillStyle(f.colors.rim, 1)
+        this.mmDots.fillCircle(f.x * s, f.y * s, 4)
       }
-      for (const g of wilds.gates) {
-        if (!g.open) continue
-        this.mmDots.fillStyle(g.closing ? 0xff8098 : 0xc9b8ff, g.closing ? pulse : 1)
-        this.mmDots.fillCircle(g.x * s, g.y * s, 5)
-        this.mmDots.lineStyle(1.5, 0xffffff, 0.9)
-        this.mmDots.strokeCircle(g.x * s, g.y * s, 5)
-      }
-      for (const c of wilds.caches) {
-        this.mmDots.fillStyle(0xffd964, pulse)
-        this.mmDots.fillCircle(c.x * s, c.y * s, 3)
+      if (f.isPlayer) {
+        this.mmDots.lineStyle(2, 0xffd964, 0.9)
+        this.mmDots.strokeCircle(f.x * s, f.y * s, 11 + Math.sin(now / 300) * 1.2)
       }
     }
 
-    for (const bot of game.bots) {
-      if (!bot.alive) continue
-      // Hidden rivals do not show; foliage means something on the map too.
-      if (bot.hidden) continue
-      this.mmDots.fillStyle(bot.colors.body, 0.95)
-      this.mmDots.fillCircle(bot.x * s, bot.y * s, 3.2)
-    }
-
-    if (game.player.alive) {
-      this.mmDots.fillStyle(0xffffff, 0.35)
-      this.mmDots.fillCircle(game.player.x * s, game.player.y * s, 6)
-      this.mmDots.fillStyle(game.player.colors.body, 1)
-      this.mmDots.fillCircle(game.player.x * s, game.player.y * s, 3.6)
-    }
+    for (const id of unused) this.mmIcons.get(id).setVisible(false)
   }
 
+  /** Centre-screen callouts: a gate opening, a Blood Moon, a rival powering up. */
   drawAnnouncement() {
     const a = this.game_.announcement
     const now = this.game_.time.now
@@ -241,28 +255,6 @@ export default class UIScene extends Phaser.Scene {
     this.announceText.setVisible(true).setX(this.scale.width / 2).setText(a.text).setColor(a.color).setAlpha(fade)
   }
 
-  drawBuffRow(player) {
-    const g = this.buffRow
-    g.clear()
-    const now = this.game_.time.now
-    let y = 210
-    for (const slot of this.buffSlots) {
-      const b = player.buffs?.[slot.type]
-      const on = player.alive && b && now < b.until
-      slot.icon?.setVisible(on)
-      slot.text.setVisible(on)
-      if (!on) continue
-      const left = (b.until - now) / b.durationMs
-      g.fillStyle(0x16200f, 0.62).fillRoundedRect(18, y - 18, 190, 36, 10)
-      slot.icon?.setPosition(40, y)
-      const label = slot.type === 'bulwark' ? `${slot.def.name}  ${Math.ceil(player.shieldHp)}` : slot.def.name
-      slot.text.setPosition(62, y - 12).setText(label)
-      g.fillStyle(0x2a2440, 1).fillRect(62, y + 5, 130, 5)
-      g.fillStyle(slot.def.color, 1).fillRect(62, y + 5, 130 * left, 5)
-      y += 42
-    }
-  }
-
   layout(size) {
     this.status?.setPosition(size.width - 34, MINIMAP.size + 34)
     this.statusSub?.setPosition(size.width - 34, MINIMAP.size + 56)
@@ -273,15 +265,10 @@ export default class UIScene extends Phaser.Scene {
 
   update() {
     const player = this.game_?.player
-    if (!player || !this.specialBar) return
+    if (!player) return
 
     if (!this.mmRoot) this.buildMinimap()
     this.drawMinimap()
-
-    const hpFrac = Phaser.Math.Clamp(player.hp / player.maxHp, 0, 1)
-    this.hpBar.width = 170 * hpFrac
-    this.hpBar.setFillStyle(hpFrac > 0.35 ? 0x7ce85a : 0xff6b6b)
-    this.hpText.setText(`${Math.max(0, Math.round(player.hp))} / ${player.maxHp}`)
 
     const field = this.game_.field
     if (field) {
@@ -306,7 +293,6 @@ export default class UIScene extends Phaser.Scene {
     }
 
     this.drawAnnouncement()
-    this.drawBuffRow(player)
     this.wildsHud?.update(player)
     this.tutorialHud?.update(player)
 
@@ -314,28 +300,5 @@ export default class UIScene extends Phaser.Scene {
       const alive = this.game_.bots.filter(b => b.alive).length
       this.status.setText(String(alive).padStart(2, '0'))
     }
-
-    const now = this.game_.time.now
-    const charge = Phaser.Math.Clamp((now - player.lastDash) / player.dashCooldown, 0, 1)
-    this.dashBar.width = 130 * charge
-    this.dashBar.setFillStyle(charge >= 1 ? 0x7ce8ff : 0x4a4570)
-    this.dashLabel.setColor(charge >= 1 ? '#7ce8ff' : '#6f6892')
-
-    const pr = Phaser.Math.Clamp((now - player.lastParry) / PARRY.cooldownMs, 0, 1)
-    this.parryBar.width = 130 * pr
-    this.parryBar.setFillStyle(player.parrying ? 0xffd964 : pr >= 1 ? 0xffffff : 0x6d7a5a)
-    this.parryLabel
-      .setText(player.parrying ? 'PARRY  ACTIVE' : player.parryRecovering ? 'PARRY  RECOVERING' : 'PARRY')
-      .setColor(player.parrying ? '#ffd964' : pr >= 1 ? '#ffffff' : '#b9c4a6')
-
-    // Charge, not cooldown: it fills fastest when you are landing hits.
-    const sp = Phaser.Math.Clamp(player.charge, 0, 1)
-    const ready = sp >= 1
-    this.specialBar.width = 130 * sp
-    this.specialBar.setFillStyle(ready ? player.colors.body : 0x6d7a5a)
-    const name = player.kit?.special?.name?.toUpperCase() ?? 'SPECIAL'
-    this.specialLabel
-      .setText(ready ? `${name}  READY` : name)
-      .setColor(ready ? hex(player.colors.body) : '#b9c4a6')
   }
 }

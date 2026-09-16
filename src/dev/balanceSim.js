@@ -48,7 +48,6 @@ export async function runBalanceSim(game, builds, matches) {
 }
 
 function simulate(game, builds, seat) {
-  game.scene.stop('ResultScene')
   game.scene.stop('UIScene')
   game.scene.stop('GameScene')
   game.scene.start('GameScene', { builds, playerClass: seat })

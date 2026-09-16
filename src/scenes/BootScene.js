@@ -4,6 +4,7 @@ import { ARENA_PALETTE } from '../axie/palette.js'
 import { CLASS_KITS } from '../axie/classKits.js'
 import { loadSkillPlates, loadIcons, STATUS_PLATES } from '../fx/SkillVfx.js'
 import { POWERUPS, POWERUP_ICONS } from '../arena/PowerUps.js'
+import { makeMiniPortraits } from '../fx/MiniPortrait.js'
 import { loadSfx, SFX } from '../fx/Sfx.js'
 
 /**
@@ -58,7 +59,9 @@ export default class BootScene extends Phaser.Scene {
     let vfxDone = 0
     await loadSkillPlates(vfxIds, this, () => this.setBar(++vfxDone / vfxIds.length))
 
-    await loadIcons(POWERUP_ICONS, this)
+    await loadIcons([...POWERUP_ICONS, 'buff_feather', 'power_advance_shielding', 'buff_rage'], this)
+    // Little portraits of each class, for the map.
+    makeMiniPortraits(this, builds)
 
     await this.loadBrand()
 

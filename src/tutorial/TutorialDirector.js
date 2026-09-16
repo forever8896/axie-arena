@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import Fighter from '../entities/Fighter.js'
+import Fighter, { HUD_DEPTH } from '../entities/Fighter.js'
 import BotBrain from '../ai/BotBrain.js'
 import { PARRY } from '../axie/classKits.js'
 import { CONNECT_MS } from '../axie/AxieSprite.js'
@@ -88,14 +88,14 @@ export default class TutorialDirector {
       },
       {
         id: 'dash', title: 'DASH', keys: ['SPACE'],
-        text: 'Move toward the ring and press Space to dash into it.\nA dash is quick and briefly untouchable.',
+        text: 'Move toward the ring and press Space to dash into it.\nA dash is quick and briefly untouchable; the feather above you shows it.',
         hint: 'Hold a direction with WASD, then tap Space.',
         enter: () => { this.goal = { ...at(-150, 150), r: 50 }; this.dashFrom = P().lastDash },
         done: () => P().lastDash !== this.dashFrom && this.inGoal(P()),
       },
       {
         id: 'special', title: 'SPECIAL', keys: ['LEFT CLICK', 'E'],
-        text: 'Landing hits charges your special (the bar under your health).\nHit the dummy until it is full, then press E or right-click.',
+        text: 'Landing hits charges your special: the bolt icon above your Axie.\nHit the dummy until its ring fills, then press E or right-click.',
         hint: 'Specials only charge from hits that land. Stay close to the dummy.',
         enter: () => {
           P().charge = 0.5
@@ -107,7 +107,7 @@ export default class TutorialDirector {
       },
       {
         id: 'parry', title: 'PARRY', keys: ['Q'],
-        text: 'Your sparring partner will swing at you.\nPress Q as the white ring closes to parry and stagger it.',
+        text: 'Your sparring partner will swing at you.\nPress Q as the white ring closes to parry and stagger it.\nThe shield icon above you shows when a parry is ready.',
         hint: 'Face your partner. Press Q when the ring touches it, not before.',
         enter: () => {
           this.retire(this.dummy)
@@ -403,7 +403,7 @@ export default class TutorialDirector {
 
   /** Names over the training partners, so it is clear what each one is for. */
   label(f, text) {
-    f.nameplate = this.scene.add.text(f.x, f.y - 84, text, {
+    f.nameplate = this.scene.add.text(f.x, f.y - 104, text, {
       fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif', fontSize: '13px', color: '#fff8d8',
       stroke: '#16200f', strokeThickness: 4,
     }).setOrigin(0.5, 1)
@@ -411,7 +411,7 @@ export default class TutorialDirector {
 
   drawLabels() {
     for (const f of this.scene.fighters) {
-      if (f.alive && f.nameplate) f.nameplate.setPosition(f.x, f.y - 84).setDepth(f.y + 62)
+      if (f.alive && f.nameplate) f.nameplate.setPosition(f.x, f.y - 104).setDepth(HUD_DEPTH + 2)
     }
   }
 

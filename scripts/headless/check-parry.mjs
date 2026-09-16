@@ -21,7 +21,7 @@ try {
     g.loop.sleep()
     let clock = 1e8
     const setup = async (playerClass) => {
-      ;['ResultScene','UIScene','GameScene','HomeScene','MenuScene'].forEach(k => g.scene.stop(k))
+      ;['UIScene','GameScene','HomeScene','MenuScene'].forEach(k => g.scene.stop(k))
       g.scene.start('GameScene', { builds, playerClass })
       g.scene.stop('UIScene')
       const s = g.scene.getScene('GameScene')

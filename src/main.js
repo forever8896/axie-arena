@@ -4,7 +4,6 @@ import GameScene from './scenes/GameScene.js'
 import HomeScene from './scenes/HomeScene.js'
 import LobbyScene from './scenes/LobbyScene.js'
 import MenuScene from './scenes/MenuScene.js'
-import ResultScene from './scenes/ResultScene.js'
 import UIScene from './scenes/UIScene.js'
 
 // Rowdies must be available before Phaser measures any text, or headings
@@ -33,7 +32,7 @@ async function start() {
     // parry could expire before the blow it was meant to catch. Unsmoothed,
     // timers advance on real elapsed time and the two agree.
     fps: { smoothStep: false },
-    scene: [BootScene, HomeScene, MenuScene, LobbyScene, GameScene, UIScene, ResultScene],
+    scene: [BootScene, HomeScene, MenuScene, LobbyScene, GameScene, UIScene],
   })
 
   // Dev-only handle for poking at the running game from the console.

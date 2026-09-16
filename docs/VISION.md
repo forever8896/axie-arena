@@ -52,9 +52,10 @@ drop-in arena has no lobby at all: the moment you press play, you are in.
 | — | Disconnecting leaves your Axie in the world for a few seconds, so nobody escapes a lost fight by closing the tab |
 
 **The lobby shows who is there** before you join: rooms, how many people are
-in each, the top bounty, and how many seats bots are filling. Showdown stays as
-its own mode; the closing field is good design for a match, just not for a
-world.
+in each, the top bounty, and how many seats bots are filling. The Wilds is now
+the game: the old last-one-standing match was cut from the menu once the Wilds
+played better, and its closing field survives only as the balance simulation's
+harness. A closing field is good design for a match, just not for a world.
 
 Extraction is borrowed on purpose. Extraction games such as Hunt: Showdown
 and Dark and Darker are built on exactly this tension: *leave now with what
@@ -232,7 +233,7 @@ parry verification are exactly the foundation a server needs.
 
 | Phase | When | Delivers | Money |
 | --- | --- | --- | --- |
-| **Round 1** | by Sep 21, 2026 | Showdown: six classes, parry, power-ups, Moonwells, balance simulation | None |
+| **Round 1** | by Sep 21, 2026 | Six classes, parry, power-ups, Moonwells, the tutorial, balance simulation | None |
 | **Round 1, extended** | done | Playable Endless Wilds prototype: lobby, drop-in rooms, bounty stakes with simulated balances, Moon Gates, Blood Moons, AI stand-ins (section 2b) | Simulated only |
 | **Round 2** | Oct 4–31, 2026 | Wilds polish from playtests; bring your own Axie; live approved mixer; stake tiers and matchmaking in the prototype | Simulated only |
 | **Online beta** | after the Vibeathon, with Sky Mavis approval | Authoritative multiplayer, free rooms, seasonal leaderboard with a fixed pool | Fixed-pool rewards only |

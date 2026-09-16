@@ -40,7 +40,9 @@ const PLATES = {
 }
 
 /** Status icons, tiny PNGs used as-is: power-up orbs and HUD buff slots. */
-const ICONS = ['buff_dmg_boost', 'buff_shield_boost', 'buff_summerbreeze', 'power_energy_master', 'buff_leaf', 'buff_mushroom']
+const ICONS = ['buff_dmg_boost', 'buff_shield_boost', 'buff_summerbreeze', 'power_energy_master', 'buff_leaf', 'buff_mushroom',
+  // HUD: dash, parry and special readiness above your Axie
+  'buff_feather', 'power_advance_shielding', 'buff_rage']
 
 /** sound id -> path in the kit. Some only exist in the Unity audio folder. */
 const SOUNDS = {

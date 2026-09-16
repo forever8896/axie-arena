@@ -32,13 +32,12 @@ export default class HomeScene extends Phaser.Scene {
     this.buildField()
     this.buildTitle()
     this.buildPlay()
-    this.buildWilds()
+    this.buildTutorialLink()
     this.buildAbout()
     this.buildFooter()
 
-    this.input.keyboard.on('keydown-ENTER', () => this.start('showdown'))
-    this.input.keyboard.on('keydown-SPACE', () => this.start('showdown'))
-    this.input.keyboard.on('keydown-W', () => this.start('wilds'))
+    this.input.keyboard.on('keydown-ENTER', () => this.start('wilds'))
+    this.input.keyboard.on('keydown-SPACE', () => this.start('wilds'))
     this.input.keyboard.on('keydown-T', () => this.start('tutorial'))
 
     this.scale.on('resize', this.layout, this)
@@ -87,7 +86,7 @@ export default class HomeScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(1010)
     this.title.setShadow(0, 6, 'rgba(35,48,15,0.45)', 0, false, true)
 
-    this.tagline = this.add.text(0, 0, 'SIX AXIES  ·  ONE FIELD  ·  LAST ONE STANDING', {
+    this.tagline = this.add.text(0, 0, 'DROP IN  ·  TAKE BOUNTIES  ·  WALK OUT WITH THEM', {
       fontFamily: MONO, fontSize: '14px', color: '#f2f7e4',
     }).setOrigin(0.5).setDepth(1010)
     this.tagline.setShadow(0, 2, 'rgba(35,48,15,0.6)', 3, false, true)
@@ -108,23 +107,11 @@ export default class HomeScene extends Phaser.Scene {
     this.playLift = 0
     this.playZone.on('pointerover', () => this.tweenPlay(6))
     this.playZone.on('pointerout', () => this.tweenPlay(0))
-    this.playZone.on('pointerdown', () => this.start('showdown'))
+    this.playZone.on('pointerdown', () => this.start('wilds'))
   }
 
-  /** The second door: the always-on mode. */
-  buildWilds() {
-    this.wildsFace = this.add.graphics().setDepth(1011)
-    this.wildsText = this.add.text(0, 0, 'THE ENDLESS WILDS', {
-      fontFamily: HEAD, fontSize: '20px', color: '#241a4a',
-    }).setOrigin(0.5).setDepth(1012)
-    this.wildsTag = this.add.text(0, 0, 'NEW  ·  PROTOTYPE', {
-      fontFamily: MONO, fontSize: '10px', color: '#fff8d8',
-    }).setOrigin(0.5).setDepth(1012)
-    this.wildsTag.setShadow(0, 1, 'rgba(35,48,15,0.8)', 2, false, true)
-    this.wildsZone = this.add.zone(0, 0, 300, 50).setInteractive({ useHandCursor: true }).setDepth(1012)
-    this.wildsZone.on('pointerdown', () => this.start('wilds'))
-
-    // The way in for new players: loud until the tutorial has been finished once.
+  /** The way in for new players: loud until the tutorial has been finished once. */
+  buildTutorialLink() {
     const fresh = !tutorialDone()
     this.tutorialText = this.add.text(0, 0, fresh ? 'NEW HERE?  PLAY THE TUTORIAL  ▸' : 'REPLAY THE TUTORIAL  ▸', {
       fontFamily: HEAD, fontSize: fresh ? '17px' : '14px', color: fresh ? '#ffd964' : '#fff8d8',
@@ -132,22 +119,6 @@ export default class HomeScene extends Phaser.Scene {
     this.tutorialText.setShadow(0, 2, 'rgba(35,48,15,0.8)', 3, false, true)
     this.tutorialText.on('pointerdown', () => this.start('tutorial'))
     if (fresh) this.tweens.add({ targets: this.tutorialText, scale: 1.06, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
-  }
-
-  drawWilds() {
-    const w = 300
-    const h = 50
-    const x = this.playX - w / 2
-    const y = this.wildsY - h / 2
-    const g = this.wildsFace
-    g.clear()
-    g.fillStyle(0x1d2b12, 0.34).fillRoundedRect(x + 4, y + 10, w - 8, h, 16)
-    g.fillStyle(0x8e7ad6, 1).fillRoundedRect(x, y + 5, w, h, 16)
-    g.fillStyle(0xc9b8ff, 1).fillRoundedRect(x, y, w, h, 16)
-    g.fillStyle(0xefe8ff, 0.5).fillRoundedRect(x + 12, y + 6, w - 24, h * 0.3, 10)
-    this.wildsText.setPosition(this.playX, this.wildsY + 1)
-    this.wildsTag.setPosition(this.playX, this.wildsY + h / 2 + 18)
-    this.wildsZone.setPosition(this.playX, this.wildsY)
   }
 
   tweenPlay(lift) {
@@ -239,7 +210,7 @@ export default class HomeScene extends Phaser.Scene {
 
   buildFooter() {
     this.footer = this.add.text(0, 0,
-      'ENTER  SHOWDOWN  ·  W  THE ENDLESS WILDS  ·  T  TUTORIAL  ·  BUILT FOR AXIE VIBEATHON 2026', {
+      'ENTER  PLAY  ·  T  TUTORIAL  ·  BUILT FOR AXIE VIBEATHON 2026', {
         fontFamily: MONO, fontSize: '11px', color: '#e8f0d6',
       }).setOrigin(0.5).setDepth(1012).setAlpha(0.85)
     this.footer.setShadow(0, 2, 'rgba(35,48,15,0.6)', 3, false, true)
@@ -289,11 +260,8 @@ export default class HomeScene extends Phaser.Scene {
     this.playZone?.setPosition(this.playX, this.playY)
     this.drawPlay()
 
-    this.wildsY = this.playY + 80
-    this.drawWilds()
-
-    this.tutorialText?.setPosition(this.playX, this.wildsY + 72)
-    this.aboutY = this.wildsY + 112
+    this.tutorialText?.setPosition(this.playX, this.playY + 74)
+    this.aboutY = this.playY + 128
     this.aboutToggle?.setPosition(cx, this.aboutY)
     this.drawAbout()
 
@@ -308,7 +276,7 @@ export default class HomeScene extends Phaser.Scene {
     })
   }
 
-  start(mode = 'showdown') {
+  start(mode = 'wilds') {
     if (this.leaving) return
     this.leaving = true
     this.cameras.main.fadeOut(220)
@@ -336,13 +304,17 @@ export default class HomeScene extends Phaser.Scene {
 }
 
 const ABOUT =
-  'Six Axie classes meet on one field. Only one walks off it.\n\n' +
+  'An arena that never closes. Drop into a room, fight whoever is there, and\n' +
+  'leave when you choose: reach a Moon Gate and cash out the bounty you carry.\n\n' +
   'Every class fights its own way. Beast charges through you. Bird pokes from\n' +
   'range and dies if you catch it. Plant poisons the ground you want to stand\n' +
   'on. Bug wears you down. Aquatic shoves you where it wants you. Reptile\n' +
   'punishes anyone who crowds it.\n\n' +
-  'Aim with the mouse, dash to escape, and spend your special when it counts.\n' +
-  'Grab power-ups as they appear, and heal in a Moonwell when one blooms.\n' +
-  'Hide in the long grass if the fight is going badly.\n\n' +
+  'Aim with the mouse, dash to escape, parry a blow you saw coming, and spend\n' +
+  'your special when it counts. Grab power-ups, heal in a Moonwell, and hide in\n' +
+  'the long grass if the fight is going badly.\n\n' +
+  'Your stake buys a bounty; a kill takes the whole bounty its owner carried.\n' +
+  'In this prototype the balances are simulated and have no real value, and the\n' +
+  'other hunters are AI standing in for players.\n\n' +
   'Axie bodies are built with the official 2D mixer. Battle effects and sounds\n' +
   'come from the Axie Origins Battle Kit. No wallet, no account, no download.'

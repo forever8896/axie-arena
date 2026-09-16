@@ -19,8 +19,8 @@ export default class MenuScene extends Phaser.Scene {
 
   init(data) {
     this.builds = data.builds
-    // Which mode the chosen Axie is for: a Showdown match, or the Wilds lobby.
-    this.mode = data.mode ?? 'showdown'
+    // Which mode the chosen Axie is for: the Wilds lobby, or the tutorial.
+    this.mode = data.mode ?? 'wilds'
   }
 
   create() {
@@ -39,7 +39,7 @@ export default class MenuScene extends Phaser.Scene {
       fontFamily: HEAD, fontSize: '46px', color: '#fff8d8',
     }).setOrigin(0.5)
 
-    this.subtitle = this.add.text(0, 0, ({ wilds: 'CHOOSE YOUR AXIE  ·  THE ENDLESS WILDS', tutorial: 'CHOOSE YOUR AXIE  ·  TUTORIAL' })[this.mode] ?? 'CHOOSE YOUR AXIE  ·  SHOWDOWN', {
+    this.subtitle = this.add.text(0, 0, this.mode === 'tutorial' ? 'CHOOSE YOUR AXIE  ·  TUTORIAL' : 'CHOOSE YOUR AXIE  ·  THE ENDLESS WILDS', {
       fontFamily: MONO, fontSize: '13px', color: '#8b83ad',
     }).setOrigin(0.5)
 

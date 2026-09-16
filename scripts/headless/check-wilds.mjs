@@ -21,7 +21,7 @@ try {
     g.loop.sleep()
     let clock = 3e8
     const stepScene = s => s.sys.step((clock += 1000 / 60), 1000 / 60)
-    const all = ['ResultScene', 'UIScene', 'GameScene', 'HomeScene', 'MenuScene', 'LobbyScene']
+    const all = ['UIScene', 'GameScene', 'HomeScene', 'MenuScene', 'LobbyScene']
 
     // 1. Showdown: a restart after time away starts a fresh match.
     {
@@ -108,7 +108,7 @@ try {
       p.hp = 1
       p.takeDamage(50, bot, 0)
       check('your fall pays your killer', near(bot.wilds.bounty, before + 0.9), bot.wilds.bounty.toFixed(3))
-      check('a fall opens the fell panel, not a match end', w.panel?.kind === 'fell' && !s.matchOver && !g.scene.isActive('ResultScene'), JSON.stringify(w.panel))
+      check('a fall opens the fell panel, not a match end', w.panel?.kind === 'fell' && !s.matchOver, JSON.stringify(w.panel))
       check('the fall is recorded', wallet.session.deaths === deaths + 1, wallet.session.deaths)
       const bal = wallet.balance('AXS')
       w.reenter()
@@ -176,7 +176,7 @@ try {
       s.bots.forEach(b => { b.spawnShieldUntil = 0; b.invulnerableUntil = 0; b.hp = 1; b.takeDamage(50, s.player, 0) })
       const empty = s.bots.filter(b => b.alive).length
       wait(12000)
-      check('the room never ends', !s.matchOver && !g.scene.isActive('ResultScene') && s.sys.isActive(), 'matchOver ' + s.matchOver)
+      check('the room never ends', !s.matchOver && s.sys.isActive(), 'matchOver ' + s.matchOver)
       check('new hunters arrive when it empties', empty === 0 && s.bots.filter(b => b.alive).length >= 2, 'alive ' + s.bots.filter(b => b.alive).length)
     }
 

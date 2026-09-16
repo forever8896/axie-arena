@@ -519,3 +519,25 @@ absorb the extra hits, and bug rose to 25.0%. Bird health 1900 → 2100 and bug
 basic damage 225 → 210 brought 240 matches back inside the noise band. Plant
 won 20.4%, beast 19.2%, aquatic 17.1%, reptile 15.0%, bug 14.6% and bird
 13.8%. Matches averaged about 55s.
+
+---
+
+## 9. Reading the fight
+
+The readouts started in a panel in the top-left corner: health, dash, special,
+parry, and a row of power-up cards. In a game aimed with the mouse, nobody
+looks there — your eyes are on your own Axie and what is about to hit it.
+
+Everything that is about *you* now sits above your Axie: the health bar, the
+shield over it, and a row of icons for dash, parry, special and any power-up
+you hold. Each icon is dim with a ring that sweeps round as it comes back, and
+lights up when it is ready, so readiness is readable without reading. Rivals
+keep a health bar and gain a gold spark when their special is charged, which is
+the one thing worth knowing about someone else. The icons are Origins status
+icons: a feather for the dash, a shield for the parry, a bolt for the special.
+
+The map is drawn from the arena rather than sketched: the same grass tile, the
+baked ground, the real bush art and the real blocks, so a glance at it matches
+what is on screen. Everything that moves is drawn over that each frame, and the
+Axies are drawn as themselves — each class is posed once at boot and rendered
+into a small round portrait.

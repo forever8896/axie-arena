@@ -22,8 +22,9 @@ export default class GameScene extends Phaser.Scene {
   init(data) {
     this.builds = data.builds
     this.playerClass = data.playerClass
-    // 'showdown' (last one standing, closing field), 'wilds' (endless room)
-    // or 'tutorial' (the guided course).
+    // 'wilds' (the game), 'tutorial' (the guided course), or 'showdown': the
+    // last-one-standing match with a closing field, kept for the balance
+    // simulation (src/dev/balanceSim.js) rather than for players.
     this.mode = data.mode ?? 'showdown'
     this.room = data.room ?? null
     this.roomSnapshot = data.snapshot ?? null
@@ -308,30 +309,10 @@ export default class GameScene extends Phaser.Scene {
     if (this.matchOver) return
     if (killer === this.player && fighter !== this.player) this.kills++
 
-    if (fighter === this.player) {
-      this.cameras.main.flash(220, 90, 10, 30)
-      return this.endMatch(false)
-    }
-    if (this.bots.every(b => !b.alive)) this.endMatch(true)
-  }
-
-  /** Let the death land before the panel appears, then freeze the arena. */
-  endMatch(won) {
-    this.matchOver = true
-    this.reticle.clear()
-    if (won) this.player.sprite.playState('victory')
-
-    this.time.delayedCall(won ? 700 : 900, () => {
-      this.scene.pause()
-      this.scene.stop('UIScene')
-      this.scene.launch('ResultScene', {
-        won,
-        axieClass: this.player.axieClass,
-        kills: this.kills,
-        seconds: Math.round((this.time.now - this.startedAt) / 1000),
-        builds: this.builds,
-      })
-    })
+    // Showdown (the balance simulation's mode) has no result screen: the
+    // simulation reads the outcome from the fighters themselves.
+    if (fighter === this.player) this.cameras.main.flash(220, 90, 10, 30)
+    this.matchOver = this.matchOver || fighter === this.player || this.bots.every(b => !b.alive)
   }
 
   update(time, delta) {

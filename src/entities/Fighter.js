@@ -7,6 +7,9 @@ import { useBasic, useSpecial } from '../combat/abilities.js'
 import { play, playVaried } from '../fx/Sfx.js'
 import { playStatusPlate } from '../fx/SkillVfx.js'
 
+/** Health, icons and name plates sit above the foliage and the blocks. */
+export const HUD_DEPTH = 9500
+
 /**
  * One Axie in the arena. The player and the bots are the same thing; only the
  * source of `intent` differs, so anything that works for one works for both.
@@ -80,15 +83,15 @@ export default class Fighter {
     this.dust = dustEmitter(scene, this.sprite.root)
     this.dust.setDepth(y - 1)
 
-    this.healthBar = scene.add.graphics().setDepth(9000)
+    this.statusFx = scene.add.graphics().setDepth(9000)
     this.parryFx = scene.add.graphics()
 
     // Power-ups (arena/PowerUps.js): type -> { def, until }. The shield is a
     // separate pool that soaks damage before health does.
     this.buffs = {}
     this.shieldHp = 0
-    this.buffFx = scene.add.graphics()
-    this.buffIcons = {}
+    // Icons above the Axie: dash, parry, special and any power-up held.
+    this.hudIcons = {}
     // Last time a rival hurt us. Moonwells stop healing for a moment after.
     this.lastHurtAt = -Infinity
     // The rival who hit us last: in the Wilds, a fall to poison or a zone
@@ -183,9 +186,8 @@ export default class Fighter {
     const step = delta / 1000
     this.addCharge(CHARGE_PER_SECOND * step)
     this.tickPoison()
-    this.drawHealthBar()
+    this.drawStatus()
     this.drawParry()
-    this.drawBuffs()
 
     if (this.frozen) {
       this.sprite.setPosition(this.pos.x, this.pos.y)
@@ -272,81 +274,97 @@ export default class Fighter {
   }
 
   /**
-   * Whoever holds a power-up shows it: a coloured ring at the feet, a bubble
-   * for the shield, and the icon beside the health bar with its time left.
+   * Everything you need mid-fight, above your own Axie: health, the shield,
+   * and a row of icons for dash, parry, special and any power-up, each filling
+   * as it comes back. It used to live in a panel in the top-left corner, which
+   * is nowhere near where anyone is looking during a fight.
    */
-  drawBuffs() {
-    const g = this.buffFx
-    g.clear()
-    const now = this.scene.time.now
-    const t = now / 1000
-    let slot = 0
-
-    for (const type of ['fury', 'bulwark', 'tailwind']) {
-      const def = this.buff(type)
-      let icon = this.buffIcons[type]
-      if (!def) {
-        icon?.setVisible(false)
-        continue
-      }
-      const b = this.buffs[type]
-      const left = (b.until - now) / b.durationMs
-      // Blink in the last second and a half, so its end can be played around.
-      const blink = b.until - now < 1500 && Math.floor(now / 120) % 2 === 0
-
-      if (type === 'bulwark') {
-        const a = (0.5 + Math.sin(t * 6) * 0.12) * (blink ? 0.4 : 1)
-        g.fillStyle(def.color, 0.1 * a)
-        g.fillCircle(this.pos.x, this.pos.y - 26, this.bodyRadius + 26)
-        g.lineStyle(3, def.color, 0.8 * a)
-        g.strokeCircle(this.pos.x, this.pos.y - 26, this.bodyRadius + 26)
-      } else {
-        const r = this.bodyRadius + 10 + slot * 7 + Math.sin(t * 8 + slot) * 2
-        g.lineStyle(4, def.color, blink ? 0.3 : 0.85)
-        g.strokeEllipse(this.pos.x, this.pos.y + 4, r * 2.1, r * 0.9)
-      }
-
-      if (!icon) {
-        const key = `icon-${def.icon}`
-        if (!this.scene.textures.exists(key)) continue
-        icon = this.buffIcons[type] = this.scene.add.image(0, 0, key)
-        icon.setScale(18 / Math.max(icon.frame.width, icon.frame.height))
-      }
-      const ix = this.pos.x + 38 + slot * 20
-      const iy = this.pos.y - 74
-      icon.setVisible(!blink).setPosition(ix, iy).setDepth(this.pos.y + 61)
-      g.fillStyle(0x16200f, 0.6).fillRect(ix - 9, iy + 11, 18, 3)
-      g.fillStyle(def.color, 1).fillRect(ix - 9, iy + 11, 18 * left, 3)
-      slot++
-    }
-    g.setDepth(this.pos.y + 4)
-  }
-
-  drawHealthBar() {
-    const g = this.healthBar
+  drawStatus() {
+    const g = this.statusFx
     g.clear()
     if (!this.alive) return
-
-    const w = 56
-    const h = 7
+    const now = this.scene.time.now
+    const w = this.isPlayer ? 76 : 56
+    const h = this.isPlayer ? 9 : 7
     const x = this.pos.x - w / 2
-    const y = this.pos.y - 78
+    // Stacked clear of the name plate a room hangs above each hunter.
+    const y = this.pos.y - (this.isPlayer ? 88 : 96)
     const frac = Phaser.Math.Clamp(this.hp / this.maxHp, 0, 1)
 
-    g.fillStyle(0x16200f, 0.7).fillRoundedRect(x - 2, y - 2, w + 4, h + 4, 4)
-    const color = this.isPlayer ? 0x7ce85a : (frac > 0.35 ? 0xffd964 : 0xff6b6b)
-    g.fillStyle(color, 1).fillRoundedRect(x, y, Math.max(2, w * frac), h, 3)
+    g.fillStyle(0x16200f, 0.85).fillRoundedRect(x - 3, y - 3, w + 6, h + 6, 5)
+    g.fillStyle(0x3a4a2a, 1).fillRoundedRect(x, y, w, h, 3)
+    const color = this.isPlayer ? 0x7ce85a : frac > 0.35 ? 0xffd964 : 0xff6b6b
+    g.fillStyle(color, 1).fillRoundedRect(x, y, Math.max(3, w * frac), h, 3)
+    // A lighter top edge, so the bar reads as a bar and not a flat block.
+    g.fillStyle(0xffffff, 0.25).fillRoundedRect(x + 1, y + 1, Math.max(2, w * frac - 2), Math.max(1, h * 0.35), 2)
+
     if (this.shieldHp > 0 && this.buff('bulwark')) {
-      g.fillStyle(0x7ce8ff, 1).fillRect(x, y - 4, w * Math.min(1, this.shieldHp / this.maxHp), 3)
+      const sf = Math.min(1, this.shieldHp / this.maxHp)
+      g.fillStyle(0x16200f, 0.85).fillRoundedRect(x - 3, y - 9, w + 6, 6, 3)
+      g.fillStyle(0x7ce8ff, 1).fillRoundedRect(x, y - 8, w * sf, 4, 2)
+    }
+    g.setDepth(HUD_DEPTH)
+
+    if (this.isPlayer) this.drawReadyIcons(g, now, y - 24)
+    else if (this.specialReady) {
+      // A rival with its special up is worth knowing about.
+      g.fillStyle(0x16200f, 0.85).fillCircle(x + w + 9, y + h / 2, 7)
+      g.fillStyle(0xffd964, 0.6 + Math.sin(now / 160) * 0.35).fillCircle(x + w + 9, y + h / 2, 5)
+    }
+  }
+
+  /**
+   * Dash, parry, special and power-ups as icons above the bar. Each is dim
+   * with a sweep showing how far along it is, and lights up when it is ready.
+   */
+  drawReadyIcons(g, now, y) {
+    const slots = [
+      { key: 'buff_feather', ready: this.canDash(now), fill: Phaser.Math.Clamp((now - this.lastDash) / this.dashCooldown, 0, 1), tint: 0x7ce8ff },
+      { key: 'power_advance_shielding', ready: now - this.lastParry >= PARRY.cooldownMs, fill: Phaser.Math.Clamp((now - this.lastParry) / PARRY.cooldownMs, 0, 1), tint: 0xffffff },
+      { key: 'buff_rage', ready: this.specialReady, fill: Phaser.Math.Clamp(this.charge, 0, 1), tint: this.colors.body },
+    ]
+    for (const type of ['fury', 'bulwark', 'tailwind']) {
+      const def = this.buff(type)
+      if (!def) continue
+      const b = this.buffs[type]
+      slots.push({ key: def.icon, ready: true, fill: (b.until - now) / b.durationMs, tint: def.color, timed: true })
     }
 
-    // A thin charge line under your own bar, so the special is readable in the fight.
-    if (this.isPlayer) {
-      g.fillStyle(0x16200f, 0.6).fillRect(x, y + h + 3, w, 3)
-      g.fillStyle(this.specialReady ? 0xffffff : this.colors.body, 1)
-      g.fillRect(x, y + h + 3, w * this.charge, 3)
+    const gap = 30
+    const startX = this.pos.x - ((slots.length - 1) * gap) / 2
+    const seen = new Set()
+    slots.forEach((slot, i) => {
+      const x = startX + i * gap
+      const bob = slot.ready && !slot.timed ? Math.sin(now / 220 + i) * 1.5 : 0
+      const iy = y + bob
+      seen.add(slot.key)
+
+      g.fillStyle(0x16200f, slot.ready ? 0.9 : 0.75).fillCircle(x, iy, 14)
+      // The sweep: how much of it has come back.
+      if (slot.fill < 1 || slot.timed) {
+        g.lineStyle(3, slot.timed ? slot.tint : 0x9aa88a, 0.9)
+        g.beginPath()
+        g.arc(x, iy, 11, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Phaser.Math.Clamp(slot.fill, 0, 1))
+        g.strokePath()
+      } else {
+        g.lineStyle(3, slot.tint, 0.55 + Math.sin(now / 180 + i) * 0.35)
+        g.strokeCircle(x, iy, 12)
+      }
+
+      let icon = this.hudIcons[slot.key]
+      const key = `icon-${slot.key}`
+      if (!icon) {
+        if (!this.scene.textures.exists(key)) return
+        icon = this.hudIcons[slot.key] = this.scene.add.image(0, 0, key)
+        icon.setScale(19 / Math.max(icon.frame.width, icon.frame.height))
+      }
+      icon.setVisible(true).setPosition(x, iy).setDepth(HUD_DEPTH + 1)
+        .setAlpha(slot.ready ? 1 : 0.45)
+        .setTint(slot.ready ? 0xffffff : 0x8fa07c)
+    })
+    for (const [key, icon] of Object.entries(this.hudIcons)) {
+      if (!seen.has(key)) icon.setVisible(false)
     }
-    g.setDepth(this.pos.y + 60)
   }
 
   clampToArena() {
@@ -615,11 +633,10 @@ export default class Fighter {
   }
 
   clearOverlays() {
-    this.healthBar.destroy()
+    this.statusFx.destroy()
     this.parryFx.destroy()
-    this.buffFx.destroy()
-    Object.values(this.buffIcons).forEach(i => i.destroy())
-    this.buffIcons = {}
+    Object.values(this.hudIcons).forEach(i => i.destroy())
+    this.hudIcons = {}
     this.buffs = {}
     this.nameplate?.destroy()
     this.nameplate = null
