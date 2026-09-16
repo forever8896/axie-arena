@@ -42,7 +42,9 @@ export default class MenuScene extends Phaser.Scene {
       fontFamily: HEAD, fontSize: '46px', color: '#fff8d8',
     }).setOrigin(0.5)
 
-    this.subtitle = this.add.text(0, 0, this.mode === 'tutorial' ? 'CHOOSE YOUR AXIE  ·  TUTORIAL' : 'CHOOSE YOUR AXIE  ·  THE ENDLESS WILDS', {
+    this.subtitle = this.add.text(0, 0, this.mode === 'tutorial' ? 'CHOOSE YOUR AXIE  ·  TUTORIAL'
+      : this.mode === 'net' ? 'CHOOSE YOUR AXIE  ·  MULTIPLAYER'
+        : 'CHOOSE YOUR AXIE  ·  THE ENDLESS WILDS', {
       fontFamily: MONO, fontSize: '13px', color: '#8b83ad',
     }).setOrigin(0.5)
 
@@ -229,6 +231,8 @@ export default class MenuScene extends Phaser.Scene {
       this.cameras.main.fadeOut(220)
       this.time.delayedCall(240, () => {
         if (this.mode === 'wilds') this.scene.start('LobbyScene', { builds: this.builds, playerClass: cls })
+        // The same lobby, listing the server's rooms rather than this page's.
+        else if (this.mode === 'net') this.scene.start('LobbyScene', { builds: this.builds, playerClass: cls, net: true })
         else this.scene.start('GameScene', { builds: this.builds, playerClass: cls, mode: this.mode })
       })
     })

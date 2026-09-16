@@ -14,9 +14,11 @@ import Phaser from 'phaser'
 import Arena, { WORLD } from '../arena/Arena.js'
 import RoomClient from '../net/client.js'
 import RoomView from '../net/RoomView.js'
+import NetWilds from '../net/NetWilds.js'
 import { createFxTextures, ambientMotes } from '../fx/Juice.js'
 import { play as playMusic } from '../fx/Music.js'
-import { money } from '../wilds/config.js'
+import { POWERUPS } from '../arena/boonConfig.js'
+import { wallet } from '../wilds/Wallet.js'
 
 export default class NetScene extends Phaser.Scene {
   constructor() {
@@ -47,6 +49,20 @@ export default class NetScene extends Phaser.Scene {
     this.view = new RoomView(this, this.builds)
     this.reticle = this.add.graphics().setDepth(-20)
 
+    // The surface UIScene and WildsHud read. They were written against the
+    // local game; a networked room fills the same shapes from snapshots, so
+    // the multiplayer game gets the real HUD rather than a lesser copy.
+    this.fighters = []
+    this.bots = []
+    this.player = null
+    this.wilds = null
+    this.tutorial = null
+    this.field = null
+    this.powerUps = { orbs: [] }
+    this.moonwells = { wells: [] }
+    this.announcement = null
+    this.arenaBounds = this.arena.bounds
+
     const cam = this.cameras.main
     cam.setBounds(0, 0, WORLD.width, WORLD.height)
     cam.setZoom(1.15)
@@ -63,18 +79,49 @@ export default class NetScene extends Phaser.Scene {
     this.client.on('bye', why => this.onBye(why))
     this.client.on('close', () => this.onClose())
     this.status = 'connecting'
+    this.join()
+
+    this.events.once('shutdown', () => this.teardown())
+  }
+
+  /**
+   * Take a seat. The HUD only exists once the room has said which one is ours,
+   * because until then there is no room to draw and nothing to say about it.
+   */
+  join() {
     this.client.connect({ room: this.roomId, cls: this.playerClass, resume: resumeToken(this.roomId) })
       .then(msg => {
         this.status = 'playing'
         rememberToken(this.roomId, msg.token)
+        this.view.currency = msg.room.currency
+        this.wilds = new NetWilds(this, msg.room)
+        if (!this.staked) {
+          wallet.enter(msg.room)
+          this.staked = true
+        }
+        this.scene.launch('UIScene', { host: 'NetScene' })
+        this.pingTimer?.remove()
         this.pingTimer = this.time.addEvent({ delay: 2000, loop: true, callback: () => this.client.ping() })
       })
       .catch(err => {
         this.status = 'failed'
         this.hud.banner.setText(`could not join: ${err.message}`)
       })
+  }
 
-    this.events.once('shutdown', () => this.teardown())
+  /** Walk back in after falling: a fresh stake, the same room. */
+  rejoin() {
+    forgetToken(this.roomId)
+    this.status = 'connecting'
+    this.staked = false
+    this.client.close()
+    this.client = new RoomClient({ name: this.playerName })
+    this.client.on('bye', why => this.onBye(why))
+    this.client.on('close', () => this.onClose())
+    this.view.destroy()
+    this.view = new RoomView(this, this.builds)
+    this.scene.stop('UIScene')
+    this.join()
   }
 
   bindInput() {
@@ -88,28 +135,30 @@ export default class NetScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-E', () => this.client?.act('special'))
     this.input.keyboard.on('keydown-Q', () => this.client?.act('parry'))
     this.input.keyboard.on('keydown-F', () => this.client?.act('parry'))
-    this.input.keyboard.on('keydown-ESC', () => this.leave())
+    this.input.keyboard.on('keydown-ESC', () => this.wilds?.requestLeave() ?? this.backToLobby())
+    // A panel is waiting for an answer; Enter takes the one it recommends.
+    this.input.keyboard.on('keydown-ENTER', () => {
+      const ui = this.scene.get('UIScene')
+      ui?.wildsHud?.primary?.()
+    })
     this.input.mouse?.disableContextMenu()
   }
 
   /**
-   * Deliberately plain for now: the real HUD reads a Fighter, and pointing it at
-   * a snapshot is its own piece of work. This says what a networked room needs
-   * to say and nothing more.
+   * UIScene draws the room itself. What is left here is what only a networked
+   * game has to say: whether the connection is up, and how far away the room is.
    */
   buildHud() {
-    const text = (y, size, colour) => this.add.text(16, y, '', {
-      fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif',
-      fontSize: `${size}px`, color: colour, stroke: '#16200f', strokeThickness: 4,
-    }).setScrollFactor(0).setDepth(20000)
-
     this.hud = {
-      bounty: text(14, 22, '#ffd166'),
-      room: text(44, 14, '#cfe6b8'),
-      banner: text(74, 16, '#ff9db1'),
-      link: this.add.text(this.scale.width - 16, 14, '', {
-        fontFamily: 'ui-monospace, monospace', fontSize: '12px', color: '#9fb08c',
-      }).setOrigin(1, 0).setScrollFactor(0).setDepth(20000),
+      banner: this.add.text(16, 74, '', {
+        fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif',
+        fontSize: '16px', color: '#ff9db1', stroke: '#16200f', strokeThickness: 4,
+      }).setScrollFactor(0).setDepth(20000),
+      // Top left: the only corner the Wilds HUD leaves empty, and clear of the
+      // controls strip along the bottom.
+      link: this.add.text(16, 16, '', {
+        fontFamily: 'ui-monospace, monospace', fontSize: '11px', color: '#7f8c6a',
+      }).setScrollFactor(0).setDepth(20000),
     }
   }
 
@@ -119,16 +168,36 @@ export default class NetScene extends Phaser.Scene {
 
     client.advance(delta)
     const view = client.view()
-    this.view.render(view, client.drainEvents(), delta)
+    if (!view) return
 
-    const me = view?.me
+    const events = client.drainEvents()
+    this.view.render(view, events, delta)
+
+    // The shapes the HUD reads, refreshed from this frame's snapshot.
+    this.fighters = [...this.view.actors.values()]
+    this.player = this.fighters.find(f => f.isPlayer) ?? null
+    this.bots = this.fighters.filter(f => !f.isPlayer)
+    this.powerUps.orbs = (view.orbs ?? []).map(o => ({
+      ...o, def: POWERUPS[o.type] ?? POWERUPS.fury, dead: false,
+    }))
+    this.moonwells.wells = (view.wells ?? []).map(w => ({ ...w, radius: w.r, dead: false }))
+    if (this.wilds) {
+      this.wilds.sync(view, this.view.actors)
+      if (this.player?.alive) this.wilds.remember(this.player.wilds.bounty)
+      for (const e of events) this.wilds.handle(e, view, client.you)
+    }
+
+    const me = view.me
     if (me) {
       // The camera follows the drawn position rather than a sprite, because the
       // sprite is only ever a picture of where the room said we were.
       this.follow(me, delta)
       this.drawReticle(me)
       this.sendInput(me)
+    } else {
+      this.reticle.clear()
     }
+    this.arena.updateCanopies(this.player ?? me)
     this.updateHud(view)
   }
 
@@ -169,26 +238,25 @@ export default class NetScene extends Phaser.Scene {
     g.strokePath()
   }
 
-  updateHud(view) {
-    const me = view?.me
-    const room = this.client.room
-    if (me && room) {
-      this.hud.bounty.setText(`BOUNTY ${money(me.bounty ?? 0, room.currency)} ${room.currency}`)
-      this.hud.room.setText(`${room.name} · ${view.fighters.filter(f => f.alive).length} hunters · reach a Moon Gate to cash out`)
-    }
-    this.hud.link.setText(`${this.status} · ${Math.round(this.client.latency)}ms`)
-    if (this.status === 'dropped') {
-      this.hud.banner.setText('connection lost — your Axie is still in the room for a few seconds')
-    }
+  updateHud() {
+    const live = this.status === 'playing'
+    this.hud.link.setText(`MULTIPLAYER · ${this.status.toUpperCase()} · ${Math.round(this.client.latency)}ms`)
+      .setColor(live ? '#7f8c6a' : '#ffc22e')
+    this.hud.banner.setText(this.status === 'dropped'
+      ? 'CONNECTION LOST — your Axie stays in the room for a few seconds'
+      : '')
   }
 
-  leave() {
-    this.client?.leave()
+  /** Centre-screen callouts, read by UIScene exactly as the local game's are. */
+  announce(text, color, at = null) {
+    this.announcement = { text, color, at, until: this.time.now + 2200 }
   }
 
   onBye() {
     forgetToken(this.roomId)
-    this.backToLobby()
+    // A goodbye answers a leave the player already chose; the panel that asked
+    // stays up to report what it cost them, and takes them out of the room.
+    if (!this.wilds?.panel) this.backToLobby()
   }
 
   onClose() {
@@ -197,7 +265,8 @@ export default class NetScene extends Phaser.Scene {
 
   backToLobby() {
     this.teardown()
-    this.scene.start('HomeScene', { builds: this.builds })
+    this.scene.stop('UIScene')
+    this.scene.start('LobbyScene', { builds: this.builds, playerClass: this.playerClass, net: true })
   }
 
   teardown() {
@@ -205,6 +274,8 @@ export default class NetScene extends Phaser.Scene {
     this.client?.close()
     this.client = null
     this.view?.destroy()
+    this.fighters = []
+    this.player = null
   }
 }
 

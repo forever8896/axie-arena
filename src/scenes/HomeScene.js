@@ -36,6 +36,7 @@ export default class HomeScene extends Phaser.Scene {
     this.buildTitle()
     this.buildPlay()
     this.buildTutorialLink()
+    this.buildMultiplayer()
     this.buildAbout()
     this.buildFooter()
 
@@ -159,6 +160,34 @@ export default class HomeScene extends Phaser.Scene {
     this.playText.setPosition(this.playX, this.playY - this.playLift + 2)
   }
 
+  /**
+   * The way into the networked rooms, and honest about what it is: the local
+   * game is the finished one, this is the one being built. It says whether the
+   * rooms are actually reachable before anyone clicks it, because a switch that
+   * leads to a connection error is worse than one that says it is down.
+   */
+  buildMultiplayer() {
+    this.netToggle = this.add.text(0, 0, 'MULTIPLAYER  ·  EXPERIMENTAL  ▸', {
+      fontFamily: HEAD, fontSize: '15px', color: '#c9b8ff',
+    }).setOrigin(0.5).setDepth(1012).setInteractive({ useHandCursor: true })
+    this.netToggle.setShadow(0, 2, 'rgba(35,48,15,0.8)', 3, false, true)
+    bindButton(this, this.netToggle, () => this.start('net'), { sound: 'start' })
+    this.input.keyboard.on('keydown-N', () => this.start('net'))
+
+    fetch('/api/rooms', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then(({ rooms }) => {
+        const players = rooms.reduce((s, r) => s + r.players, 0)
+        const hunters = rooms.reduce((s, r) => s + r.hunters, 0)
+        this.netToggle.setText(players
+          ? `MULTIPLAYER  ·  ${players} ${players === 1 ? 'PLAYER' : 'PLAYERS'} IN ${rooms.length} LIVE ROOMS  ▸`
+          : `MULTIPLAYER  ·  ${rooms.length} LIVE ROOMS, ${hunters} HUNTERS  ▸`)
+      })
+      .catch(() => {
+        this.netToggle.setText('MULTIPLAYER  ·  ROOMS OFFLINE').setColor('#9aa88a').disableInteractive()
+      })
+  }
+
   buildAbout() {
     this.aboutToggle = this.add.text(0, 0, 'ABOUT  ·  HOW IT WORKS  ▸', {
       fontFamily: MONO, fontSize: '12px', color: '#e8f0d6',
@@ -177,7 +206,7 @@ export default class HomeScene extends Phaser.Scene {
 
   buildFooter() {
     this.footer = this.add.text(0, 0,
-      'ENTER  PLAY  ·  T  TUTORIAL  ·  A  ABOUT  ·  M  MUTE  ·  BUILT FOR AXIE VIBEATHON 2026', {
+      'ENTER  PLAY  ·  T  TUTORIAL  ·  N  MULTIPLAYER  ·  A  ABOUT  ·  M  MUTE  ·  BUILT FOR AXIE VIBEATHON 2026', {
         fontFamily: MONO, fontSize: '11px', color: '#e8f0d6',
       }).setOrigin(0.5).setDepth(1012).setAlpha(0.85)
     this.footer.setShadow(0, 2, 'rgba(35,48,15,0.6)', 3, false, true)
@@ -228,7 +257,8 @@ export default class HomeScene extends Phaser.Scene {
     this.drawPlay()
 
     this.tutorialText?.setPosition(this.playX, this.playY + 74)
-    this.aboutY = this.playY + 128
+    this.netToggle?.setPosition(cx, this.playY + 112)
+    this.aboutY = this.playY + 152
     this.aboutToggle?.setPosition(cx, this.aboutY)
 
     this.footer?.setPosition(cx, height - 26)

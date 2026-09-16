@@ -82,7 +82,15 @@ try {
   const first = await a.eval(read)
   check('the browser joins a room on the server', first.status === 'playing' && Boolean(first.you), first.you)
   check('the room arrives with hunters already in it', first.fighters > 1, `${first.fighters} fighters`)
-  check('every fighter in the snapshot gets a sprite', first.actors === first.fighters, `${first.actors} of ${first.fighters}`)
+  // Against the frame that was actually drawn: read the count separately and a
+  // hunter who left between the two reads looks like a leak.
+  const drawn = await a.eval(`(() => {
+    const s = window.__game.scene.getScene('NetScene')
+    const v = s.client.view()
+    const missing = v.fighters.filter(f => !s.view.actors.has(f.id))
+    return JSON.stringify({ of: v.fighters.length, missing: missing.length })
+  })()`).then(JSON.parse)
+  check('every fighter in the snapshot gets a sprite', drawn.missing === 0, `${drawn.of - drawn.missing} of ${drawn.of}`)
   check('and every sprite is playing an animation', first.clip === first.actors, `${first.clip} animating`)
   check('the gates are drawn to aim for', first.gates > 0, `${first.gates} open`)
 
@@ -128,8 +136,28 @@ try {
     const after = await a.eval(read)
     check('holding a key walks you, as the room decides', Math.abs(after.me.x - before.me.x) > 25,
       `${before.me.x} to ${after.me.x}, holding ${walked}`)
-    check('and the camera came along', Math.abs(after.cam.x - before.cam.x) > 10,
-      `${before.cam.x} to ${after.cam.x}`)
+
+    // The camera follows unless it is up against the edge of the world, where
+    // staying put is the correct thing to do. Either way you stay on screen,
+    // which is the contract that actually matters.
+    const frame = await a.eval(`(() => {
+      const s = window.__game.scene.getScene('NetScene')
+      const cam = s.cameras.main
+      const me = s.client.view().me
+      const b = cam.getBounds()
+      return JSON.stringify({
+        moved: Math.abs(cam.scrollX - ${before.cam.x}) > 10,
+        clamped: cam.scrollX <= 1 || cam.scrollX >= b.width - cam.width / cam.zoom - 1,
+        onScreenX: Math.round((me.x - cam.scrollX) * cam.zoom),
+        onScreenY: Math.round((me.y - cam.scrollY) * cam.zoom),
+        w: cam.width, h: cam.height,
+      })
+    })()`).then(JSON.parse)
+    check('and the camera came along, unless the world ran out',
+      frame.moved || frame.clamped, frame.moved ? 'followed' : 'clamped at the world edge')
+    check('and you are still on screen either way',
+      frame.onScreenX > 0 && frame.onScreenX < frame.w && frame.onScreenY > 0 && frame.onScreenY < frame.h,
+      `${frame.onScreenX},${frame.onScreenY} in ${frame.w}x${frame.h}`)
   }
 
   // --- A second browser, the same room ------------------------------------
@@ -155,7 +183,9 @@ try {
       `${aSeesB ? 'A sees B' : 'A cannot see B'}, ${bSeesA ? 'B sees A' : 'B cannot see A'}`)
 
     // One browser swings. The other must animate it, because neither of them
-    // decided it: the room did, and told them both.
+    // decided it: the room did, and told them both. A corpse cannot swing, so
+    // make sure the swinger is on its feet first.
+    await alive(b, 'Bram', 'plant')
     await b.eval(`(() => {
       const s = window.__game.scene.getScene('NetScene')
       for (let i = 0; i < 12; i++) setTimeout(() => s.client.act('attack'), i * 400)
@@ -177,10 +207,24 @@ try {
 
   // --- Leaving -------------------------------------------------------------
   {
-    await a.eval(`window.__game.scene.getScene('NetScene').leave(); true`)
-    const home = await a.waitFor("!!window.__game.scene.getScene('HomeScene')?.scene.isActive()", 8000)
+    await alive(a, 'Ayla', 'beast')
+    // A frame has to have been drawn, or there is nobody in the room to leave.
+    await a.waitFor("!!window.__game.scene.getScene('NetScene').wilds?.fighters.length", 8000)
+    const panel = () => a.eval("window.__game.scene.getScene('NetScene').wilds?.panel?.kind ?? null")
+
+    await a.eval(`window.__game.scene.getScene('NetScene').wilds.requestLeave(); true`)
+    check('Esc asks before you walk out on a bounty', await panel() === 'leave', await panel())
+
+    await a.eval(`window.__game.scene.getScene('NetScene').wilds.forfeit(); true`)
+    const left = await a.waitFor(
+      "window.__game.scene.getScene('NetScene').wilds?.panel?.kind === 'left'", 8000,
+    ).then(() => true).catch(() => false)
+    check('and says what leaving cost you', left, 'the room kept it')
+
+    await a.eval(`window.__game.scene.getScene('NetScene').wilds.toLobby(); true`)
+    const lobby = await a.waitFor("!!window.__game.scene.getScene('LobbyScene')?.scene.isActive()", 8000)
       .then(() => true).catch(() => false)
-    check('leaving the room returns to the home screen', home)
+    check('and puts you back in the lobby', lobby)
   }
 } catch (err) {
   fail++

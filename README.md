@@ -33,17 +33,52 @@ node scripts/headless/check-wilds.mjs     # 33 Endless Wilds rules, incl. a 4-mi
 node scripts/headless/check-tutorial.mjs  # plays all ten tutorial steps through the real mechanics
 node scripts/check-terrain.mjs            # no fake passages, all floor connected (no browser needed)
 node scripts/headless/check-audio.mjs     # music per scene, looping, mixing and mute
+node scripts/check-sim.mjs                # 42 rules against the headless simulation, in about a second
+node scripts/check-net.mjs                # 35 checks with several clients on real sockets
+node scripts/check-client.mjs             # 24 checks on the client half of the wire
+node scripts/headless/check-net-scene.mjs # two browsers in one server-run room
+node scripts/headless/check-net-flow.mjs  # the way in to multiplayer, as a player walks it
+node scripts/sim-balance.mjs 300          # 300 bot matches in about five seconds
 node scripts/vendor-origins-vfx.mjs       # re-vendor Origins effect plates, icons and sounds
 node scripts/brand/build-logo.mjs         # rebuild the logo SVG and PNG exports
 node scripts/economy/model.mjs            # stake-mode economy model used in docs/VISION.md
 # balance: open http://localhost:5173/?sim=120 in a browser
 ```
 
+## Multiplayer
+
+The rooms run on a server. `src/net/host.js` keeps a live `SimRoom` per lobby
+room and steps them all at a fixed 60Hz whether or not anyone is connected,
+which is what makes the Wilds endless: the first player through the door arrives
+somewhere with a history. Snapshots go out twenty times a second and clients
+draw a tenth of a second in the past, interpolating between them.
+
+The protocol (`src/net/protocol.js`) is the design in one file: a client sends a
+direction, an angle and what it pressed. There is no field for a position, a hit
+or a bounty, so there is nothing for a client to lie about.
+
+Two rules only a server can enforce: closing the tab is not an escape (your Axie
+stands and defends itself for six seconds, and comes back to you with its bounty
+if you return inside that window), and nobody queues behind a bot (joining a full
+room bumps the smallest-bounty stand-in, which forfeits rather than evaporating,
+so the ledger still balances).
+
+**Multiplayer** on the home screen is the way in; it says how many rooms are live
+before you click it. It is marked experimental because it has no client-side
+prediction yet: your own movement waits for the round trip.
+
+```bash
+npm start             # the rooms and the built game, one process, :8080
+npm run dev           # the page with hot reload, proxying /ws to :8080
+```
+
 ## Deploy
 
-The build is static; `server.js` serves `dist/` with no dependencies (long
-cache on fingerprinted assets, single-page fallback, `/healthz` for the
-platform). On Railway, `npm run build` then `npm start`:
+One process serves the built game and hosts the rooms: `server.js` hands out
+`dist/` (long cache on fingerprinted assets, single-page fallback, `/healthz` for
+the platform), carries the room authority on `/ws`, and answers `/api/rooms` for
+the lobby. `ws` is its only dependency. On Railway, `npm run build` then
+`npm start`:
 
 ```bash
 railway up            # build and deploy the linked project
@@ -52,8 +87,9 @@ railway domain list   # the public URL
 
 ## Modes
 
-One button: **Play** drops you into the Endless Wilds. **Tutorial** teaches it
-first.
+**Play** drops you into the Endless Wilds, running in your own browser.
+**Tutorial** teaches it first. **Multiplayer** is the same game in rooms on the
+server, shared with whoever else is in them.
 
 - **The Endless Wilds**: a room that never ends. Pick a room in
   the lobby and you are in, with no queue. Your stake buys a bounty (a 10% fee

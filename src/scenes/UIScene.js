@@ -19,8 +19,10 @@ export default class UIScene extends Phaser.Scene {
     super({ key: 'UIScene' })
   }
 
-  create() {
-    this.game_ = this.scene.get('GameScene')
+  create(data) {
+    // The room being drawn: run by this page (GameScene) or by a server
+    // (NetScene). Both present the same surface to read, which is the point.
+    this.game_ = this.scene.get(data?.host ?? 'GameScene')
 
     // Scene instances are reused across matches. Anything built lazily in
     // update() must be forgotten here, or a restarted match reuses objects

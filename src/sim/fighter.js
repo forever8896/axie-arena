@@ -420,9 +420,22 @@ export default class SimFighter {
       shield: Math.round(this.shieldHp),
       buffs: Object.entries(this.buffs)
         .filter(([, b]) => b && this.now < b.until)
-        .map(([type, b]) => ({ type, left: Math.round(b.until - this.now) })),
+        .map(([type, b]) => ({ type, left: Math.round(b.until - this.now), of: b.durationMs })),
+      // How far dash and parry have come back, 0 to 1. The icons above an Axie
+      // fill as they return, and a client cannot work that out for itself: only
+      // the room knows when you last used them.
+      ready: {
+        dash: Math.round(clamp((this.now - this.lastDash) / this.dashCooldown, 0, 1) * 100) / 100,
+        parry: Math.round(clamp((this.now - this.lastParry) / PARRY.cooldownMs, 0, 1) * 100) / 100,
+      },
       bounty: this.wilds ? Math.round(this.wilds.bounty * 1000) / 1000 : null,
-      channel: this.channel ? Math.round((this.channel.progress ?? 0) * 100) / 100 : null,
+      leaving: Boolean(this.wilds?.leaving),
+      channel: this.channel
+        ? {
+          progress: Math.round((this.channel.progress ?? 0) * 100) / 100,
+          interrupted: Boolean(this.channel.interruptedAt && this.now - this.channel.interruptedAt < 500),
+        }
+        : null,
       bot: !this.isPlayer,
     }
   }

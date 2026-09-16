@@ -16,15 +16,19 @@ import { CLASS_KITS, PARRY } from '../axie/classKits.js'
 import { FLAGS, has } from '../sim/constants.js'
 import { playPlate, playImpactPlate, playStatusPlate } from '../fx/SkillVfx.js'
 import { damageNumber } from '../fx/Juice.js'
+import { drawFighterStatus, HUD_DEPTH } from '../fx/FighterHud.js'
+import { POWERUPS } from '../arena/boonConfig.js'
+import { money } from '../wilds/config.js'
 import { play as playSfx } from '../fx/Sfx.js'
 
 /** Below this the fighter is standing still as far as the animation cares. */
 const RUN_SPEED = 30
 
 export default class RoomView {
-  constructor(scene, builds) {
+  constructor(scene, builds, currency = 'AXS') {
     this.scene = scene
     this.builds = builds
+    this.currency = currency
     this.actors = new Map()
     this.shots = new Map()
     this.props = new Map()
@@ -40,11 +44,14 @@ export default class RoomView {
     if (actor) return actor
     const build = this.builds[f.cls] ?? this.builds[Object.keys(this.builds)[0]]
     const sprite = new AxieSprite(this.scene, f.x, f.y, { build, axieClass: f.cls })
-    // The effect helpers were written against Fighter, and want an object with
-    // a sprite and a position. An actor is exactly that much of a fighter — the
-    // part with no rules in it — so it can be passed to them directly.
+    // The effect helpers, the HUD and the minimap were all written against
+    // Fighter, and want an object with a sprite, a position and some state. An
+    // actor is exactly that much of a fighter — the part with no rules in it —
+    // so all three take it without changes.
     actor = {
-      id: f.id, sprite, cls: f.cls, label: null, lastHp: f.hp, flags: 0,
+      id: f.id, sprite, cls: f.cls, axieClass: f.cls, label: null, lastHp: f.hp, flags: 0,
+      statusFx: this.scene.add.graphics().setDepth(9000),
+      hudIcons: {},
       get x() { return this.sprite.x },
       get y() { return this.sprite.y },
       get colors() { return this.sprite.colors },
@@ -66,6 +73,7 @@ export default class RoomView {
     if (!view) return
     this.you = view.me?.id ?? null
 
+    const now = this.scene.time.now
     const seen = new Set()
     for (const f of view.fighters) {
       seen.add(f.id)
@@ -75,15 +83,16 @@ export default class RoomView {
       if (!has(f.flags, FLAGS.STUNNED)) actor.sprite.setFacing(Math.cos(f.aim) >= 0 ? 1 : -1)
       actor.sprite.update(delta, f.speed > RUN_SPEED ? f.speed : 0)
       actor.sprite.root.setAlpha(f.alive ? (has(f.flags, FLAGS.HIDDEN) ? 0.45 : 1) : 0.35)
-      this.drawLabel(actor, f, view)
+      this.describe(actor, f)
+      this.drawLabel(actor, f)
+      drawFighterStatus(this.scene, actor.statusFx, actor.hudIcons, this.status(actor, f), now)
       actor.flags = f.flags
       actor.lastHp = f.hp
     }
 
     for (const [id, actor] of this.actors) {
       if (seen.has(id)) continue
-      actor.sprite.destroy()
-      actor.label.destroy()
+      this.forget(actor)
       this.actors.delete(id)
     }
 
@@ -92,14 +101,67 @@ export default class RoomView {
     for (const e of events) this.play(e, view)
   }
 
-  drawLabel(actor, f, view) {
+  /**
+   * Copy the snapshot onto the actor in the shape the HUD, the minimap and the
+   * Wilds overlay already read. They were written against Fighter; this is the
+   * translation, in one place, rather than a special case in each of them.
+   */
+  describe(actor, f) {
+    actor.alive = f.alive
+    actor.hp = f.hp
+    actor.maxHp = f.maxHp
+    actor.charge = f.charge
+    actor.name = f.name
+    actor.bot = f.bot
+    actor.isPlayer = f.id === this.you
+    actor.hidden = has(f.flags, FLAGS.HIDDEN)
+    actor.shielded = has(f.flags, FLAGS.SHIELDED)
+    actor.specialReady = f.charge >= 1
+    actor.wilds = { bounty: f.bounty ?? 0, leaving: Boolean(f.leaving) }
+    actor.channel = f.channel
+      ? { progress: f.channel.progress, interruptedAt: f.channel.interrupted ? this.scene.time.now : 0 }
+      : null
+  }
+
+  /** The description fx/FighterHud draws from. */
+  status(actor, f) {
+    return {
+      x: f.x,
+      y: f.y,
+      isPlayer: actor.isPlayer,
+      alive: f.alive,
+      hp: f.hp,
+      maxHp: f.maxHp,
+      shield: f.shield ?? 0,
+      charge: f.charge,
+      specialReady: actor.specialReady,
+      colors: actor.colors,
+      dash: { ready: (f.ready?.dash ?? 1) >= 1, fill: f.ready?.dash ?? 1 },
+      parry: { ready: (f.ready?.parry ?? 1) >= 1, fill: f.ready?.parry ?? 1 },
+      buffs: (f.buffs ?? []).flatMap(b => {
+        const def = POWERUPS[b.type]
+        if (!def?.icon) return []
+        return [{ icon: def.icon, color: def.color, fill: b.of ? b.left / b.of : 1 }]
+      }),
+    }
+  }
+
+  /** The name plate a room hangs over every hunter but you. */
+  drawLabel(actor, f) {
     const mine = f.id === this.you
-    const bounty = f.bounty == null ? '' : f.bounty.toFixed(2)
-    const name = mine ? '' : `${f.name}${f.bot ? ' · AI' : ''}`
+    const show = f.alive && !mine
     actor.label
-      .setText(f.alive && !mine ? `${name}\n${bounty}` : '')
-      .setPosition(f.x, f.y - 86)
-      .setDepth(f.y + 60)
+      .setText(show ? `${f.name}${f.bot ? ' · AI' : ''}\n${money(f.bounty ?? 0, this.currency)}` : '')
+      .setPosition(f.x, f.y - 104)
+      .setColor(f.leaving ? '#c9b8ff' : '#fff8d8')
+      .setDepth(HUD_DEPTH + 2)
+  }
+
+  forget(actor) {
+    actor.sprite.destroy()
+    actor.label.destroy()
+    actor.statusFx.destroy()
+    Object.values(actor.hudIcons).forEach(i => i.destroy())
   }
 
   /** Projectiles: a lit mote each, since the plates are for impacts. */
@@ -243,10 +305,7 @@ export default class RoomView {
   }
 
   destroy() {
-    for (const actor of this.actors.values()) {
-      actor.sprite.destroy()
-      actor.label.destroy()
-    }
+    for (const actor of this.actors.values()) this.forget(actor)
     for (const dot of this.shots.values()) dot.destroy()
     for (const prop of this.props.values()) prop.destroy()
     this.actors.clear()

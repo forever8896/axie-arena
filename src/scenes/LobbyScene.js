@@ -26,10 +26,14 @@ export default class LobbyScene extends Phaser.Scene {
   init(data) {
     this.builds = data.builds
     this.playerClass = data.playerClass
-    // Live room state survives a resize-restart.
+    // In multiplayer the rooms are real: this list is what the server says is
+    // happening in them right now, people included. Otherwise the rooms run in
+    // this page, and the numbers are a plausible picture of one that would be.
+    this.net = Boolean(data.net)
     this.live = data.live ?? ROOMS.map(r => ({
       hunters: Phaser.Math.Between(...r.hunters),
       topBounty: (r.free ? r.stake : r.stake * (1 - WILDS.feeRate)) * Phaser.Math.FloatBetween(2, 5),
+      players: 0,
     }))
   }
 
@@ -48,9 +52,16 @@ export default class LobbyScene extends Phaser.Scene {
       logo.setScale(170 / logo.width)
     }
     this.add.text(pad + 190, 30, 'THE ENDLESS WILDS', { fontFamily: HEAD, fontSize: '30px', color: CREAM })
-    this.add.text(pad + 192, 70, 'No queue. Pick a room and you are in. Take bounties, cash out at a Moon Gate.', {
+    this.add.text(pad + 192, 70, this.net
+      ? 'Live rooms on the server. Everyone in them shares one fight.'
+      : 'No queue. Pick a room and you are in. Take bounties, cash out at a Moon Gate.', {
       fontFamily: MONO, fontSize: '12px', color: '#c9d6b0',
     })
+    if (this.net) {
+      this.netTag = this.add.text(pad + 190, 8, 'MULTIPLAYER  ·  EXPERIMENTAL', {
+        fontFamily: MONO, fontSize: '11px', color: '#c9b8ff',
+      })
+    }
     this.add.text(width - pad, height - 14,
       'PROTOTYPE  ·  SIMULATED BALANCES WITH NO REAL VALUE  ·  OTHER HUNTERS ARE AI STAND-INS FOR PLAYERS', {
         fontFamily: MONO, fontSize: '10px', color: '#b9c4a6',
@@ -61,11 +72,18 @@ export default class LobbyScene extends Phaser.Scene {
     this.buildRooms(pad * 2 + leftW, 118, width - pad * 3 - leftW, height - 150)
 
     this.input.keyboard.on('keydown-ESC', () => { uiSound(this, 'back'); this.go('HomeScene', { builds: this.builds }) })
+    this.esc = this.add.text(width - pad, 30, 'ESC  BACK', { fontFamily: MONO, fontSize: '11px', color: '#b9c4a6' })
+      .setOrigin(1, 0)
     this.input.keyboard.on('keydown-C', () => this.changeAxie())
     ;['ONE', 'TWO', 'THREE', 'FOUR'].forEach((key, i) => this.input.keyboard.on(`keydown-${key}`, () => this.enter(i)))
 
-    this.time.addEvent({ delay: 2600, loop: true, callback: () => this.drift() })
-    const relayout = () => this.scene.restart({ builds: this.builds, playerClass: this.playerClass, live: this.live })
+    if (this.net) {
+      this.pollRooms()
+      this.time.addEvent({ delay: 2000, loop: true, callback: () => this.pollRooms() })
+    } else {
+      this.time.addEvent({ delay: 2600, loop: true, callback: () => this.drift() })
+    }
+    const relayout = () => this.scene.restart({ builds: this.builds, playerClass: this.playerClass, live: this.live, net: this.net })
     this.scale.once('resize', relayout)
     this.events.once('shutdown', () => this.scale.off('resize', relayout))
   }
@@ -185,11 +203,40 @@ export default class LobbyScene extends Phaser.Scene {
     return view
   }
 
+  /**
+   * The rooms as the server has them this second: who is in each one, how many
+   * of those are people, and what the best of them is carrying. A room that is
+   * already running is the whole promise, so the lobby had better not be
+   * guessing about it.
+   */
+  async pollRooms() {
+    try {
+      const res = await fetch('/api/rooms', { cache: 'no-store' })
+      if (!res.ok) throw new Error(String(res.status))
+      const { rooms } = await res.json()
+      ROOMS.forEach((room, i) => {
+        const live = rooms.find(r => r.id === room.id)
+        if (!live) return
+        this.live[i] = { hunters: live.hunters, topBounty: live.topBounty, players: live.players }
+        if (this.roomViews?.[i]) this.renderRoom(this.roomViews[i], i)
+      })
+      this.netTag?.setText('MULTIPLAYER  ·  EXPERIMENTAL').setColor('#c9b8ff')
+    } catch {
+      // The page can be served without the room server behind it — a static
+      // copy, or the server restarting. Say so rather than showing stale rooms
+      // as though they were live.
+      this.netTag?.setText('MULTIPLAYER  ·  CANNOT REACH THE ROOMS').setColor('#ff8098')
+    }
+  }
+
   renderRoom(view, i) {
     const live = this.live[i]
     const room = view.room
     const open = WILDS.maxHunters - live.hunters
-    view.hunters.setText(`HUNTERS  ${live.hunters}  ·  ${open} ${open === 1 ? 'SEAT' : 'SEATS'} OPEN`)
+    const players = live.players ?? 0
+    view.hunters.setText(this.net
+      ? `HUNTERS  ${live.hunters}  ·  ${players} ${players === 1 ? 'PLAYER' : 'PLAYERS'}  ·  ${open} ${open === 1 ? 'SEAT' : 'SEATS'} OPEN`
+      : `HUNTERS  ${live.hunters}  ·  ${open} ${open === 1 ? 'SEAT' : 'SEATS'} OPEN`)
     view.top.setText(`TOP BOUNTY  ${money(live.topBounty, room.currency)}`)
     const g = view.dots
     g.clear()
@@ -216,13 +263,17 @@ export default class LobbyScene extends Phaser.Scene {
       uiSound(this, 'deny')
       return
     }
+    if (this.net) {
+      this.go('NetScene', { builds: this.builds, playerClass: this.playerClass, roomId: room.id })
+      return
+    }
     this.go('GameScene', {
       builds: this.builds, playerClass: this.playerClass, mode: 'wilds', room, snapshot: { ...this.live[i] },
     })
   }
 
   changeAxie() {
-    this.go('MenuScene', { builds: this.builds, mode: 'wilds' })
+    this.go('MenuScene', { builds: this.builds, mode: this.net ? 'net' : 'wilds' })
   }
 
   go(key, data) {
