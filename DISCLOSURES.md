@@ -88,10 +88,11 @@ confirm, back, start, denied — generated with the Venice AI audio API
 (ElevenLabs Sound Effects v2), trimmed, levelled and transcoded to Ogg Vorbis.
 Prompts are in `scripts/audio/generate-music.mjs`.
 
-**Music** (`public/music/`). Three instrumental tracks generated with the
-**Venice AI** audio API and kept in the repository: `theme` (front end),
-`arena` (in a room) and `bloodmoon` (the Blood Moon event). Models:
-ElevenLabs Music 2.5 for the first two, Stable Audio 2.5 for the third.
+**Music** (`public/music/`). Instrumental tracks generated with the **Venice
+AI** audio API and kept in the repository: `theme-hunt` (the front end, wired
+in `src/fx/Music.js`), `theme-moonlit` (an alternative front-end theme),
+`arena` (in a room) and `bloodmoon` (the Blood Moon event). Models: ElevenLabs
+Music 2.5 for the themes and the arena loop, Stable Audio 2.5 for the Blood Moon.
 The prompts, models and durations are in `scripts/audio/generate-music.mjs`,
 which regenerates them from an API key held in the environment (no key is
 stored in this repository). Each track was loudness-normalised to -20 LUFS and

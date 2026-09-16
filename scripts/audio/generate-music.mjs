@@ -41,6 +41,34 @@ export const TRACKS = {
       'and no ending, so it loops seamlessly.',
     ].join(' '),
   },
+  // Alternatives for the front end, deliberately without the marimba and
+  // ukulele that made the first attempts sound like a cheerful video intro.
+  'theme-moonlit': {
+    model: 'elevenlabs-music-v2-5',
+    duration: 60,
+    plays: 'candidate: front end',
+    prompt: [
+      'Nocturnal, mysterious fantasy game theme for a moonlit arena where creatures hunt each other.',
+      'Low string ostinato and deep frame drums, a breathy wooden flute melody, distant wordless choir pad,',
+      'soft metallic bell accents, warm analogue bass underneath.',
+      'Minor key with a hopeful lift, hypnotic mid tempo around 104 BPM, atmospheric and a little dangerous.',
+      'No ukulele, no marimba, no glockenspiel, nothing bouncy or comedic.',
+      'Fully instrumental, no vocals, constant intensity with no intro and no ending, so it loops.',
+    ].join(' '),
+  },
+  'theme-hunt': {
+    model: 'elevenlabs-music-v2-5',
+    duration: 60,
+    plays: 'candidate: front end',
+    prompt: [
+      'Cool, tense lobby theme for a competitive creature arena, the calm before a hunt.',
+      'Pulsing analogue synth bass, tight tribal percussion and shakers, muted plucked electric guitar,',
+      'low brass swells and a single haunting flute line, sparse hits rather than melody.',
+      'Minor key, confident 112 BPM groove, moody and stylish, the feeling of waiting to drop in.',
+      'No ukulele, no marimba, nothing cute or comedic.',
+      'Fully instrumental, no vocals, even intensity throughout with no intro and no ending, so it loops.',
+    ].join(' '),
+  },
   arena: {
     model: 'elevenlabs-music-v2-5',
     duration: 60,

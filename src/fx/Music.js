@@ -14,6 +14,17 @@
 const BASE = `${import.meta.env.BASE_URL}music/`
 export const TRACKS = ['theme', 'arena', 'bloodmoon']
 
+/**
+ * Which file each track plays. The front-end theme has candidates in
+ * public/music/ (theme-hunt, theme-moonlit); swapping one word here changes
+ * the game's front end, and the others stay auditionable at /music/<name>.ogg.
+ */
+const FILES = {
+  theme: 'theme-hunt',
+  arena: 'arena',
+  bloodmoon: 'bloodmoon',
+}
+
 const SETTINGS_KEY = 'lunacy.audio.v1'
 const CROSSFADE_MS = 2600
 const FADE_IN_MS = 900
@@ -60,7 +71,7 @@ export async function loadMusic(onOne) {
   const entries = []
   await Promise.all(TRACKS.map(async id => {
     try {
-      const data = await fetch(`${BASE}${id}.ogg`).then(r => r.arrayBuffer())
+      const data = await fetch(`${BASE}${FILES[id] ?? id}.ogg`).then(r => r.arrayBuffer())
       entries.push({ key: `music-${id}`, data })
     } catch (err) {
       console.warn(`music failed: ${id}`, err)

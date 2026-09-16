@@ -82,10 +82,12 @@ config, so the page cannot drift from the code.
 ## Sound
 
 Battle effects come from the Origins kit. Menu sounds (hover, confirm, back,
-start, denied) and the three music tracks are generated
+start, denied) and the music tracks are generated
 (see DISCLOSURES) and crossfade into themselves so they loop without a seam:
 the theme plays on the front end, an arena loop inside a room, and a tense bed
-while a Blood Moon is up. `M` mutes everything, and the setting is remembered.
+while a Blood Moon is up. Which file the front-end theme uses is one line
+(`FILES` in `src/fx/Music.js`); the alternatives sit beside it in
+`public/music/` and can be auditioned at `/music/<name>.ogg`. `M` mutes everything, and the setting is remembered.
 Effects and music share one master mix in `src/fx/Music.js`.
 
 ```bash
