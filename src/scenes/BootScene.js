@@ -112,6 +112,19 @@ export default class BootScene extends Phaser.Scene {
       return
     }
 
+    // /?net=glade drops straight into a room on the server, while the menu's
+    // Play still runs the Wilds in the page. Both exist until the networked
+    // room is the better of the two.
+    const net = new URLSearchParams(location.search).get('net')
+    if (net != null) {
+      return this.scene.start('NetScene', {
+        builds,
+        roomId: net || 'glade',
+        playerClass: new URLSearchParams(location.search).get('cls') ?? Object.keys(builds)[0],
+        name: new URLSearchParams(location.search).get('name') ?? 'You',
+      })
+    }
+
     this.scene.start('HomeScene', { builds })
   }
 

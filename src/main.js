@@ -5,6 +5,7 @@ import HomeScene from './scenes/HomeScene.js'
 import LobbyScene from './scenes/LobbyScene.js'
 import AboutScene from './scenes/AboutScene.js'
 import MenuScene from './scenes/MenuScene.js'
+import NetScene from './scenes/NetScene.js'
 import UIScene from './scenes/UIScene.js'
 import * as music from './fx/Music.js'
 
@@ -34,7 +35,7 @@ async function start() {
     // parry could expire before the blow it was meant to catch. Unsmoothed,
     // timers advance on real elapsed time and the two agree.
     fps: { smoothStep: false },
-    scene: [BootScene, HomeScene, MenuScene, LobbyScene, AboutScene, GameScene, UIScene],
+    scene: [BootScene, HomeScene, MenuScene, LobbyScene, AboutScene, GameScene, NetScene, UIScene],
   })
 
   // Dev-only handle for poking at the running game from the console.

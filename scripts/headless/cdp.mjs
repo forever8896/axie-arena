@@ -10,15 +10,26 @@ import { writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const PORT = 9333
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
+/**
+ * Each browser gets its own port and profile.
+ *
+ * They used to share both, which meant a second launch() found the first
+ * browser's debugger already listening and attached to its page: two "clients"
+ * that were one browser, agreeing with each other perfectly. Anything testing
+ * two players at once needs them to be genuinely two.
+ */
+let nextPort = 9333
+
 export async function launch({ width = 1480, height = 812 } = {}) {
+  const PORT = nextPort++
+  const profile = join(tmpdir(), `lunacy-chrome-${PORT}-${process.pid}`)
   const proc = spawn('/usr/bin/chromium', [
     '--headless=new', `--remote-debugging-port=${PORT}`, '--no-first-run', '--no-default-browser-check',
     '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
     '--autoplay-policy=no-user-gesture-required', `--window-size=${width},${height}`,
-    `--user-data-dir=${join(tmpdir(), 'lunacy-chrome-profile')}`,
+    `--user-data-dir=${profile}`,
     'about:blank',
   ], { stdio: 'ignore' })
 

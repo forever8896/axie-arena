@@ -1,0 +1,194 @@
+#!/usr/bin/env node
+/**
+ * The networked room, drawn in a real browser.
+ *
+ * check-net and check-client prove the wire; this proves the picture: that a
+ * room running in another process arrives on screen as Axies with their own
+ * animations, that the player's keys move the one they are driving, and that a
+ * second browser in the same room sees the same fight.
+ *
+ * Needs both servers: `npm start` (the rooms, :8080) and `npm run dev` (the
+ * page, :5173, proxying /ws through to it).
+ *
+ * Usage: node scripts/headless/check-net-scene.mjs
+ */
+import { launch } from './cdp.mjs'
+
+const PAGE = process.env.PAGE ?? 'http://localhost:5173'
+let pass = 0
+let fail = 0
+const check = (name, ok, detail = '') => {
+  if (ok) pass++
+  else fail++
+  console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${detail ? `  (${detail})` : ''}`)
+}
+
+/** A browser sitting in a room, with helpers to poke at the live scene. */
+async function player(name, cls) {
+  const b = await launch({ width: 900, height: 600 })
+  await b.goto(`${PAGE}/?net=glade&cls=${cls}&name=${name}`)
+  await b.waitFor("!!window.__game?.scene.getScene('NetScene')?.scene.isActive()", 90000)
+  // A headless page never gains focus, so Phaser sleeps its loop and the scene
+  // stops updating — which is right for a backgrounded tab and useless here.
+  // The other suites step the clock by hand; a networked room cannot, because
+  // its authority is running on real time in another process.
+  await b.eval('window.__game.loop.wake(); true')
+  await b.waitFor("window.__game.scene.getScene('NetScene').client?.status === 'playing'", 60000)
+  await b.waitFor("!!window.__game.scene.getScene('NetScene').view.actors.size", 30000)
+  return b
+}
+
+/**
+ * A room full of hunters kills people, including test subjects. A player whose
+ * Axie went down walks back in, which is what a person would do, and what the
+ * checks below need before they can mean anything.
+ */
+async function alive(b, name, cls) {
+  const up = await b.eval(`(() => {
+    const me = window.__game.scene.getScene('NetScene').client.view()?.me
+    return !!(me && me.alive)
+  })()`)
+  if (up) return 'still up'
+  await b.goto(`${PAGE}/?net=glade&cls=${cls}&name=${name}`)
+  await b.waitFor("!!window.__game?.scene.getScene('NetScene')?.scene.isActive()", 90000)
+  await b.eval('window.__game.loop.wake(); true')
+  await b.waitFor("window.__game.scene.getScene('NetScene').client?.status === 'playing'", 60000)
+  await b.waitFor("!!window.__game.scene.getScene('NetScene').client.view()?.me", 30000)
+  return 're-entered'
+}
+
+const read = `(() => {
+  const s = window.__game.scene.getScene('NetScene')
+  const v = s.client.view()
+  return {
+    status: s.client.status,
+    you: s.client.you,
+    room: s.client.room?.id,
+    fighters: v ? v.fighters.length : 0,
+    ids: v ? v.fighters.map(f => f.id) : [],
+    me: v?.me ? { x: Math.round(v.me.x), y: Math.round(v.me.y), hp: v.me.hp, bounty: v.me.bounty } : null,
+    actors: s.view.actors.size,
+    sprites: [...s.view.actors.values()].filter(a => a.sprite.root.active).length,
+    clip: [...s.view.actors.values()].map(a => a.sprite.rig.playing).filter(Boolean).length,
+    cam: { x: Math.round(s.cameras.main.scrollX), y: Math.round(s.cameras.main.scrollY) },
+    gates: v ? v.gates.length : 0,
+  }
+})()`
+
+let a = null
+let b = null
+try {
+  a = await player('Ayla', 'beast')
+  const first = await a.eval(read)
+  check('the browser joins a room on the server', first.status === 'playing' && Boolean(first.you), first.you)
+  check('the room arrives with hunters already in it', first.fighters > 1, `${first.fighters} fighters`)
+  check('every fighter in the snapshot gets a sprite', first.actors === first.fighters, `${first.actors} of ${first.fighters}`)
+  check('and every sprite is playing an animation', first.clip === first.actors, `${first.clip} animating`)
+  check('the gates are drawn to aim for', first.gates > 0, `${first.gates} open`)
+
+  // You have to be able to find yourself: your own Axie, drawn, near the middle
+  // of the screen, and without a name tag over it — you know who you are.
+  {
+    const self = await a.eval(`(() => {
+      const s = window.__game.scene.getScene('NetScene')
+      const me = s.view.actors.get(s.client.you)
+      if (!me) return { found: false }
+      const cam = s.cameras.main
+      return {
+        found: true,
+        drawn: me.sprite.root.active && me.sprite.root.visible,
+        offCentreX: Math.round(Math.abs((me.sprite.x - cam.scrollX) * cam.zoom - cam.width / 2)),
+        offCentreY: Math.round(Math.abs((me.sprite.y - cam.scrollY) * cam.zoom - cam.height / 2)),
+        labelled: me.label.text.length > 0,
+      }
+    })()`)
+    check('your own Axie is on screen', self.found && self.drawn, self.found ? 'drawn' : 'missing')
+    check('and the camera is looking at it', self.offCentreX < 260 && self.offCentreY < 260,
+      `${self.offCentreX}px, ${self.offCentreY}px off centre`)
+    check('and it is not labelled with your own name', !self.labelled)
+  }
+
+  // --- The keys move the Axie the server says is yours ---------------------
+  {
+    const before = await a.eval(read)
+    // Walk toward the middle of the arena. Walking into the edge is a fine way
+    // to prove the keys work and a useless way to prove the camera follows,
+    // because there the view clamps against the world bounds and stays put.
+    const walked = await a.eval(`(async () => {
+      const s = window.__game.scene.getScene('NetScene')
+      const b = s.cameras.main.getBounds()
+      const me = s.client.view().me
+      const key = me.x > b.centerX ? 'A' : 'D'
+      s.keys[key].isDown = true
+      await new Promise(r => setTimeout(r, 1200))
+      s.keys[key].isDown = false
+      await new Promise(r => setTimeout(r, 400))
+      return key
+    })()`)
+    const after = await a.eval(read)
+    check('holding a key walks you, as the room decides', Math.abs(after.me.x - before.me.x) > 25,
+      `${before.me.x} to ${after.me.x}, holding ${walked}`)
+    check('and the camera came along', Math.abs(after.cam.x - before.cam.x) > 10,
+      `${before.cam.x} to ${after.cam.x}`)
+  }
+
+  // --- A second browser, the same room ------------------------------------
+  {
+    b = await player('Bram', 'plant')
+    const backA = await alive(a, 'Ayla', 'beast')
+    const backB = await alive(b, 'Bram', 'plant')
+    check('both players are in the room', true, `Ayla ${backA}, Bram ${backB}`)
+    const mine = await a.eval(read)
+    const theirs = await b.eval(read)
+    check('a second browser joins the same room', theirs.room === mine.room && theirs.you !== mine.you,
+      `${mine.you} and ${theirs.you}`)
+
+    // Each one has to wait for a snapshot carrying the other, and each draws a
+    // tenth of a second in the past, so seeing each other is something that
+    // becomes true rather than something that is true the instant they join.
+    const sees = async (watcher, id) => watcher.waitFor(
+      `!!window.__game.scene.getScene('NetScene').client.view()?.fighters.some(f => f.id === '${id}')`, 8000,
+    ).then(() => true).catch(() => false)
+    const aSeesB = await sees(a, theirs.you)
+    const bSeesA = await sees(b, mine.you)
+    check('each sees the other on screen', aSeesB && bSeesA,
+      `${aSeesB ? 'A sees B' : 'A cannot see B'}, ${bSeesA ? 'B sees A' : 'B cannot see A'}`)
+
+    // One browser swings. The other must animate it, because neither of them
+    // decided it: the room did, and told them both.
+    await b.eval(`(() => {
+      const s = window.__game.scene.getScene('NetScene')
+      for (let i = 0; i < 12; i++) setTimeout(() => s.client.act('attack'), i * 400)
+      return true
+    })()`)
+    const watching = await a.eval(`(async () => {
+      const s = window.__game.scene.getScene('NetScene')
+      const them = [...s.view.actors.values()].find(x => x.id !== s.client.you)
+      const before = them?.sprite.action?.clip ?? null
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 50))
+        const now = [...s.view.actors.values()].map(x => x.sprite.action?.kind).filter(Boolean)
+        if (now.includes('attack')) return 'saw an attack'
+      }
+      return 'none'
+    })()`)
+    check("one browser's attack is animated in the other", watching === 'saw an attack', watching)
+  }
+
+  // --- Leaving -------------------------------------------------------------
+  {
+    await a.eval(`window.__game.scene.getScene('NetScene').leave(); true`)
+    const home = await a.waitFor("!!window.__game.scene.getScene('HomeScene')?.scene.isActive()", 8000)
+      .then(() => true).catch(() => false)
+    check('leaving the room returns to the home screen', home)
+  }
+} catch (err) {
+  fail++
+  console.log(`FAIL ${err.message}`)
+} finally {
+  a?.close()
+  b?.close()
+}
+
+console.log(`\n${pass}/${pass + fail} passed`)
+process.exit(fail ? 1 : 0)
