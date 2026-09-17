@@ -129,6 +129,9 @@ export default class NetWilds {
     if (this.panel?.kind === 'leave') this.panel = null
     else if (!this.panel && me) this.panel = { kind: 'leave', bounty: me.wilds.bounty }
     else if (this.panel) this.toLobby()
+    // Fallen, or not in the room at all: Esc has to get you out regardless.
+    // Every press of it should do something, or the only way out is a reload.
+    else this.toLobby()
   }
 
   /** Leaving without a gate: the room keeps what you were carrying. */

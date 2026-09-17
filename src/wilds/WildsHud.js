@@ -93,6 +93,8 @@ export default class WildsHud {
    * Around the player rather than at the screen edge, where it covered HUD.
    */
   drawGateArrows(player) {
+    // Nothing to point away from when you are not in the room.
+    if (!player?.alive) { this.arrows.clear(); return }
     const g = this.arrows
     g.clear()
     if (!player?.alive) return

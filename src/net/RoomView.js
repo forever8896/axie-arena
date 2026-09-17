@@ -19,6 +19,8 @@ import { playPlate, playImpactPlate, playStatusPlate } from '../fx/SkillVfx.js'
 import { damageNumber, impact, dustEmitter } from '../fx/Juice.js'
 import { drawFighterStatus, HUD_DEPTH } from '../fx/FighterHud.js'
 import { POWERUPS } from '../arena/boonConfig.js'
+import { Orb } from '../arena/PowerUps.js'
+import { Well } from '../arena/Moonwell.js'
 import { money } from '../wilds/config.js'
 import { play as playSfx, playVaried } from '../fx/Sfx.js'
 
@@ -35,6 +37,7 @@ export default class RoomView {
     this.zones = new Map()
     this.props = new Map()
     this.echoes = new Map()
+    this.taken = new Set()
     this.you = null
 
     this.layer = scene.add.container(0, 0)
@@ -273,13 +276,6 @@ export default class RoomView {
     const now = this.scene.time.now
     g.clear()
 
-    for (const w of view.wells) {
-      g.fillStyle(0x1f4f3a, w.blooming ? 0.14 : 0.28)
-      g.fillCircle(w.x, w.y, w.r)
-      g.lineStyle(3, 0xd9fff0, w.blooming ? 0.4 : 0.9)
-      g.strokeCircle(w.x, w.y, w.r)
-    }
-
     for (const gate of view.gates) {
       const colour = gate.closing ? 0xff8098 : 0xc9b8ff
       const pulse = gate.closing ? 0.5 + Math.sin(now / 140) * 0.35 : 0.85
@@ -301,79 +297,84 @@ export default class RoomView {
     const seen = new Set()
     for (const w of view.wells) {
       seen.add(w.id)
-      this.prop(w.id, () => this.makeWell(w)).forEach(part => part.setPosition(w.x, part.yOffset ? w.y + part.yOffset : w.y))
+      this.prop(w.id, () => this.makeWell(w)).draw(now)
     }
     for (const o of view.orbs) {
       seen.add(o.id)
-      const parts = this.prop(o.id, () => this.makeOrb(o))
-      const bob = Math.sin(now / 320 + o.x) * 4
-      for (const part of parts) {
-        part.setPosition(o.x, o.y + (part.yOffset ?? 0) + (part.bobs ? bob : 0))
-        part.setAlpha((part.baseAlpha ?? 1) * (o.live === false ? 0.4 : 1))
-      }
+      this.prop(o.id, () => this.makeOrb(o)).draw(now)
     }
     for (const c of view.caches) {
       seen.add(c.id)
-      const parts = this.prop(c.id, () => this.makeCache(c))
-      const bob = Math.sin(now / 260 + c.x) * 3
-      for (const part of parts) part.setPosition(c.x, c.y + (part.yOffset ?? 0) + bob)
+      this.prop(c.id, () => this.makeCache(c)).draw(now)
     }
 
-    for (const [id, parts] of this.props) {
+    for (const [id, prop] of this.props) {
       if (seen.has(id)) continue
-      parts.forEach(part => part.destroy())
       this.props.delete(id)
+      // An orb that went because somebody took it gets the collection burst;
+      // anything else simply goes.
+      prop.remove(this.taken.has(id))
+      this.taken.delete(id)
     }
   }
 
-  /** The parts of a prop, made once and kept. */
+  /**
+   * A thing on the ground, made once and kept.
+   *
+   * Each one is `{ draw(now), remove(taken) }`. The objects behind them are the
+   * local game's, and those run rules as well as draw — a Moonwell heals whoever
+   * stands in it. Here the room does the healing, so only the drawing half is
+   * ever called, and it is called with what it expects.
+   */
   prop(id, make) {
-    let parts = this.props.get(id)
-    if (!parts) {
-      parts = make()
-      this.props.set(id, parts)
+    let prop = this.props.get(id)
+    if (!prop) {
+      prop = make()
+      this.props.set(id, prop)
     }
-    return parts
+    return prop
   }
 
-  /** A bubble with the Origins status icon inside, over its shadow. */
+  /**
+   * An orb, as the local game builds it.
+   *
+   * Not a copy of one: the same class. Approximating these is what kept the
+   * networked game looking thinner than the local one — a coloured circle where
+   * the game has a shimmer on the ground, a bubble that pops in, a shine, the
+   * Origins icon, a bob and a blink as it runs out. The room decides when it
+   * exists and who takes it; the object decides how it looks.
+   */
   makeOrb(o) {
-    const scene = this.scene
-    const def = POWERUPS[o.type] ?? POWERUPS.fury
-    const c = def.color
-    const shadow = scene.add.ellipse(o.x, o.y, 46, 16, 0x000000, 0.28).setDepth(o.y - 1)
-    const glow = scene.add.image(o.x, o.y - 34, 'fx-soft').setTint(c)
-      .setBlendMode(Phaser.BlendModes.ADD).setDepth(o.y + 40).setScale(1.6).setAlpha(0.55)
-    const bubble = scene.add.circle(o.x, o.y - 34, 27, 0xffffff, 0.2)
-      .setStrokeStyle(3, 0xffffff, 0.85).setDepth(o.y + 41)
-    const key = scene.textures.exists(`icon-${def.icon}`) ? `icon-${def.icon}` : 'fx-dot'
-    const icon = scene.add.image(o.x, o.y - 34, key).setDepth(o.y + 42)
-    icon.setScale(34 / Math.max(icon.frame.width, icon.frame.height))
-    glow.yOffset = -34
-    glow.bobs = true
-    glow.baseAlpha = 0.55
-    bubble.yOffset = -34
-    bubble.bobs = true
-    icon.yOffset = -34
-    icon.bobs = true
-    return [shadow, glow, bubble, icon]
+    const orb = new Orb(this.scene, o.x, o.y, o.type)
+    // The room's word on whether it has formed wins over the object's own
+    // clock: this client may have arrived halfway through the shimmer.
+    if (o.live) orb.liveAt = this.scene.time.now - 1
+    // `object` is the game's own orb, kept reachable so what is on the ground
+    // can be inspected rather than inferred.
+    return {
+      object: orb,
+      parts: () => orb.parts,
+      draw: now => orb.update(now),
+      remove: taken => (taken ? orb.collect() : orb.expire()),
+    }
   }
 
-  /** The bloom: a soft light on the grass with a leaf over it. */
+  /** A Moonwell, likewise: the game's own bloom, ring, sprouts and leaf. */
   makeWell(w) {
-    const scene = this.scene
-    const glow = scene.add.image(w.x, w.y, 'fx-moonwell').setTint(0x9dffd8)
-      .setBlendMode(Phaser.BlendModes.ADD).setDepth(-17).setAlpha(0.35)
-    glow.setDisplaySize(w.r * 2.4, w.r * 2.4)
-    const key = scene.textures.exists('icon-buff_leaf') ? 'icon-buff_leaf' : 'fx-dot'
-    const leaf = scene.add.image(w.x, w.y - 46, key).setDepth(w.y + 40).setAlpha(0.9)
-    leaf.setScale(30 / Math.max(leaf.frame.width, leaf.frame.height))
-    leaf.yOffset = -46
-    return [glow, leaf]
+    const well = new Well(this.scene, w.x, w.y)
+    return {
+      object: well,
+      parts: () => well.parts,
+      // Its update both draws and heals; the healing is the room's, so it is
+      // handed nobody to heal and only the drawing happens.
+      draw: () => well.update([]),
+      // Fade it out the way the local one goes, rather than snapping it away.
+      remove: () => well.end(),
+    }
   }
 
   /** A bounty someone dropped: a coin of it, glowing, waiting to be taken. */
-  makeCache(c) {
+  makeCacheParts(c) {
     const scene = this.scene
     const glow = scene.add.image(c.x, c.y, 'fx-soft').setTint(0xffd166)
       .setBlendMode(Phaser.BlendModes.ADD).setDepth(c.y - 1).setScale(1.1).setAlpha(0.5)
@@ -388,24 +389,15 @@ export default class RoomView {
     return [glow, coin, text]
   }
 
-  /**
-   * Play your own action the instant you asked for it, rather than when the
-   * room's word gets back. Only ever animation: no damage, no charge spent, no
-   * bounty moved. If the room disagrees, the worst that happens is an Axie that
-   * swung at nothing, which is also what happens when you mistime a swing.
-   */
-  echo(kind, actor, aim) {
-    if (!actor) return
-    this.echoes.set(kind, this.scene.time.now)
-    const kit = CLASS_KITS[actor.cls]
-    if (kind === 'swing' && kit) {
-      actor.sprite.setFacing(Math.cos(aim) >= 0 ? 1 : -1)
-      actor.sprite.playAttack(null, kit.basic.anim)
-    } else if (kind === 'dash') {
-      actor.sprite.playState('dash', { fit: 300 })
-      actor.sprite.dashTrail({ x: Math.cos(aim), y: Math.sin(aim) })
-    } else if (kind === 'parry') {
-      actor.sprite.play('defense/hit-with-shield', { kind: 'parry', peakAt: PARRY.windowMs, peakFraction: 0.4 })
+  makeCache(c) {
+    const parts = this.makeCacheParts(c)
+    return {
+      parts: () => parts,
+      draw: now => {
+        const bob = Math.sin(now / 260 + c.x) * 3
+        for (const part of parts) part.setPosition(c.x, c.y + (part.yOffset ?? 0) + bob)
+      },
+      remove: () => parts.forEach(part => part.destroy()),
     }
   }
 
@@ -618,9 +610,13 @@ export default class RoomView {
           actor.sprite.play('action/run', { kind: 'special', fit: e.ms ?? 420, loop: true, holdMs: e.ms ?? 420 })
         }
         break
+      // Your special coming ready: the same stance and plate the local game
+      // plays, so you know it is up without watching the meter.
       case 'charged':
-        if (e.x != null) impact(this.scene, e.x, e.y, actor?.colors.body ?? 0xffffff, 0.9)
-        this.scene.cameras.main.shake(140, 0.006)
+        if (actor) {
+          actor.sprite.playState('ready')
+          playStatusPlate(this.scene, actor, 'power_gain', { size: 1.6 })
+        }
         break
       case 'slow':
         actor?.sprite.flash(0x7ce8ff, 120)
@@ -658,13 +654,14 @@ export default class RoomView {
         this.scene.cameras.main.flash(400, 60, 6, 18)
         break
       case 'orb-taken': {
+        this.taken.add(e.id)
         const taker = this.actors.get(e.by ?? e.id)
         const def = POWERUPS[e.type]
         if (taker && def) {
           taker.sprite.flash(def.color, 160)
-          playStatusPlate(this.scene, taker, def.icon ?? 'buff_rage', { size: 1.6 })
+          playStatusPlate(this.scene, taker, def.plate, { size: 1.9 })
         }
-        playSfx(this.scene, 'buff', { volume: 0.5 })
+        if (def?.sfx) playSfx(this.scene, def.sfx, { volume: 0.5 })
         break
       }
     }
@@ -674,7 +671,7 @@ export default class RoomView {
     for (const actor of this.actors.values()) this.forget(actor)
     for (const parts of this.shots.values()) { parts.core.destroy(); parts.halo.destroy() }
     for (const parts of this.zones.values()) { parts.fill.destroy(); parts.ring.destroy() }
-    for (const prop of this.props.values()) prop.destroy()
+    for (const prop of this.props.values()) prop.remove(false)
     this.actors.clear()
     this.shots.clear()
     this.zones.clear()

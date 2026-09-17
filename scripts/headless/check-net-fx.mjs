@@ -89,6 +89,15 @@ try {
     scene.add.graphics = (...a) => { made.shapes++; return realGraphics(...a) }
     scene.add.circle = (...a) => { made.shapes++; return realCircle(...a) }
 
+    // Whoever is on their feet right now. Standing still in a room of hunters
+    // gets the test's own Axie killed partway through, and an event about a
+    // fighter who is gone draws nothing — which reads as a missing effect.
+    const living = () => {
+      const v = scene.client.view()
+      const f = v.fighters.find(x => x.alive && scene.view.actors.has(x.id))
+      return f ?? v.fighters[0]
+    }
+
     const fire = async (label, event) => {
       const before = { ...made }
       const soundsBefore = sounds
@@ -111,9 +120,11 @@ try {
     await fire('stun', { t: 'stagger', id: them.id, ms: 400 })
     await fire('poison', { t: 'poison', id: them.id, amount: 40 })
     await fire('die', { t: 'die', id: them.id, by: me, x: them.x, y: them.y })
-    await fire('telegraph', { t: 'telegraph', id: me, kind: 'charge', aim: 0, point: { x: them.x, y: them.y } })
-    await fire('miss', { t: 'miss', id: me, aim: 0, x: them.x, y: them.y })
-    await fire('parried', { t: 'parry', id: them.id, by: me })
+    await fire('telegraph', { t: 'telegraph', id: living().id, kind: 'charge', aim: 0, point: { x: them.x, y: them.y } })
+    await fire('miss', { t: 'miss', id: living().id, aim: 0, x: them.x, y: them.y })
+    await fire('parried', { t: 'parry', id: living().id, by: me })
+    await fire('charged', { t: 'charged', id: living().id })
+    await fire('orbtaken', { t: 'orb-taken', id: 'o1', by: living().id, type: 'bulwark' })
     return JSON.stringify(tally)
   })()`).then(JSON.parse)
 
@@ -136,13 +147,20 @@ try {
   // The wind-up a parry is read from: it must actually appear on the ground.
   check('a special telegraphs before it lands', out.telegraph.shapes > 0, `${out.telegraph.shapes} shapes`)
   check('a whiff shows where the blow went', out.miss.sprites > 0, `${out.miss.sprites} plates`)
+  check('a full charge is announced on your Axie', out.charged.sprites > 0, `${out.charged.sprites} plates`)
+  check('taking a power-up plays its own plate', out.orbtaken.sprites > 0, `${out.orbtaken.sprites} plates`)
   check('a parry rings, labels and shakes',
     out.parried.shapes > 0 && out.parried.texts > 0, `${out.parried.shapes} shapes, ${out.parried.texts} labels`)
 
   // The props on the ground are the game's own, not stand-ins for them.
   const props = await b.eval(`(() => {
     const s = window.__game.scene.getScene('NetScene')
-    const keys = [...s.view.props.values()].flat().map(o => o.texture?.key).filter(Boolean)
+    // Orbs and wells are the local game's own objects now, so look inside them
+    // rather than at a list of shapes.
+    const keys = []
+    for (const prop of s.view.props.values()) {
+      for (const o of prop.parts?.() ?? []) if (o?.texture?.key) keys.push(o.texture.key)
+    }
     return JSON.stringify({ props: s.view.props.size, keys: [...new Set(keys)] })
   })()`).then(JSON.parse)
   check('orbs, wells and caches use the game’s own art',

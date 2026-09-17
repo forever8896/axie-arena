@@ -92,7 +92,7 @@ export default class PowerUps {
 }
 
 /** A bubble with the Origins status icon inside, bobbing over its shadow. */
-class Orb {
+export class Orb {
   constructor(scene, x, y, type) {
     this.scene = scene
     this.x = x

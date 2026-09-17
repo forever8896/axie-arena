@@ -45,7 +45,8 @@ async function player(name, cls) {
  */
 async function alive(b, name, cls) {
   const up = await b.eval(`(() => {
-    const me = window.__game.scene.getScene('NetScene').client.view()?.me
+    const s = window.__game.scene.getScene('NetScene')
+    const me = s?.client?.view?.()?.me
     return !!(me && me.alive)
   })()`)
   if (up) return 'still up'
@@ -84,8 +85,13 @@ try {
   check('the room arrives with hunters already in it', first.fighters > 1, `${first.fighters} fighters`)
   // Against the frame that was actually drawn: read the count separately and a
   // hunter who left between the two reads looks like a leak.
-  const drawn = await a.eval(`(() => {
+  const drawn = await a.eval(`(async () => {
     const s = window.__game.scene.getScene('NetScene')
+    // Let a frame be drawn first: a hunter who joined a moment ago is in the
+    // view before the render that gives them a sprite, and counting across that
+    // gap reports a hole that is really one frame of lag.
+    await new Promise(r => requestAnimationFrame(r))
+    await new Promise(r => requestAnimationFrame(r))
     const v = s.client.view()
     const missing = v.fighters.filter(f => !s.view.actors.has(f.id))
     return JSON.stringify({ of: v.fighters.length, missing: missing.length })
@@ -186,9 +192,16 @@ try {
     // decided it: the room did, and told them both. A corpse cannot swing, so
     // make sure the swinger is on its feet first.
     await alive(b, 'Bram', 'plant')
+    // The arrival shield protects a new hunter and also stops them swinging, so
+    // wait it out rather than asking for an attack the room will refuse.
+    // FLAGS.SHIELDED is bit 32 in the snapshot; a snapshot has no `shielded`.
+    await b.waitFor(`(() => {
+      const me = window.__game.scene.getScene('NetScene').client.view()?.me
+      return !!me && (me.flags & 32) === 0
+    })()`, 8000).catch(() => {})
     await b.eval(`(() => {
       const s = window.__game.scene.getScene('NetScene')
-      for (let i = 0; i < 12; i++) setTimeout(() => s.client.act('attack'), i * 400)
+      for (let i = 0; i < 20; i++) setTimeout(() => s.client.act('attack'), i * 300)
       return true
     })()`)
     const watching = await a.eval(`(async () => {
@@ -226,6 +239,37 @@ try {
       .then(() => true).catch(() => false)
     check('and puts you back in the lobby', lobby)
   }
+  // --- A fallen player is not trapped --------------------------------------
+  //
+  // The HUD used to stop drawing entirely once your Axie was gone, so the panel
+  // offering the way back never appeared and Esc had nothing to dismiss. The
+  // only way out of the room was reloading the page.
+  {
+    await alive(a, 'Ayla', 'beast')
+    await a.eval(`(() => {
+      const s = window.__game.scene.getScene('NetScene')
+      // Fall the way a player falls: tell the room, and let it decide.
+      s.wilds.handle({ t: 'die', id: s.client.you, by: null }, s.client.view(), s.client.you)
+      s.player = null
+      return true
+    })()`)
+    const fallen = await a.waitFor(`(() => {
+      const ui = window.__game.scene.getScene('UIScene')
+      return !!ui.wildsHud?.panelRoot
+    })()`, 8000).then(() => true).catch(() => false)
+    check('a fallen player still has a HUD to answer', fallen, 'the panel is drawn')
+
+    const out = await a.eval(`(() => {
+      const s = window.__game.scene.getScene('NetScene')
+      s.wilds.requestLeave()
+      return s.wilds.panel?.kind ?? 'left the room'
+    })()`)
+    check('and Esc always does something', typeof out === 'string', String(out))
+    await a.waitFor("!!window.__game.scene.getScene('LobbyScene')?.scene.isActive()", 8000)
+      .then(() => check('and it leads back to the lobby', true))
+      .catch(() => check('and it leads back to the lobby', false, 'still in the room'))
+  }
+
 } catch (err) {
   fail++
   console.log(`FAIL ${err.message}`)

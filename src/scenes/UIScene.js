@@ -267,12 +267,16 @@ export default class UIScene extends Phaser.Scene {
 
   update() {
     const player = this.game_?.player
-    if (!player) return
+    // A player who has fallen still needs the HUD — the panel that says what it
+    // cost and offers the way back to the lobby is drawn by it. Bailing out
+    // here left a dead player with no interface at all and no way out of the
+    // room but reloading the page.
+    if (!player && !this.wildsHud && !this.tutorialHud) return
 
     if (!this.mmRoot) this.buildMinimap()
     this.drawMinimap()
 
-    const field = this.game_.field
+    const field = player ? this.game_.field : null
     if (field) {
       if (!this.fieldText) {
         this.fieldText = this.add.text(this.scale.width / 2, 30, '', {
@@ -298,7 +302,7 @@ export default class UIScene extends Phaser.Scene {
     this.wildsHud?.update(player)
     this.tutorialHud?.update(player)
 
-    if (!this.wildsHud && !this.tutorialHud) {
+    if (!this.wildsHud && !this.tutorialHud && player) {
       const alive = this.game_.bots.filter(b => b.alive).length
       this.status.setText(String(alive).padStart(2, '0'))
     }

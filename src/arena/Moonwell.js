@@ -65,7 +65,7 @@ export default class Moonwells {
   }
 }
 
-class Well {
+export class Well {
   constructor(scene, x, y) {
     this.scene = scene
     this.x = x
