@@ -12,7 +12,8 @@
  */
 import Phaser from 'phaser'
 import AxieSprite from '../axie/AxieSprite.js'
-import { CLASS_KITS, PARRY } from '../axie/classKits.js'
+import { CLASS_KITS, PARRY, TELEGRAPH_MS } from '../axie/classKits.js'
+import { CLASS_COLORS } from '../axie/palette.js'
 import { FLAGS, has } from '../sim/constants.js'
 import { playPlate, playImpactPlate, playStatusPlate } from '../fx/SkillVfx.js'
 import { damageNumber, impact, dustEmitter } from '../fx/Juice.js'
@@ -31,6 +32,7 @@ export default class RoomView {
     this.currency = currency
     this.actors = new Map()
     this.shots = new Map()
+    this.zones = new Map()
     this.props = new Map()
     this.echoes = new Map()
     this.you = null
@@ -105,6 +107,7 @@ export default class RoomView {
     }
 
     this.drawShots(view)
+    this.drawZones(view)
     this.drawProps(view)
     for (const e of events) this.play(e, view)
   }
@@ -173,23 +176,73 @@ export default class RoomView {
     Object.values(actor.hudIcons).forEach(i => i.destroy())
   }
 
-  /** Projectiles: a lit mote each, since the plates are for impacts. */
+  /**
+   * Travelling shots: a core and an additive halo in the owner's colour, the
+   * same two circles the local game builds. A single pale dot was standing in
+   * for every class's projectile, which is why a bug's spit and a reptile's
+   * seeker looked identical.
+   */
   drawShots(view) {
     const seen = new Set()
-    for (const s of view.shots) {
-      seen.add(s.id)
-      let dot = this.shots.get(s.id)
-      if (!dot) {
-        dot = this.scene.add.circle(s.x, s.y, 9, 0xfff4c2, 0.9).setDepth(s.y + 20)
-        dot.setStrokeStyle(3, 0xffd166, 0.8)
-        this.shots.set(s.id, dot)
+    for (const shot of view.shots) {
+      seen.add(shot.id)
+      let parts = this.shots.get(shot.id)
+      if (!parts) {
+        const colour = CLASS_COLORS[shot.cls]?.body ?? 0xfff4c2
+        const radius = shot.seeking ? 11 : 9
+        const core = this.scene.add.circle(shot.x, shot.y, radius, colour).setDepth(shot.y + 4)
+        const halo = this.scene.add.circle(shot.x, shot.y, radius * 2.1, colour, 0.28)
+          .setDepth(shot.y + 3).setBlendMode(Phaser.BlendModes.ADD)
+        parts = { core, halo, colour }
+        this.shots.set(shot.id, parts)
       }
-      dot.setPosition(s.x, s.y).setDepth(s.y + 20)
+      parts.core.setPosition(shot.x, shot.y).setDepth(shot.y + 4)
+      parts.halo.setPosition(shot.x, shot.y).setDepth(shot.y + 3)
+      parts.at = { x: shot.x, y: shot.y }
     }
-    for (const [id, dot] of this.shots) {
+    for (const [id, parts] of this.shots) {
       if (seen.has(id)) continue
-      dot.destroy()
+      // Gone: it hit something or ran out of range. Either way it ends with a
+      // small burst where it stopped, as the local one does.
+      if (parts.at) impact(this.scene, parts.at.x, parts.at.y, parts.colour, 0.7)
+      parts.core.destroy()
+      parts.halo.destroy()
       this.shots.delete(id)
+    }
+  }
+
+  /**
+   * Ground that hurts: poison clouds, spreads, waves. These were drawn as
+   * nothing at all — the damage arrived from a patch of empty grass.
+   */
+  drawZones(view) {
+    const seen = new Set()
+    for (const z of view.zones ?? []) {
+      seen.add(z.id)
+      let parts = this.zones.get(z.id)
+      if (!parts) {
+        const colour = CLASS_COLORS[z.cls]?.body ?? 0x9ff0bb
+        const fill = this.scene.add.circle(z.x, z.y, z.r, colour, 0.16).setDepth(-18).setScale(0)
+        const ring = this.scene.add.circle(z.x, z.y, z.r, colour, 0)
+          .setStrokeStyle(2, colour, 0.55).setDepth(-17)
+        this.scene.tweens.add({ targets: fill, scaleX: 1, scaleY: 1, duration: 220, ease: 'Back.easeOut' })
+        this.scene.tweens.add({
+          targets: ring, scaleX: 1.05, scaleY: 1.05,
+          duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+        })
+        parts = { fill, ring }
+        this.zones.set(z.id, parts)
+      }
+      parts.fill.setPosition(z.x, z.y)
+      parts.ring.setPosition(z.x, z.y)
+    }
+    for (const [id, parts] of this.zones) {
+      if (seen.has(id)) continue
+      this.zones.delete(id)
+      this.scene.tweens.add({
+        targets: [parts.fill, parts.ring], alpha: 0, duration: 280,
+        onComplete: () => { parts.fill.destroy(); parts.ring.destroy() },
+      })
     }
   }
 
@@ -343,6 +396,79 @@ export default class RoomView {
     }
   }
 
+  /**
+   * The wind-up before a special, drawn exactly as the local game draws it:
+   * the shape of what is coming, growing over the reaction window.
+   *
+   * This is not decoration. The telegraph is the information a parry is read
+   * from — without it a special arrives out of nowhere, which is what made the
+   * networked fights feel arbitrary.
+   */
+  telegraph(actor, spec, aim, point) {
+    if (!spec) return
+    const scene = this.scene
+    const g = scene.add.graphics().setDepth(-15)
+    const colour = actor.colors.rim
+    const state = { t: 0 }
+    const from = { x: actor.x, y: actor.y }
+
+    const draw = () => {
+      g.clear()
+      const a = 0.2 + state.t * 0.35
+      g.fillStyle(colour, a * 0.45)
+      g.lineStyle(3, colour, a + 0.25)
+
+      switch (spec.kind) {
+        case 'charge': {
+          const len = spec.speed * (spec.duration / 1000)
+          g.lineStyle(46 * state.t + 8, colour, a * 0.5)
+          g.lineBetween(from.x, from.y, from.x + Math.cos(aim) * len, from.y + Math.sin(aim) * len)
+          break
+        }
+        case 'wave':
+          g.slice(from.x, from.y, spec.range,
+            aim - Phaser.Math.DegToRad(spec.arc) / 2, aim + Phaser.Math.DegToRad(spec.arc) / 2)
+          g.fillPath()
+          g.strokePath()
+          break
+        case 'lob': {
+          const d = Math.min(spec.maxRange, Phaser.Math.Distance.Between(from.x, from.y, point?.x ?? from.x, point?.y ?? from.y))
+          const lx = from.x + Math.cos(aim) * d
+          const ly = from.y + Math.sin(aim) * d
+          g.fillCircle(lx, ly, spec.radius * (0.4 + 0.6 * state.t))
+          g.strokeCircle(lx, ly, spec.radius)
+          break
+        }
+        case 'spread': {
+          const spread = Phaser.Math.DegToRad(spec.spread)
+          for (let i = 0; i < spec.count; i++) {
+            const ang = aim - spread / 2 + spread * (i / (spec.count - 1))
+            g.lineBetween(from.x, from.y,
+              from.x + Math.cos(ang) * spec.projectileRange * 0.6 * state.t,
+              from.y + Math.sin(ang) * spec.projectileRange * 0.6 * state.t)
+          }
+          break
+        }
+        case 'seeker':
+          g.lineBetween(from.x, from.y, from.x + Math.cos(aim) * 160 * state.t, from.y + Math.sin(aim) * 160 * state.t)
+          g.strokeCircle(from.x, from.y, 40 * state.t + 10)
+          break
+        case 'radial':
+          g.fillCircle(from.x, from.y, spec.radius * state.t)
+          g.strokeCircle(from.x, from.y, spec.radius)
+          break
+      }
+    }
+
+    scene.tweens.add({
+      targets: state, t: 1, duration: TELEGRAPH_MS, ease: 'Sine.easeIn',
+      // The caster is moving while this plays, so it follows them rather than
+      // hanging in the air where they started.
+      onUpdate: () => { from.x = actor.x; from.y = actor.y; draw() },
+      onComplete: () => g.destroy(),
+    })
+  }
+
   /** True if this client already played that action for itself, recently. */
   echoed(kind) {
     const at = this.echoes.get(kind)
@@ -417,12 +543,74 @@ export default class RoomView {
       case 'parry-raise':
         actor?.sprite.play('defense/hit-with-shield', { kind: 'parry', peakAt: PARRY.windowMs, peakFraction: 0.4 })
         break
-      case 'parry':
-        if (actor) {
-          playStatusPlate(this.scene, actor, 'shield', { size: 1.8 })
-          playSfx(this.scene, 'shield', { volume: 0.75 })
-          actor.sprite.flash(0xffffff, 120)
+      // A parry is a read that paid off, and the local game sells it hard: a
+      // clang, a plate, a white flash, an expanding ring between the two of
+      // them, the word on screen, and a shake. All of that was missing.
+      case 'parry': {
+        if (!actor) break
+        const attacker = this.actors.get(e.by)
+        playStatusPlate(this.scene, actor, 'shield', { size: 1.8 })
+        playSfx(this.scene, 'shield', { volume: 0.75 })
+        actor.sprite.play('defense/hit-with-shield', { kind: 'stagger', peakAt: 60, peakFraction: 0.6 })
+        actor.sprite.flash(0xffffff, 120)
+
+        const mx = attacker ? (actor.x + attacker.x) / 2 : actor.x
+        const my = (attacker ? (actor.y + attacker.y) / 2 : actor.y) - 20
+        const ring = this.scene.add.circle(mx, my, 10, 0xffffff, 0)
+          .setStrokeStyle(5, 0xffffff, 1).setDepth(my + 50)
+        this.scene.tweens.add({
+          targets: ring, radius: 70, alpha: 0, duration: 260, ease: 'Cubic.easeOut',
+          onUpdate: () => ring.setStrokeStyle(5, 0xffffff, ring.alpha),
+          onComplete: () => ring.destroy(),
+        })
+
+        const label = this.scene.add.text(actor.x, actor.y - 96, 'PARRY', {
+          fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif',
+          fontSize: '26px', color: '#ffffff', stroke: '#16200f', strokeThickness: 6,
+        }).setOrigin(0.5).setDepth(10001)
+        this.scene.tweens.add({
+          targets: label, y: label.y - 36, alpha: 0, scale: { from: 1.5, to: 1 },
+          duration: 720, ease: 'Quad.easeOut', onComplete: () => label.destroy(),
+        })
+
+        if (mine || e.by === this.you) this.scene.cameras.main.shake(120, 0.004)
+        break
+      }
+
+      // The wind-up. It is the whole reason a parry is possible: without it
+      // there is nothing to read.
+      case 'telegraph':
+        if (actor) this.telegraph(actor, CLASS_KITS[actor.cls]?.special, e.aim, e.point)
+        break
+
+      // A blow that found nothing still shows where it went, or a miss reads
+      // as the game having ignored you.
+      case 'miss': {
+        const kitOf = CLASS_KITS[f?.cls]?.basic
+        if (kitOf?.vfx && e.x != null) {
+          playImpactPlate(this.scene, kitOf.vfx, e.x, e.y, e.aim ?? 0, { whiff: true })
         }
+        if (mine) this.scene.cameras.main.shake(60, 0.0015)
+        break
+      }
+      case 'parry-whiff':
+        actor?.sprite.playState('stun', { fit: PARRY.recoveryMs, holdMs: PARRY.recoveryMs, kind: 'parry' })
+        break
+
+      // Beast's Impale: committed movement, sold with a trail and a shake when
+      // it lands.
+      case 'charge-start':
+        if (actor) {
+          actor.sprite.dashTrail(e.dir ?? { x: 1, y: 0 })
+          actor.sprite.play('action/run', { kind: 'special', fit: e.ms ?? 420, loop: true, holdMs: e.ms ?? 420 })
+        }
+        break
+      case 'charged':
+        if (e.x != null) impact(this.scene, e.x, e.y, actor?.colors.body ?? 0xffffff, 0.9)
+        this.scene.cameras.main.shake(140, 0.006)
+        break
+      case 'slow':
+        actor?.sprite.flash(0x7ce8ff, 120)
         break
       case 'stagger':
       case 'stun':
@@ -446,6 +634,16 @@ export default class RoomView {
       case 'heal':
         if (actor) actor.sprite.flash(0x9dffd8, 90)
         break
+      case 'well-open':
+        playSfx(this.scene, 'bubble', { volume: 0.4 })
+        break
+      case 'orb-live':
+        playSfx(this.scene, 'bubble', { volume: 0.35 })
+        break
+      case 'moon':
+        // The field itself turns while a Blood Moon is up.
+        this.scene.cameras.main.flash(400, 60, 6, 18)
+        break
       case 'orb-taken': {
         const taker = this.actors.get(e.by ?? e.id)
         const def = POWERUPS[e.type]
@@ -461,10 +659,12 @@ export default class RoomView {
 
   destroy() {
     for (const actor of this.actors.values()) this.forget(actor)
-    for (const dot of this.shots.values()) dot.destroy()
+    for (const parts of this.shots.values()) { parts.core.destroy(); parts.halo.destroy() }
+    for (const parts of this.zones.values()) { parts.fill.destroy(); parts.ring.destroy() }
     for (const prop of this.props.values()) prop.destroy()
     this.actors.clear()
     this.shots.clear()
+    this.zones.clear()
     this.props.clear()
     this.ground.destroy()
     this.layer.destroy()
