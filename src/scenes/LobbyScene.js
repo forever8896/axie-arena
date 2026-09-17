@@ -3,7 +3,7 @@ import AxieSprite from '../axie/AxieSprite.js'
 import { makeGrassTexture } from '../arena/Arena.js'
 import { CLASS_KITS } from '../axie/classKits.js'
 import { ambientMotes } from '../fx/Juice.js'
-import { ROOMS, WILDS, money } from '../wilds/config.js'
+import { ROOMS, LIVE_ROOM, WILDS, money } from '../wilds/config.js'
 import { wallet } from '../wilds/Wallet.js'
 import { play as playMusic } from '../fx/Music.js'
 import { bindButton, uiSound } from '../fx/UiSound.js'
@@ -248,13 +248,20 @@ export default class LobbyScene extends Phaser.Scene {
     this.scene.restart({ builds: this.builds, playerClass: this.playerClass, net: true, regionId: region.id })
   }
 
+  /** In multiplayer there is one room per region; locally, the catalogue. */
+  get rooms() {
+    return this.net ? [LIVE_ROOM] : ROOMS
+  }
+
   buildRooms(x, y, w, h) {
-    const cols = w > 640 ? 2 : 1
+    const list = this.rooms
+    // One room gets the whole panel: it is the only thing anyone has to decide.
+    const cols = list.length > 1 && w > 640 ? 2 : 1
     const gap = 18
     const cw = (w - gap * (cols - 1)) / cols
-    const rows = Math.ceil(ROOMS.length / cols)
-    const ch = Math.min(220, (h - gap * (rows - 1)) / rows)
-    this.roomViews = ROOMS.map((room, i) => {
+    const rows = Math.ceil(list.length / cols)
+    const ch = list.length === 1 ? Math.min(300, h) : Math.min(220, (h - gap * (rows - 1)) / rows)
+    this.roomViews = list.map((room, i) => {
       const cx = x + (i % cols) * (cw + gap)
       const cy = y + Math.floor(i / cols) * (ch + gap)
       return this.buildRoom(room, i, cx, cy, cw, ch)
@@ -314,10 +321,13 @@ export default class LobbyScene extends Phaser.Scene {
       const res = await fetch(roomsUrl(this.region), { cache: 'no-store' })
       if (!res.ok) throw new Error(String(res.status))
       const { rooms } = await res.json()
-      ROOMS.forEach((room, i) => {
+      this.rooms.forEach((room, i) => {
         const live = rooms.find(r => r.id === room.id)
         if (!live) return
-        this.live[i] = { hunters: live.hunters, topBounty: live.topBounty, players: live.players }
+        this.live[i] = {
+          hunters: live.hunters, topBounty: live.topBounty, players: live.players,
+          humans: live.humans ?? [], bots: live.bots ?? live.hunters,
+        }
         if (this.roomViews?.[i]) this.renderRoom(this.roomViews[i], i)
       })
       this.netTag?.setText(`MULTIPLAYER  ·  EXPERIMENTAL  ·  ${this.region.name.toUpperCase()}`).setColor('#c9b8ff')
@@ -334,10 +344,15 @@ export default class LobbyScene extends Phaser.Scene {
     const room = view.room
     const open = WILDS.maxHunters - live.hunters
     const players = live.players ?? 0
-    view.hunters.setText(this.net
-      ? `HUNTERS  ${live.hunters}  ·  ${players} ${players === 1 ? 'PLAYER' : 'PLAYERS'}  ·  ${open} ${open === 1 ? 'SEAT' : 'SEATS'} OPEN`
-      : `HUNTERS  ${live.hunters}  ·  ${open} ${open === 1 ? 'SEAT' : 'SEATS'} OPEN`)
-    view.top.setText(`TOP BOUNTY  ${money(live.topBounty, room.currency)}`)
+    if (this.net) {
+      const names = live.humans?.length ? live.humans.join(', ') : 'nobody yet — be the first'
+      view.hunters.setText(`PLAYERS  ${players}     ${names}`)
+        .setColor(players ? '#ffd964' : '#b9c4a6')
+      view.top.setText(`STAND-INS  ${live.bots ?? 0} AI  ·  ${open} ${open === 1 ? 'SEAT' : 'SEATS'} OPEN  ·  TOP BOUNTY ${money(live.topBounty, room.currency)}`)
+    } else {
+      view.hunters.setText(`HUNTERS  ${live.hunters}  ·  ${open} ${open === 1 ? 'SEAT' : 'SEATS'} OPEN`)
+      view.top.setText(`TOP BOUNTY  ${money(live.topBounty, room.currency)}`)
+    }
     const g = view.dots
     g.clear()
     for (let k = 0; k < WILDS.maxHunters - 1; k++) {
@@ -348,7 +363,7 @@ export default class LobbyScene extends Phaser.Scene {
 
   /** Rooms are alive while you look: hunters come and go, bounties grow. */
   drift() {
-    ROOMS.forEach((room, i) => {
+    this.rooms.forEach((room, i) => {
       const live = this.live[i]
       live.hunters = Phaser.Math.Clamp(live.hunters + Phaser.Math.Between(-1, 1), room.hunters[0], room.hunters[1])
       const entry = room.free ? room.stake : room.stake * (1 - WILDS.feeRate)
@@ -358,7 +373,7 @@ export default class LobbyScene extends Phaser.Scene {
   }
 
   enter(i) {
-    const room = ROOMS[i]
+    const room = this.rooms[i]
     if (!room || !wallet.canAfford(room)) {
       uiSound(this, 'deny')
       return

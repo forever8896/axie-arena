@@ -205,9 +205,11 @@ export default class HomeScene extends Phaser.Scene {
       const players = rooms.reduce((s, r) => s + r.players, 0)
       const hunters = rooms.reduce((s, r) => s + r.hunters, 0)
       const where = `${best.region.name.toUpperCase()} ${best.ping}MS`
+      // One room per region, so this can say the thing that actually decides
+      // whether it is worth clicking: whether anyone is in there.
       this.netToggle.setText(players
-        ? `MULTIPLAYER  ·  ${players} ${players === 1 ? 'PLAYER' : 'PLAYERS'} ON ${where}  ▸`
-        : `MULTIPLAYER  ·  ${rooms.length} LIVE ROOMS, ${hunters} HUNTERS  ·  ${where}  ▸`)
+        ? `MULTIPLAYER  ·  ${players} ${players === 1 ? 'PLAYER' : 'PLAYERS'} IN THE ROOM  ·  ${where}  ▸`
+        : `MULTIPLAYER  ·  ${where}  ·  ${hunters} STAND-INS WAITING  ▸`)
     } catch {
       this.netToggle.setText('MULTIPLAYER  ·  ROOMS OFFLINE').setColor('#9aa88a').disableInteractive()
     }

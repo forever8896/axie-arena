@@ -15,7 +15,7 @@
 import { createServer } from 'node:http'
 import { attachNet } from '../src/net/wsServer.js'
 import * as P from '../src/net/protocol.js'
-import { WILDS } from '../src/wilds/config.js'
+import { WILDS, ROOMS } from '../src/wilds/config.js'
 
 const SPEED = 4              // simulated milliseconds per real millisecond
 const started = Date.now()
@@ -34,7 +34,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms))
 const simWait = simMs => sleep(Math.ceil(simMs / SPEED) + 30)
 
 const server = createServer((req, res) => res.end('ok'))
-const net = attachNet(server, { clock })
+// The servers host one room; these checks are about the wire, and want
+// several to move between.
+const net = attachNet(server, { clock, rooms: ROOMS })
 await new Promise(resolve => server.listen(0, resolve))
 const URL_BASE = `ws://127.0.0.1:${server.address().port}/ws`
 

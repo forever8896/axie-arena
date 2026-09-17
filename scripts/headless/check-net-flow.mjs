@@ -27,11 +27,9 @@ try {
   await b.eval('window.__game.loop.wake(); true')
 
   // --- The switch says what is actually there ------------------------------
-  const label = await b.waitFor(`(() => {
-    const t = window.__game.scene.getScene('HomeScene').netToggle?.text ?? ''
-    return t.includes('LIVE ROOMS') || t.includes('PLAYER') ? t : false
-  })()`, 20000).then(() => b.eval("window.__game.scene.getScene('HomeScene').netToggle.text"))
-  check('the home screen counts the live rooms before you click', /LIVE ROOMS|PLAYER/.test(label), label)
+  await b.waitFor(`/MS/.test(window.__game.scene.getScene('HomeScene').netToggle?.text ?? '')`, 20000)
+  const label = await b.eval("window.__game.scene.getScene('HomeScene').netToggle.text")
+  check('the home screen says who is in there before you click', /PLAYER|STAND-INS/.test(label), label)
 
   // --- In through the front door -------------------------------------------
   await b.eval(`window.__game.scene.getScene('HomeScene').start('net'); true`)
@@ -51,11 +49,11 @@ try {
     return JSON.stringify({ net: s.net, tag: s.netTag?.text, rows: s.roomViews.map(v => v.hunters.text), live: s.live })
   })()`)).then(JSON.parse)
   check('the lobby is the multiplayer one', lobby.net && /EXPERIMENTAL/.test(lobby.tag), lobby.tag)
-  check('and lists real hunters in each room', lobby.live.every(l => l.hunters > 0), lobby.rows[0])
-  check('and counts the people among them', lobby.rows.every(r => r.includes('PLAYER')), lobby.rows[1])
+  check('there is one room, not a menu of them', lobby.rows.length === 1, `${lobby.rows.length} room`)
+  check('and it names the people in it', /PLAYERS/.test(lobby.rows[0]), lobby.rows[0])
 
   // --- Into a room ---------------------------------------------------------
-  await b.eval(`window.__game.scene.getScene('LobbyScene').enter(1); true`)
+  await b.eval(`window.__game.scene.getScene('LobbyScene').enter(0); true`)
   await b.waitFor("window.__game.scene.getScene('NetScene')?.client?.status === 'playing'", 60000)
   await b.waitFor("!!window.__game.scene.getScene('NetScene').view.actors.size", 30000)
   await b.waitFor("!!window.__game.scene.getScene('UIScene')?.scene.isActive()", 20000)

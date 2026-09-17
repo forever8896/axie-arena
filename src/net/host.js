@@ -20,6 +20,24 @@ const MAX_CATCHUP = 8
 
 let nextClientId = 0
 
+/**
+ * A name other players will see, from a string this client chose.
+ *
+ * Everyone was called "You" before this: the name in the greeting was read and
+ * dropped, so a room full of people looked like a room full of one person. It
+ * is trimmed, stripped of anything that would break a name plate, and capped,
+ * because it is drawn over an Axie in somebody else's game.
+ */
+function playerName(raw) {
+  const clean = String(raw ?? '')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028\u2029]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 16)
+  return clean || `Hunter${Math.floor(Math.random() * 900) + 100}`
+}
+
 export class Client {
   constructor(send, { name = 'You' } = {}) {
     this.id = `c${++nextClientId}`
@@ -69,6 +87,10 @@ export default class RoomHost {
       const live = this.live.get(def.id)
       const sim = live?.sim
       const alive = sim ? sim.fighters.filter(f => f.alive) : []
+      // Who is actually in there, by name, so the lobby can say "Ayla and Bram
+      // are in this room" rather than "2 players". Getting people into the same
+      // fight is the whole job of a lobby.
+      const humans = alive.filter(f => f.isPlayer).map(f => f.name)
       return {
         id: def.id,
         name: def.name,
@@ -77,7 +99,9 @@ export default class RoomHost {
         free: Boolean(def.free),
         blurb: def.blurb,
         hunters: alive.length,
-        players: live ? live.clients.size : 0,
+        players: humans.length,
+        humans,
+        bots: alive.length - humans.length,
         topBounty: alive.reduce((m, f) => Math.max(m, f.wilds?.bounty ?? 0), 0),
         open: alive.length < WILDS.maxHunters,
       }
@@ -126,6 +150,7 @@ export default class RoomHost {
       live.sim.forfeit(stand)
     }
 
+    client.name = playerName(msg.name)
     const f = live.sim.joinPlayer({ axieClass: msg.cls, name: client.name })
     client.roomId = live.def.id
     client.fighterId = f.id

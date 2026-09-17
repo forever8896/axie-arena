@@ -157,14 +157,27 @@ export default class RoomView {
     }
   }
 
-  /** The name plate a room hangs over every hunter but you. */
+  /**
+   * The name plate over every hunter but you.
+   *
+   * A person and a stand-in must never be mistaken for each other: the whole
+   * point of playing here is that some of these are people. Stand-ins are
+   * marked AI and written in the dimmer colour; a person's name is bright and
+   * carries a mark of its own, so "is that a real player?" is answered at a
+   * glance rather than by watching how it moves.
+   */
   drawLabel(actor, f) {
     const mine = f.id === this.you
-    const show = f.alive && !mine
+    if (!f.alive || mine) {
+      actor.label.setText('')
+      return
+    }
+    const who = f.bot ? `${f.name}  · AI ·` : `◆ ${f.name}`
     actor.label
-      .setText(show ? `${f.name}${f.bot ? ' · AI' : ''}\n${money(f.bounty ?? 0, this.currency)}` : '')
+      .setText(`${who}\n${money(f.bounty ?? 0, this.currency)}`)
       .setPosition(f.x, f.y - 104)
-      .setColor(f.leaving ? '#c9b8ff' : '#fff8d8')
+      .setColor(f.leaving ? '#c9b8ff' : f.bot ? '#b9c4a6' : '#ffd964')
+      .setFontStyle(f.bot ? 'normal' : 'bold')
       .setDepth(HUD_DEPTH + 2)
   }
 

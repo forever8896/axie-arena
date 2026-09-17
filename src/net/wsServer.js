@@ -8,6 +8,7 @@
  */
 import { WebSocketServer } from 'ws'
 import RoomHost, { Client } from './host.js'
+import { LIVE_ROOM } from '../wilds/config.js'
 import * as P from './protocol.js'
 
 /** An input is a few dozen bytes; anything large is not a client of ours. */
@@ -19,8 +20,8 @@ const MAX_MSGS_PER_SEC = 180
 /** No pong within two beats and the socket is gone, whatever it claims. */
 const HEARTBEAT_MS = 15000
 
-export function attachNet(server, { path = '/ws', ...opts } = {}) {
-  const host = new RoomHost(opts).start()
+export function attachNet(server, { path = '/ws', rooms = [LIVE_ROOM], ...opts } = {}) {
+  const host = new RoomHost({ rooms, ...opts }).start()
   const wss = new WebSocketServer({ server, path, maxPayload: MAX_PAYLOAD })
 
   wss.on('connection', socket => {

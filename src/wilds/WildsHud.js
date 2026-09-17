@@ -133,8 +133,11 @@ export default class WildsHud {
       const f = top[i]
       row.setPosition(x, y + i * 17)
       if (!f) return row.setText('')
-      row.setText(`${f.isPlayer ? 'YOU' : f.name}  ${money(f.wilds.bounty, w.currency)}`)
-        .setColor(f.isPlayer ? '#ffd964' : f.wilds.leaving ? '#c9b8ff' : '#f4f8e8')
+      // Bots are named as bots here too, so the board reads as a board of
+      // people and stand-ins rather than of names that all look alike.
+      const who = f.isPlayer ? 'YOU' : f.bot === false ? `◆ ${f.name}` : f.name
+      row.setText(`${who}  ${money(f.wilds.bounty, w.currency)}`)
+        .setColor(f.isPlayer ? '#ffd964' : f.bot === false ? '#ffe9a8' : f.wilds.leaving ? '#c9b8ff' : '#b9c4a6')
     })
     y += 3 * 17 + 16
     const now = this.game.time.now

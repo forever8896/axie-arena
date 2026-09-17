@@ -24,6 +24,22 @@ export const WILDS = {
   startingBalance: 25,
 }
 
+/**
+ * The one room the servers host.
+ *
+ * Multiplayer runs a single room per region, and not for want of ambition: a
+ * lobby of four rooms splits three friends across three of them, and a room
+ * nobody else picked is a room with nobody in it. One room per region means
+ * pressing Play puts you where everyone else is.
+ *
+ * The local Wilds still offers the catalogue below, where there is nobody to
+ * miss and the choice of stakes is the point.
+ */
+export const LIVE_ROOM = {
+  id: 'glade', name: 'Dewdrop Glade', stake: 0.1, currency: 'AXS',
+  blurb: 'One room per region. Everyone who presses play lands here.', hunters: [4, 6],
+}
+
 export const ROOMS = [
   {
     id: 'meadow', name: 'Moonpetal Meadow', stake: 10, currency: 'PTS', free: true,

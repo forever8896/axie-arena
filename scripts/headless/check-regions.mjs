@@ -106,7 +106,7 @@ try {
     })
   })()`).then(JSON.parse)
   check('the lobby says which server you are on', state.note.length > 0, state.note)
-  check('and lists the rooms on it', /HUNTERS/.test(state.rooms), state.rooms)
+  check('and lists the room on it', /PLAYERS/.test(state.rooms), state.rooms)
   // The suggestion only appears when another server is meaningfully closer, so
   // either it is offering one or it is quiet — both are correct, but a
   // suggestion must never point at the server already chosen.
@@ -132,7 +132,7 @@ try {
   check('choosing another server lists its rooms instead', moved.id === other.id, moved.tag)
 
   // --- And playing there connects there -------------------------------------
-  await b.eval(`window.__game.scene.getScene('LobbyScene').enter(1); true`)
+  await b.eval(`window.__game.scene.getScene('LobbyScene').enter(0); true`)
   await b.waitFor("window.__game.scene.getScene('NetScene')?.client?.status === 'playing'", 60000)
   const where = await b.eval(`(() => {
     const s = window.__game.scene.getScene('NetScene')
