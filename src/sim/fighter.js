@@ -162,7 +162,22 @@ export default class SimFighter {
   canAttack(now = this.now) {
     return this.alive && !this.shielded && !this.dashing && !this.stunned && !this.chargeState &&
       !this.casting && !this.swinging && !this.guardBroken && !this.winded &&
+      this.freeOfGuard(now) &&
       now - this.lastAttack >= this.attackCooldown
+  }
+
+  /**
+   * Whether a guard is out of the way of a swing.
+   *
+   * Holding a guard used to cost nothing to leave: you could swing straight out
+   * of it, which meant there was never a reason to lower it and the stance was
+   * strictly free. Leaving it now takes a beat — unless you blocked something,
+   * because answering from behind a guard you just used is the entire reward
+   * for holding one.
+   */
+  freeOfGuard(now = this.now) {
+    if (this.riposting) return true
+    return now >= this.guardUntil + GUARD.lowerMs
   }
 
   canGuard(now = this.now) {

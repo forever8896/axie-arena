@@ -1,11 +1,20 @@
 /**
  * The reworked combat: what a fight asks of a player, in milliseconds.
  *
- * Every window here is sized against what a person can actually do over a
- * network — about 250ms of reaction time, plus the ~193ms this game's own
- * netcode puts between the room and the screen. Nothing a player must hit on
- * reaction is shorter than 400ms. See docs/COMBAT.md for where these come from
- * and scripts/check-windows.mjs for the check that keeps them honest.
+ * Answering something on reaction over this game's netcode takes about 443ms:
+ * ~172ms before you see it, ~250ms to react, ~22ms for the answer to get back.
+ * The first cut of these numbers sized EVERY window past that, and the result
+ * was a fight that bored the person playing it.
+ *
+ * The mistake was treating the wind-up as a gate. It is not: a guard here is
+ * held, not raised in answer to a particular swing, so a wind-up is something
+ * you read for spacing and commitment rather than something you must beat. It
+ * only has to be legible — clearly longer than the ~172ms of staleness, so it
+ * reads as a distinct act rather than a twitch.
+ *
+ * The things that genuinely are reactions — dodging a special, answering with a
+ * riposte — still clear the full 443ms. See scripts/check-windows.mjs, which
+ * now separates the two rather than holding everything to the same bar.
  *
  * The old numbers are still in classKits.js, still used by the single-player
  * Wilds, so the two can be played against each other.
@@ -21,17 +30,19 @@ export const SWING = {
    * Visible wind-up: the warning, and the whole window in which to move, guard
    * or decide to trade. Sized to clear reaction time plus this game's own
    * netcode staleness with room to spare — see scripts/check-windows.mjs.
-   * Mordhau's windups run 500-900ms and For Honor's 600-800ms, so this is not
-   * unusually slow for a game built on reading a commitment.
+   * Mordhau's windups run 500-900ms, but Mordhau is a duel at walking pace with
+   * a mouse-drag to read on top of the timing. This is a top-down arena with
+   * six fighters and an extraction to think about, so the floor sits just above
+   * what a person can answer rather than well past it.
    */
-  windupMs: 560,
+  windupMs: 320,
   /** After this much wind-up it cannot be called off. Feinting lives here. */
-  commitMs: 140,
+  commitMs: 100,
   /** The blow is live for this long, so contact is a moment with width. */
-  releaseMs: 120,
+  releaseMs: 100,
   /** Open afterwards. This is what a whiff costs you, and it has to be long
    *  enough that the other player can actually take it. */
-  recoveryMs: 460,
+  recoveryMs: 260,
   /** You are slowed while winding up: committing means planting your feet. */
   moveFactor: 0.45,
 }
@@ -51,7 +62,7 @@ export const GUARD = {
   raiseCost: 6,
   /** It takes this long to come up. Short, because the decision to raise it is
    *  the interesting part, not the dexterity of raising it. */
-  raiseMs: 90,
+  raiseMs: 60,
   /** Blocking a blow opens this long to answer. Generous: it is a reward. */
   riposteMs: 500,
   /** A riposte hits this much harder. */
@@ -62,6 +73,15 @@ export const GUARD = {
   breakStunMs: 600,
   /** Slowed while holding it. */
   moveFactor: 0.5,
+  /**
+   * Dropping a guard takes this long before you can swing.
+   *
+   * Without it the guard was free: hold it always, release into an attack at no
+   * cost, and there was never a reason to lower it. Now it is a stance you
+   * commit to and pay a beat to leave — unless you earned a riposte, which is
+   * the whole point of holding it in the first place.
+   */
+  lowerMs: 100,
 }
 
 /**
@@ -96,9 +116,9 @@ export function phasesFor(kit) {
   const damage = kit?.basic?.damage ?? 250
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
   return {
-    windupMs: Math.round(clamp(400 + damage * 0.85, SWING.windupMs, 780)),
+    windupMs: Math.round(clamp(200 + damage * 0.55, SWING.windupMs, 440)),
     releaseMs: SWING.releaseMs,
-    recoveryMs: Math.round(clamp(300 + damage * 0.55, SWING.recoveryMs, 640)),
+    recoveryMs: Math.round(clamp(160 + damage * 0.35, SWING.recoveryMs, 360)),
     /** A lighter blow draws less from the bar, so fast classes swing more. */
     stamina: Math.round(clamp(10 + damage / 22, 12, 30)),
   }
@@ -134,8 +154,8 @@ export function damageFor(kit) {
 
 /** Damage scaling, so fights last long enough to hold two decisions. */
 /**
- * Specials wind up for longer here than in the single-player game, for the same
- * reason everything else does: a 260ms telegraph cannot be answered by someone
- * seeing the room 193ms late.
+ * A special is the one blow you are expected to get out of the way of on
+ * reaction, so unlike a basic's wind-up this does have to clear the full 443ms
+ * a reaction costs over this netcode. It is rare enough to afford it.
  */
-export const SPECIAL_TELEGRAPH_MS = 560
+export const SPECIAL_TELEGRAPH_MS = 460
