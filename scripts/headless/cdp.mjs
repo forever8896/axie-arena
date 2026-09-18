@@ -6,7 +6,7 @@
  * per second: wait on game state, never on wall-clock time.
  */
 import { spawn } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
+import { writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -90,6 +90,14 @@ export async function launch({ width = 1480, height = 812 } = {}) {
       writeFileSync(file, Buffer.from(r.data, 'base64'))
       return file
     },
-    close() { try { ws.close() } catch {} proc.kill('SIGKILL') },
+    close() {
+      try { ws.close() } catch {}
+      proc.kill('SIGKILL')
+      // The profile is a fresh directory per launch and Chromium leaves a few
+      // hundred MB in it. A suite that launches a browser per check filled the
+      // whole tmpfs and started failing writes, so it goes when the browser
+      // does.
+      try { rmSync(profile, { recursive: true, force: true, maxRetries: 3 }) } catch {}
+    },
   }
 }
