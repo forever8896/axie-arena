@@ -37,8 +37,8 @@ export const hello = ({ room, cls, name, resume = null }) =>
  * `mv` is a direction, not a destination, and `aim` is an angle: the two things
  * a player actually controls. `act` lists what they pressed since the last one.
  */
-export const input = ({ seq, mv = [0, 0], aim = 0, act = [], pt = null, gd = 0 }) =>
-  ({ k: 'input', seq, mv, aim, act, pt, gd })
+export const input = ({ seq, mv = [0, 0], aim = 0, act = [], pt = null, gd = 0, ul = 0 }) =>
+  ({ k: 'input', seq, mv, aim, act, pt, gd, ul })
 
 export const leave = () => ({ k: 'leave' })
 export const ping = t => ({ k: 'ping', t })
@@ -94,5 +94,8 @@ export function readInput(msg) {
     // Held rather than pressed: a guard is a state the player maintains, so it
     // arrives with every input instead of once.
     guard: Boolean(msg.gd),
+    // So is aiming a Moonshot — it begins when this goes up and fires when it
+    // comes down, which is why it cannot be an action in the list above.
+    aiming: Boolean(msg.ul),
   }
 }

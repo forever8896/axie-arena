@@ -12,7 +12,7 @@ import { CLASS_KITS, PARRY } from '../src/axie/classKits.js'
 import { WILDS, ROOMS } from '../src/wilds/config.js'
 import { MOONWELL, POWERUPS } from '../src/arena/boonConfig.js'
 import { CONNECT_MS } from '../src/sim/constants.js'
-import { SWING, GUARD, STAMINA, PACE, phasesFor, damageFor } from '../src/axie/combatConfig.js'
+import { SWING, GUARD, STAMINA, PACE, LANCE, phasesFor, damageFor } from '../src/axie/combatConfig.js'
 
 /** A swing winds up before it lands; wait out the longest of them. */
 const CONTACT = Math.max(...Object.values(CLASS_KITS).map(k => phasesFor(k).windupMs)) + 60
@@ -177,6 +177,96 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
     const used = r.useSpecial(A, { x: B.x, y: B.y })
     wait(5000)
     check(`${cls} special connects`, used && 1e6 - B.hp > 0, `${Math.round(1e6 - B.hp)} damage`)
+  }
+}
+
+// --- The Moonshot ---------------------------------------------------------
+{
+  // It is aimed, so every check here is about where it is pointed rather than
+  // when it was pressed.
+  for (const cls of Object.keys(CLASS_KITS)) {
+    const ult = CLASS_KITS[cls].ultimate
+    const { r, A, B, wait } = duel({ a: cls, gap: Math.min(200, ult.range * 0.5) })
+    B.maxHp = 1e6
+    B.hp = 1e6
+    B.brain = null
+    A.moon = 1
+    A.aim = Math.atan2(B.y - A.y, B.x - A.x)
+    r.applyInput(A, { move: { x: 0, y: 0 }, aim: A.aim, aiming: true })
+    wait(LANCE.minAimMs + 40)
+    B.pos.set(A.x + Math.cos(A.aim) * Math.min(200, ult.range * 0.5), A.y + Math.sin(A.aim) * Math.min(200, ult.range * 0.5))
+    r.applyInput(A, { move: { x: 0, y: 0 }, aim: A.aim, aiming: false })
+    check(`${cls} Moonshot connects`, 1e6 - B.hp > 0, `${Math.round(1e6 - B.hp)} damage`)
+  }
+
+  // Held too briefly it is called off, and the meter survives: a Moonshot
+  // cannot be flicked out, and being interrupted must not cost it either.
+  {
+    const { r, A, wait } = duel({ a: 'bird', gap: 200 })
+    A.moon = 1
+    r.applyInput(A, { move: { x: 0, y: 0 }, aim: 0, aiming: true })
+    wait(LANCE.minAimMs * 0.4)
+    r.applyInput(A, { move: { x: 0, y: 0 }, aim: 0, aiming: false })
+    check('a Moonshot released early is called off', !A.aiming && A.moon === 1, `moon ${A.moon}`)
+  }
+
+  // A stun takes the aim, not the shot.
+  {
+    const { r, A, wait } = duel({ a: 'bird', gap: 200 })
+    A.moon = 1
+    r.applyInput(A, { move: { x: 0, y: 0 }, aim: 0, aiming: true })
+    wait(100)
+    A.applyStun(400)
+    check('a stun ends the aim but keeps the meter', !A.aiming && A.moon === 1, `moon ${A.moon}`)
+  }
+
+  // It pierces: that is what makes pointing it worth the standing still.
+  {
+    const r = new SimRoom({ mode: 'showdown', seed: 5 })
+    const A = r.addFighter({ axieClass: 'bird', name: 'A' })
+    A.brain = null
+    A.pos.set(300, 300)
+    A.aim = 0
+    const marks = [0, 1, 2].map(i => {
+      const m = r.addFighter({ axieClass: 'plant', name: `m${i}` })
+      m.brain = null
+      m.pos.set(420 + i * 140, 300)
+      return m
+    })
+    A.moon = 1
+    r.applyInput(A, { move: { x: 0, y: 0 }, aim: 0, aiming: true })
+    for (let t = 0; t < LANCE.minAimMs + 40; t += DT) { r.step(DT); r.drainEvents() }
+    A.pos.set(300, 300)
+    A.aim = 0
+    marks.forEach((m, i) => m.pos.set(420 + i * 140, 300))
+    r.applyInput(A, { move: { x: 0, y: 0 }, aim: 0, aiming: false })
+    check('a Moonshot pierces everyone on its line', marks.every(m => m.hp < m.maxHp),
+      marks.map(m => Math.round(m.maxHp - m.hp)).join('/'))
+    check('and spends the meter', A.moon === 0, `moon ${A.moon}`)
+  }
+
+  // Pointed elsewhere it hits nobody — the whole reason it is aimed.
+  {
+    const { r, A, B, wait } = duel({ a: 'bird', gap: 200 })
+    B.brain = null
+    const before = B.hp
+    A.moon = 1
+    A.aim = Math.PI
+    r.applyInput(A, { move: { x: 0, y: 0 }, aim: Math.PI, aiming: true })
+    wait(LANCE.minAimMs + 40)
+    A.aim = Math.PI
+    r.applyInput(A, { move: { x: 0, y: 0 }, aim: Math.PI, aiming: false })
+    check('a Moonshot aimed away hits nobody', B.hp === before, `${Math.round(before - B.hp)} damage`)
+  }
+
+  // The meter fills at half the special's rate, which is the "twice as long".
+  {
+    const { r, A, wait } = duel({ a: 'bird', gap: 400 })
+    A.charge = 0
+    A.moon = 0
+    wait(4000)
+    check('the Moonshot meter fills at half the special rate',
+      Math.abs(A.moon - A.charge * LANCE.chargeFactor) < 0.02, `charge ${A.charge.toFixed(2)} moon ${A.moon.toFixed(2)}`)
   }
 }
 

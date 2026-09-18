@@ -47,7 +47,7 @@ export class Client {
     this.fighterId = null
     this.token = null
     this.seq = 0
-    this.pending = { move: { x: 0, y: 0 }, aim: 0, act: new Set(), point: null, guard: false }
+    this.pending = { move: { x: 0, y: 0 }, aim: 0, act: new Set(), point: null, guard: false, aiming: false }
     this.lastInputAt = 0
     this.closed = false
   }
@@ -205,6 +205,7 @@ export default class RoomHost {
     // A guard is a level, not an edge: it is whatever the last packet said,
     // where the actions below accumulate until the next tick consumes them.
     client.pending.guard = read.guard
+    client.pending.aiming = read.aiming
     for (const a of read.act) client.pending.act.add(a)
   }
 
@@ -298,6 +299,7 @@ export default class RoomHost {
         move: fresh ? p.move : { x: 0, y: 0 },
         aim: p.aim,
         guard: Boolean(p.guard),
+        aiming: Boolean(p.aiming),
         attack: p.act.has('attack'),
         special: p.act.has('special'),
         dash: p.act.has('dash'),

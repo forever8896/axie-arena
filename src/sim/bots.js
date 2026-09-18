@@ -1,6 +1,8 @@
 import { PARRY, TELEGRAPH_MS } from '../axie/classKits.js'
 import { CONNECT_MS } from './constants.js'
 import { distance, wrapAngle } from './math.js'
+import { LANCE } from '../axie/combatConfig.js'
+import { fireLance } from './abilities.js'
 
 /** Specials a parry can stop. Projectiles and lobbed zones cannot be parried. */
 const PARRYABLE_SPECIALS = new Set(['charge', 'radial'])
@@ -110,6 +112,16 @@ export default class SimBrain {
           this.state = 'wander'
           break
         }
+        // A Moonshot is worth planting for when the target is lined up and far
+        // enough away to be worth a line rather than a swing. A stand-in aims
+        // it the same way a player does: stop, point, wait, let go.
+        const ult = me.kit?.ultimate
+        if (ult && me.canMoon(now) && dist > me.attackRange * 1.6 && dist < ult.range * 0.9) {
+          this.state = 'moonshot'
+          this.stateUntil = now + LANCE.minAimMs + 120
+          me.beginAim(now)
+          break
+        }
         if (me.canSpecial(now) && dist < this.specialRange(me)) {
           this.room.useSpecial(me, { x: target.x, y: target.y })
           break
@@ -156,6 +168,22 @@ export default class SimBrain {
         break
 
       // Hold a guard while the blow comes in, then take the opening it earns.
+      // Pointing one: planted, tracking, and it goes off when the hold is up.
+      // Being knocked out of it costs the opening, not the meter.
+      case 'moonshot': {
+        me.intent.set(0, 0)
+        if (target?.alive) me.aim = Math.atan2(target.y - me.y, target.x - me.x)
+        if (!me.aiming) {
+          this.state = 'chase'
+          break
+        }
+        if (now >= this.stateUntil) {
+          if (me.releaseAim(now)) fireLance(me, now)
+          this.state = 'chase'
+        }
+        break
+      }
+
       case 'guard':
         me.intent.set(0, 0)
         me.hold(now)

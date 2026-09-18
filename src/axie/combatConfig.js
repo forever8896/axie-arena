@@ -159,3 +159,46 @@ export function damageFor(kit) {
  * a reaction costs over this netcode. It is rare enough to afford it.
  */
 export const SPECIAL_TELEGRAPH_MS = 460
+
+/**
+ * The Moonshot: one aimed blow, held and pointed rather than pressed.
+ *
+ * Every other action in this fight is decided by when you press it. This one is
+ * decided by where you point it, which is the part of the rework worth pushing
+ * hardest: you stand still, you are visible to everyone while you do it, and
+ * you get one line through the arena in exchange.
+ *
+ * It costs a meter of its own that fills at half the special's rate, so it
+ * arrives about half as often, and it is worth about twice a special when it
+ * lands. The two do not compete: spending a special does not touch this.
+ */
+export const LANCE = {
+  /** Fills at half the special's rate, so it takes twice as long to come up. */
+  chargeFactor: 0.5,
+  /**
+   * You must hold it at least this long before it will fire. Short of this a
+   * release cancels and the meter comes back — a Moonshot cannot be flicked
+   * out, it has to be aimed.
+   */
+  minAimMs: 340,
+  /** Held past this it goes off on its own, so it cannot be held all match. */
+  maxAimMs: 2600,
+  /**
+   * Slowed while aiming, but not rooted.
+   *
+   * At 0.22 this was measured costing the thin classes their whole advantage:
+   * standing still for the aim is survivable for 3550hp of plant and close to
+   * suicide for 2100hp of bird, so the same ability was worth +8pt to one and
+   * -10pt to the other. The price of aiming has to be a price everyone can
+   * pay.
+   */
+  moveFactor: 0.38,
+  /** The lance travels this fast once released, in px/sec. */
+  speed: 1500,
+  /**
+   * What a Moonshot is worth against the class's own special. The per-class
+   * numbers in classKits are set to this; it is the intent behind them, and the
+   * fallback for a class that has not been given one.
+   */
+  damageFactor: 2,
+}

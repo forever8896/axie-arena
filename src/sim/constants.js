@@ -30,6 +30,8 @@ export const FLAGS = {
   WINDING: 512,
   RIPOSTE: 1024,
   GUARD_BROKEN: 2048,
+  /** Holding a Moonshot: standing still, pointing it, visible to everyone. */
+  AIMING: 4096,
 }
 
 export const has = (flags, bit) => (flags & bit) !== 0

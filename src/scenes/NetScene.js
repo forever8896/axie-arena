@@ -148,7 +148,7 @@ export default class NetScene extends Phaser.Scene {
   }
 
   bindInput() {
-    this.keys = this.input.keyboard.addKeys('W,A,S,D,Q,F,SPACE,SHIFT')
+    this.keys = this.input.keyboard.addKeys('W,A,S,D,Q,F,R,SPACE,SHIFT')
     this.input.on('pointerdown', p => {
       if (p.leftButtonDown()) this.want('attack')
       else if (p.rightButtonDown()) this.want('special')
@@ -202,7 +202,7 @@ export default class NetScene extends Phaser.Scene {
     this.predict.settle(delta)
     this.view.render(view, events, delta, this.predict.fighter ? {
       id: client.you, x: this.predict.x, y: this.predict.y, speed: this.predict.speed,
-    } : null, { guard: this.holdingGuard })
+    } : null, { guard: this.holdingGuard, aiming: this.holdingAim })
 
     // The shapes the HUD reads, refreshed from this frame's snapshot.
     this.fighters = [...this.view.actors.values()]
@@ -274,6 +274,11 @@ export default class NetScene extends Phaser.Scene {
     // raised it rather than after a round trip.
     const guard = k.Q.isDown || k.F.isDown
     this.holdingGuard = guard && this.predict.allows('guard')
+    // A Moonshot is aimed, not fired: the key is held while you point it, and
+    // it goes off when you let go. Both edges are read off this one level.
+    const aiming = k.R.isDown
+    this.holdingAim = aiming && (this.aimingNow || this.predict.allows('moon'))
+    this.aimingNow = this.holdingAim
     const sent = this.client.pump({
       move: {
         x: (k.D.isDown ? 1 : 0) - (k.A.isDown ? 1 : 0),
@@ -282,6 +287,7 @@ export default class NetScene extends Phaser.Scene {
       aim: this.aim,
       point: { x: world.x, y: world.y },
       guard,
+      aiming: this.holdingAim,
     }, delta)
     for (const input of sent) this.predict.step(input, input.seq)
   }

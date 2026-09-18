@@ -19,7 +19,7 @@ import { playPlate, playImpactPlate, playStatusPlate } from '../fx/SkillVfx.js'
 import { damageNumber, impact, dustEmitter } from '../fx/Juice.js'
 import { drawFighterStatus, HUD_DEPTH } from '../fx/FighterHud.js'
 import { POWERUPS } from '../arena/boonConfig.js'
-import { GUARD, phasesFor } from '../axie/combatConfig.js'
+import { GUARD, LANCE, phasesFor } from '../axie/combatConfig.js'
 import { Orb } from '../arena/PowerUps.js'
 import { Well } from '../arena/Moonwell.js'
 import { money } from '../wilds/config.js'
@@ -59,6 +59,7 @@ export default class RoomView {
       id: f.id, sprite, cls: f.cls, axieClass: f.cls, label: null, lastHp: f.hp, flags: 0,
       statusFx: this.scene.add.graphics().setDepth(9000),
       parryFx: this.scene.add.graphics(),
+      aimFx: this.scene.add.graphics(),
       dust: dustEmitter(this.scene, sprite.root),
       hudIcons: {},
       get x() { return this.sprite.x },
@@ -105,9 +106,11 @@ export default class RoomView {
       // else — it changes nothing about who blocks what.
       if (wants?.guard && actor.isPlayer && f.alive) actor.wantsGuard = true
       else if (actor.isPlayer) actor.wantsGuard = false
+      if (actor.isPlayer) actor.wantsAim = Boolean(wants?.aiming) && f.alive
       this.drawLabel(actor, f)
       drawFighterStatus(this.scene, actor.statusFx, actor.hudIcons, this.status(actor, f), now)
       this.drawParry(actor, f)
+      this.drawAim(actor, f, now)
       actor.flags = f.flags
       actor.lastHp = f.hp
     }
@@ -159,6 +162,8 @@ export default class RoomView {
       stamina: f.stamina,
       charge: f.charge,
       specialReady: actor.specialReady,
+      moon: f.moon ?? 0,
+      moonReady: (f.moon ?? 0) >= 1,
       colors: actor.colors,
       dash: { ready: (f.ready?.dash ?? 1) >= 1, fill: f.ready?.dash ?? 1 },
       parry: { ready: (f.ready?.parry ?? 1) >= 1, fill: f.ready?.parry ?? 1 },
@@ -196,6 +201,7 @@ export default class RoomView {
 
   forget(actor) {
     actor.parryFx.destroy()
+    actor.aimFx.destroy()
     actor.dust?.destroy()
     actor.sprite.destroy()
     actor.label.destroy()
@@ -470,6 +476,46 @@ export default class RoomView {
    * a swing was an animation with no reach, so there was no telling what it had
    * covered or why it missed. What you see is exactly the cone the room tested.
    */
+  /**
+   * The lane a Moonshot went down, shown for long enough to see what it hit and
+   * short enough not to clutter the fight.
+   */
+  lanceFlash(actor, e) {
+    const scene = this.scene
+    const range = e.range ?? 400
+    const half = (e.width ?? 80) / 2
+    const x = actor.x
+    const y = actor.y - 10
+    const colour = actor.colors.rim
+    const g = scene.add.graphics().setDepth(y + 4)
+    const state = { a: 1, grow: 0 }
+    const draw = () => {
+      g.clear()
+      g.save()
+      g.translateCanvas(x, y)
+      g.rotateCanvas(e.aim ?? 0)
+      const reach = range * state.grow
+      g.fillStyle(colour, (e.whiff ? 0.12 : 0.3) * state.a)
+      g.fillRect(0, -half, reach, half * 2)
+      g.lineStyle(3, e.whiff ? 0x9ecbff : 0xffe9a8, (e.whiff ? 0.4 : 0.9) * state.a)
+      g.strokeRect(0, -half, reach, half * 2)
+      g.lineStyle(5, 0xffffff, (e.whiff ? 0.3 : 0.85) * state.a)
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(reach, 0); g.strokePath()
+      g.restore()
+    }
+    // Thrown out at the speed the rules say it travels, so what you see leave
+    // the Axie is what the room resolved.
+    scene.tweens.add({
+      targets: state, grow: 1, duration: Math.min(150, (range / (e.speed ?? LANCE.speed)) * 1000),
+      ease: 'Quad.easeOut', onUpdate: draw,
+      onComplete: () => scene.tweens.add({
+        targets: state, a: 0, duration: 260, ease: 'Quad.easeIn',
+        onUpdate: draw, onComplete: () => g.destroy(),
+      }),
+    })
+    draw()
+  }
+
   zoneFlash(actor, spec, aim) {
     const scene = this.scene
     const arc = Phaser.Math.DegToRad(spec.arc ?? 100)
@@ -509,6 +555,52 @@ export default class RoomView {
    * decide not to swing, and you have to see your own opening. It is drawn from
    * the flags in the snapshot, so it appears over everyone who raises one.
    */
+  /**
+   * A Moonshot being pointed.
+   *
+   * Everyone sees this, and that is the point: standing still in the open with
+   * a line drawn out of you is what you pay for the shot. It fills from the
+   * fighter outward as the aim is held, so a rival can tell a Moonshot that is
+   * about to go off from one that was only just started.
+   */
+  drawAim(actor, f, now) {
+    const g = actor.aimFx
+    g.clear()
+    const ult = CLASS_KITS[f.cls]?.ultimate
+    // Drawn from the local key the moment it goes down, then from the room —
+    // the same reason the guard is, and it matters more here because the whole
+    // action is about where you are pointing.
+    const aiming = has(f.flags, FLAGS.AIMING) || actor.wantsAim
+    if (!f.alive || !aiming || !ult) return
+
+    const held = actor.wantsAim && !has(f.flags, FLAGS.AIMING) ? 0 : (f.aimHeld ?? 0)
+    const ready = Math.min(1, held / LANCE.minAimMs)
+    const cy = f.y - 10
+    const reach = ult.range * (0.35 + 0.65 * ready)
+    const half = ult.width / 2
+
+    // The lane it will go down: faint until it can actually be fired. Drawn in
+    // the fighter's own frame, so the maths below is a plain rectangle.
+    g.setDepth(f.y - 6)
+    g.save()
+    g.translateCanvas(f.x, cy)
+    g.rotateCanvas(f.aim)
+    g.fillStyle(actor.colors.rim, 0.07 + 0.11 * ready)
+    g.fillRect(0, -half, reach, half * 2)
+    g.lineStyle(ready >= 1 ? 2 : 1, ready >= 1 ? 0xffe9a8 : 0x9ecbff, 0.35 + 0.5 * ready)
+    g.strokeRect(0, -half, reach, half * 2)
+    // The line down the middle, which is what you actually aim with.
+    g.lineStyle(ready >= 1 ? 3 : 1.5, ready >= 1 ? 0xffd964 : 0x7ce8ff, 0.5 + 0.45 * ready)
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(reach, 0); g.strokePath()
+    if (ready >= 1) {
+      // Armed: a head on the end so it is unmistakable.
+      const pulse = 0.7 + 0.3 * Math.sin(now / 90)
+      g.fillStyle(0xffd964, 0.85 * pulse)
+      g.fillTriangle(reach, -half * 0.5, reach, half * 0.5, reach + 16, 0)
+    }
+    g.restore()
+  }
+
   drawParry(actor, f) {
     const g = actor.parryFx
     g.clear()
@@ -806,6 +898,38 @@ export default class RoomView {
         if (mine || e.by === this.you) this.scene.cameras.main.shake(120, 0.004)
         break
       }
+
+      // A Moonshot going off: the lane it was aimed down, thrown out hard and
+      // faded. This is the payoff for standing still to point it, so it is the
+      // loudest thing in the room for a moment.
+      case 'lance': {
+        if (actor) this.lanceFlash(actor, e)
+        const ult = CLASS_KITS[actor?.cls]?.ultimate
+        if (ult?.sfx) playVaried(this.scene, ult.sfx, 0.85)
+        if (ult?.anim) {
+          actor.sprite.setFacing(Math.cos(e.aim) >= 0 ? 1 : -1)
+          actor.sprite.play(ult.anim, { kind: 'attack' })
+        }
+        if (mine || e.hits) this.scene.cameras.main.shake(e.hits ? 260 : 140, e.hits ? 0.009 : 0.004)
+        break
+      }
+      case 'lance-miss':
+        if (actor) this.lanceFlash(actor, { ...e, width: CLASS_KITS[actor.cls]?.ultimate?.width ?? 80, whiff: true })
+        break
+
+      // Pointing one, and giving it up. The line itself is drawn every frame in
+      // drawAim; these are just the noises around it.
+      case 'aim-start':
+        if (actor) actor.sprite.playState('ready')
+        break
+      case 'aim-cancel':
+        if (actor) actor.wantsAim = false
+        break
+      // The Moonshot coming up. Told the same way the special is, one notch
+      // brighter, because it is the rarer of the two.
+      case 'moon-ready':
+        if (actor) playStatusPlate(this.scene, actor, 'power_gain', { size: 2.1 })
+        break
 
       // The wind-up. It is the whole reason a parry is possible: without it
       // there is nothing to read.

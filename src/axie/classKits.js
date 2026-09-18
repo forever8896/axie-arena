@@ -64,6 +64,16 @@ export const CLASS_KITS = {
       vfx: 'beast_gore', sfx: 'beast_gore_attack',
       anim: 'attack/melee/horn-gore',
     },
+    /**
+     * Each class points the same lance and gets a different one: reach, width
+     * and the one thing it does on top are the whole difference.
+     */
+    ultimate: {
+      name: 'Crescent Rush', desc: 'A goring line that hurls everything it passes aside',
+      damage: 1000, range: 420, width: 84, knockback: 420,
+      vfx: 'beast_gore', sfx: 'beast_gore_attack',
+      anim: 'attack/melee/horn-gore',
+    },
   },
   aquatic: {
     title: 'Aquatic',
@@ -81,6 +91,13 @@ export const CLASS_KITS = {
       name: 'Undertow', desc: 'An unparryable wave that knocks rivals back and slows them',
       kind: 'wave', damage: 400, range: 190, arc: 150,
       knockback: 380, slow: { factor: 0.5, duration: 2200 },
+      vfx: 'aquatic_slash', sfx: 'aquatic_slash_attack',
+      anim: 'attack/melee/tail-thrash',
+    },
+    ultimate: {
+      name: 'Tidebreak', desc: 'A short, wide surge that throws rivals back and leaves them slowed',
+      damage: 850, range: 300, width: 150, knockback: 520,
+      slow: { factor: 0.5, duration: 2400 },
       vfx: 'aquatic_slash', sfx: 'aquatic_slash_attack',
       anim: 'attack/melee/tail-thrash',
     },
@@ -104,6 +121,12 @@ export const CLASS_KITS = {
       vfx: 'plant_projectile', sfx: 'plant_projectile_attack',
       anim: 'attack/ranged/cast-high',
     },
+    ultimate: {
+      name: 'Moonbloom', desc: 'A creeping line that poisons everything it touches',
+      damage: 480, range: 380, width: 88, knockback: 160,
+      vfx: 'plant_projectile', sfx: 'plant_projectile_attack',
+      anim: 'attack/ranged/cast-high',
+    },
   },
   bird: {
     title: 'Bird',
@@ -123,6 +146,12 @@ export const CLASS_KITS = {
       // Slowed from 540 so a feather is dodgeable after a 250ms reaction
       // from typical engagement range. See docs/DESIGN.md.
       damage: 260, projectileSpeed: 460, projectileRange: 430,
+      vfx: 'bird_throw', sfx: 'bird_throw_attack',
+      anim: 'attack/ranged/cast-multi',
+    },
+    ultimate: {
+      name: 'Moonfeather', desc: 'One long, thin feather that pierces the whole arena',
+      damage: 1150, range: 620, width: 80, knockback: 120,
       vfx: 'bird_throw', sfx: 'bird_throw_attack',
       anim: 'attack/ranged/cast-multi',
     },
@@ -149,6 +178,12 @@ export const CLASS_KITS = {
       vfx: 'bug_projectile', sfx: 'bug_projectile_attack',
       anim: 'attack/melee/shrimp',
     },
+    ultimate: {
+      name: 'Hivelance', desc: 'A seeking lance that stuns everything in its path',
+      damage: 1060, range: 420, width: 108, knockback: 140, stun: 900,
+      vfx: 'bug_projectile', sfx: 'bug_projectile_attack',
+      anim: 'attack/ranged/cast-multi',
+    },
   },
   reptile: {
     title: 'Reptile',
@@ -165,6 +200,12 @@ export const CLASS_KITS = {
     special: {
       name: 'Tail Sweep', desc: 'Strike every rival around you at once',
       kind: 'radial', damage: 650, radius: 160, knockback: 300,
+      vfx: 'reptile_projectile', sfx: 'reptile_projectile_attack',
+      anim: 'attack/melee/tail-roll',
+    },
+    ultimate: {
+      name: 'Tailspike', desc: 'A heavy spike driven straight through anyone in front of it',
+      damage: 840, range: 340, width: 118, knockback: 360,
       vfx: 'reptile_projectile', sfx: 'reptile_projectile_attack',
       anim: 'attack/melee/tail-roll',
     },

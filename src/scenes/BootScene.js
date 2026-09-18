@@ -82,7 +82,7 @@ export default class BootScene extends Phaser.Scene {
     await loadSkillPlates(vfxIds, this, () => this.setBar(++vfxDone / vfxIds.length))
 
     this.setPhase('PAINTING THE MAP', 3)
-    await loadIcons([...POWERUP_ICONS, 'buff_feather', 'power_advance_shielding', 'buff_rage'], this)
+    await loadIcons([...POWERUP_ICONS, 'buff_feather', 'power_advance_shielding', 'buff_rage', 'power_energy_master'], this)
     // Little portraits of each class, for the map.
     makeMiniPortraits(this, builds)
     this.setBar(1)

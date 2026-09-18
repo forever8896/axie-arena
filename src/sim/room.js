@@ -1,7 +1,7 @@
 import SimArena from './arena.js'
 import SimFighter from './fighter.js'
 import SimBrain from './bots.js'
-import { useBasic, useSpecial, resolveSwing, SimProjectile, SimZone } from './abilities.js'
+import { useBasic, useSpecial, resolveSwing, fireLance, SimProjectile, SimZone } from './abilities.js'
 import { Rng, Vec2, clamp, distance, lerp } from './math.js'
 import { POWERUPS, POWERUP_RULES, MOONWELL, CLOSE } from '../arena/boonConfig.js'
 import { WILDS, hunterName } from '../wilds/config.js'
@@ -144,6 +144,16 @@ export default class SimRoom {
     }
     // Held first: raising a guard and swinging are mutually exclusive, and the
     // swing wins, so a player who asks for both gets the attack.
+    // Aiming a Moonshot is held like a guard: it starts when the key goes down
+    // and fires when it comes up, so both edges are read off one level.
+    if (input.aiming) {
+      f.beginAim(this.now)
+    } else if (f.aiming) {
+      if (f.releaseAim(this.now)) fireLance(f, this.now)
+    }
+    // Everything else is off the table while pointing one.
+    if (f.aiming) return
+
     if (input.guard && !input.attack) f.hold(this.now)
     if (input.attack) this.useBasic(f)
     if (input.special) this.useSpecial(f, input.point ?? { x: f.x + Math.cos(f.aim) * 200, y: f.y + Math.sin(f.aim) * 200 })

@@ -11,7 +11,7 @@
  * from its own object, the networked one from a snapshot.
  *
  * `status` is:
- *   { x, y, isPlayer, alive, hp, maxHp, shield, shielded, charge, specialReady,
+ *   { x, y, isPlayer, alive, hp, maxHp, shield, shielded, charge, specialReady, moon, moonReady,
  *     dash: {fill, ready}, parry: {fill, ready}, colors,
  *     buffs: [{ icon, color, fill }] }
  */
@@ -75,6 +75,9 @@ function drawReadyIcons(scene, g, icons, status, now, y) {
     { key: 'buff_feather', ready: status.dash.ready, fill: status.dash.fill, tint: 0x7ce8ff },
     { key: 'power_advance_shielding', ready: status.parry.ready, fill: status.parry.fill, tint: 0xffffff },
     { key: 'buff_rage', ready: status.specialReady, fill: clamp01(status.charge), tint: status.colors.body },
+    // The Moonshot's own meter, beside the special rather than sharing it: it
+    // fills at half the rate and is spent separately, so it needs its own dial.
+    { key: 'power_energy_master', ready: status.moonReady, fill: clamp01(status.moon ?? 0), tint: 0xffd964 },
     ...status.buffs.map(b => ({ key: b.icon, ready: true, fill: b.fill, tint: b.color, timed: true })),
   ]
 

@@ -1,5 +1,5 @@
 import { CHARGE_PER_HIT, TELEGRAPH_MS } from '../axie/classKits.js'
-import { GUARD, SPECIAL_TELEGRAPH_MS, damageFor } from '../axie/combatConfig.js'
+import { GUARD, LANCE, SPECIAL_TELEGRAPH_MS, damageFor } from '../axie/combatConfig.js'
 import { CONNECT_MS } from './constants.js'
 import { Vec2, clamp, distance, wrapAngle, degToRad } from './math.js'
 
@@ -69,6 +69,72 @@ export function useSpecial(fighter, targets, now, aimPoint) {
     run(fighter, spec, targets, lockedPoint)
   })
   return true
+}
+
+/**
+ * Fire the Moonshot that has been aimed.
+ *
+ * One line out from where the fighter stands, along the aim they were pointing
+ * when they let go. It pierces: everything whose body touches the line is hit,
+ * in the order it stands, so a well-pointed shot through three fighters is the
+ * reward for standing still in the open to aim it.
+ *
+ * The classes differ only in reach, width and the one rider they carry. That
+ * is enough to make bird's thin 620px needle and aquatic's 150px-wide shove
+ * feel nothing like each other, and it leaves one thing to balance.
+ */
+export function fireLance(fighter, now = fighter.now) {
+  const ult = fighter.kit?.ultimate
+  if (!ult || !fighter.alive) return false
+
+  const aim = fighter.aim
+  fighter.moon = 0
+  fighter.lockFacing(aim, 320)
+
+  const hit = []
+  for (const other of fighter.room.fighters) {
+    if (other === fighter || !other.alive || other.invulnerable) continue
+    if (!inLine(fighter, other, ult.range, ult.width, aim)) continue
+    hit.push(other)
+  }
+  // Nearest first, so knockback and stun read in the order they are seen.
+  hit.sort((a, b) => distance(fighter.x, fighter.y, a.x, a.y) - distance(fighter.x, fighter.y, b.x, b.y))
+
+  // Sized per class in classKits rather than derived: a special's damage is
+  // spread over feathers, ticks and arcs depending on the class, so there is no
+  // one number to double. Each of these is about twice what that class's
+  // special really lands, which is what LANCE.damageFactor documents.
+  const damage = ult.damage ?? damageFor(fighter.kit) * LANCE.damageFactor
+  fighter.room.event({
+    t: 'lance', id: fighter.id, kind: fighter.axieClass, aim,
+    range: ult.range, width: ult.width, speed: LANCE.speed, hits: hit.length,
+  })
+
+  for (const other of hit) {
+    other.takeDamage(damage, fighter, ult.knockback)
+    if (ult.slow) other.applySlow(ult.slow)
+    if (ult.stun) other.applyStun(ult.stun)
+    if (ult.poison) other.applyPoison(ult.poison, fighter)
+  }
+  if (!hit.length) fighter.room.event({ t: 'lance-miss', id: fighter.id, aim, range: ult.range })
+  return true
+}
+
+/**
+ * True when any part of the target's body touches the lance.
+ *
+ * A capsule, not a cone: the width does not grow with distance, so pointing it
+ * at something far away is genuinely harder than pointing it at something
+ * close. That is the aiming this is meant to ask for.
+ */
+export function inLine(fighter, target, range, width, aim = fighter.aim) {
+  const dx = target.x - fighter.x
+  const dy = target.y - fighter.y
+  // Distance along the aim, and distance out to the side of it.
+  const along = dx * Math.cos(aim) + dy * Math.sin(aim)
+  if (along < 0 || along > range) return false
+  const across = Math.abs(-dx * Math.sin(aim) + dy * Math.cos(aim))
+  return across <= width / 2 + (target.bodyRadius ?? 0)
 }
 
 /**

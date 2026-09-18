@@ -1,7 +1,7 @@
 import { CLASS_KITS, CHARGE_PER_SECOND, PARRY } from '../axie/classKits.js'
 import { Vec2, clamp, distance, wrapAngle, degToRad } from './math.js'
 import { FLAGS } from './constants.js'
-import { SWING, GUARD, STAMINA, PACE, phasesFor } from '../axie/combatConfig.js'
+import { SWING, GUARD, STAMINA, PACE, LANCE, phasesFor } from '../axie/combatConfig.js'
 
 /**
  * One Axie, as the simulation sees it: position, health, timers and the rules
@@ -34,6 +34,11 @@ export default class SimFighter {
     this.lastSpecial = -Infinity
 
     this.charge = 0
+    /** The Moonshot's own meter, filling at half the special's rate. */
+    this.moon = 0
+    /** While aiming one: when it began, and when it goes off by itself. */
+    this.aimingSince = 0
+    this.aimingUntil = 0
     this.alive = true
     this.bodyRadius = 30
 
@@ -101,6 +106,8 @@ export default class SimFighter {
   get stunned() { return this.now < this.stunUntil }
   get frozen() { return this.now < this.frozenUntil }
   get specialReady() { return this.charge >= 1 }
+  get moonReady() { return this.moon >= 1 }
+  get aiming() { return this.now < this.aimingUntil }
   get shielded() { return this.spawnShieldUntil > this.now }
   get hidden() { return this.room.arena.inBush(this.pos.x, this.pos.y) }
   get parrying() { return this.parryUntil > 0 && this.now <= this.parryUntil + PARRY.graceMs }
@@ -137,9 +144,10 @@ export default class SimFighter {
 
   get speed() {
     const slowed = this.now < this.slowUntil ? this.slowFactor : 1
-    const planted = this.parryCommitted ? PARRY.moveFactor
-      : this.winding ? SWING.moveFactor
-        : this.guarding ? GUARD.moveFactor : 1
+    const planted = this.aiming ? LANCE.moveFactor
+      : this.parryCommitted ? PARRY.moveFactor
+        : this.winding ? SWING.moveFactor
+          : this.guarding ? GUARD.moveFactor : 1
     const wind = this.buff('tailwind')?.speedMult ?? 1
     return this.baseSpeed * slowed * planted * wind * (this.casting ? 0.35 : 1)
   }
@@ -193,6 +201,44 @@ export default class SimFighter {
   canDash(now = this.now) {
     return this.alive && !this.dashing && !this.guardBroken && !this.winded &&
       now - this.lastDash >= this.dashCooldown
+  }
+
+  canMoon(now = this.now) {
+    return this.alive && !this.shielded && this.moonReady && !this.dashing && !this.stunned &&
+      !this.chargeState && !this.casting && !this.swinging && !this.parryCommitted &&
+      !this.guardBroken
+  }
+
+  /**
+   * Begin aiming a Moonshot. Held, not pressed: the meter is not spent until it
+   * actually goes off, so being interrupted mid-aim costs the opening rather
+   * than the shot.
+   */
+  beginAim(now = this.now) {
+    if (this.aiming || !this.canMoon(now)) return false
+    this.aimingSince = now
+    this.aimingUntil = now + LANCE.maxAimMs
+    this.room.event({ t: 'aim-start', id: this.id, ms: LANCE.maxAimMs })
+    return true
+  }
+
+  /** Let go. Too early and it is called off; otherwise it fires. */
+  releaseAim(now = this.now) {
+    if (!this.aiming) return false
+    const held = now - this.aimingSince
+    this.aimingUntil = 0
+    if (held < LANCE.minAimMs) {
+      this.room.event({ t: 'aim-cancel', id: this.id })
+      return false
+    }
+    return true
+  }
+
+  /** Knocked out of it: the aim is lost, the meter is not. */
+  cancelAim() {
+    if (!this.aiming) return
+    this.aimingUntil = 0
+    this.room.event({ t: 'aim-cancel', id: this.id })
   }
 
   canParry(now = this.now) {
@@ -368,6 +414,15 @@ export default class SimFighter {
     const wasReady = this.charge >= 1
     this.charge = Math.min(1, this.charge + amount)
     if (!wasReady && this.charge >= 1) this.room.event({ t: 'charged', id: this.id })
+    this.addMoon(amount * LANCE.chargeFactor)
+  }
+
+  /** The Moonshot's meter. Half the rate, so about half as often. */
+  addMoon(amount) {
+    if (!this.kit?.ultimate) return
+    const wasReady = this.moon >= 1
+    this.moon = Math.min(1, this.moon + amount)
+    if (!wasReady && this.moon >= 1) this.room.event({ t: 'moon-ready', id: this.id })
   }
 
   // --- Being hit ----------------------------------------------------------
@@ -405,6 +460,9 @@ export default class SimFighter {
   applyStun(duration) {
     const now = this.now
     if (now < this.stunImmuneUntil) return
+    // Nobody keeps a Moonshot pointed through a stun — but a stun shrugged off
+    // by immunity is not a stun, and must not cost the aim either.
+    this.cancelAim()
     this.stunUntil = Math.max(this.stunUntil, now + duration)
     this.stunImmuneUntil = this.stunUntil + 1500
     this.intent.set(0, 0)
@@ -583,6 +641,9 @@ export default class SimFighter {
       hp: Math.round(this.hp),
       maxHp: this.maxHp,
       charge: Math.round(this.charge * 100) / 100,
+      moon: Math.round(this.moon * 100) / 100,
+      /** How far into the aim, so the telegraph grows on every screen alike. */
+      aimHeld: this.aiming ? Math.round(this.now - this.aimingSince) : 0,
       alive: this.alive,
       speed: Math.round(this.vel.length()),
       // Velocity, so a client predicting its own movement can carry on from
@@ -594,7 +655,8 @@ export default class SimFighter {
         (this.casting ? FLAGS.CASTING : 0) | (this.shielded ? FLAGS.SHIELDED : 0) |
         (this.chargeState ? FLAGS.CHARGING : 0) | (this.hidden ? FLAGS.HIDDEN : 0) |
         (this.guarding ? FLAGS.GUARDING : 0) | (this.winding ? FLAGS.WINDING : 0) |
-        (this.riposting ? FLAGS.RIPOSTE : 0) | (this.guardBroken ? FLAGS.GUARD_BROKEN : 0),
+        (this.riposting ? FLAGS.RIPOSTE : 0) | (this.guardBroken ? FLAGS.GUARD_BROKEN : 0) |
+        (this.aiming ? FLAGS.AIMING : 0),
       shield: Math.round(this.shieldHp),
       buffs: Object.entries(this.buffs)
         .filter(([, b]) => b && this.now < b.until)

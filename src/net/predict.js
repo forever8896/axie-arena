@@ -99,6 +99,7 @@ export default class Prediction {
     // Stamina and a broken guard both change how fast you move, so the local
     // copy has to carry them or it will predict a sprint the room refuses.
     f.stamina = (snap.stamina ?? 1) * STAMINA.max
+    f.moon = snap.moon ?? 0
     f.guardBrokenUntil = has(snap.flags, FLAGS.GUARD_BROKEN) ? this.room.now + 1 : 0
   }
 
@@ -197,6 +198,7 @@ export default class Prediction {
     if (action === 'dash') return f.canDash(now)
     if (action === 'parry') return f.canParry(now)
     if (action === 'guard') return f.canGuard(now)
+    if (action === 'moon') return f.canMoon(now)
     if (action === 'special') return f.canSpecial(now)
     return false
   }
