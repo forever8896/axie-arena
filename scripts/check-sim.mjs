@@ -196,6 +196,9 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
     wait(LANCE.minAimMs + 40)
     B.pos.set(A.x + Math.cos(A.aim) * Math.min(200, ult.range * 0.5), A.y + Math.sin(A.aim) * Math.min(200, ult.range * 0.5))
     r.applyInput(A, { move: { x: 0, y: 0 }, aim: A.aim, aiming: false })
+    // The bolt crosses the ground before it strikes, so the blow lands a beat
+    // after the shot rather than with it.
+    wait((ult.range / LANCE.speed) * 1000 + 120)
     check(`${cls} Moonshot connects`, 1e6 - B.hp > 0, `${Math.round(1e6 - B.hp)} damage`)
   }
 
@@ -240,9 +243,12 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
     A.aim = 0
     marks.forEach((m, i) => m.pos.set(420 + i * 140, 300))
     r.applyInput(A, { move: { x: 0, y: 0 }, aim: 0, aiming: false })
+    for (let t = 0; t < (CLASS_KITS.bird.ultimate.range / LANCE.speed) * 1000 + 160; t += DT) { r.step(DT); r.drainEvents() }
     check('a Moonshot pierces everyone on its line', marks.every(m => m.hp < m.maxHp),
       marks.map(m => Math.round(m.maxHp - m.hp)).join('/'))
-    check('and spends the meter', A.moon === 0, `moon ${A.moon}`)
+    // Spent, then already refilling: the room has been stepped to let the bolt
+    // arrive, and the meter fills the whole time.
+    check('and spends the meter', A.moon < 0.05, `moon ${A.moon.toFixed(3)}`)
   }
 
   // Pointed elsewhere it hits nobody — the whole reason it is aimed.

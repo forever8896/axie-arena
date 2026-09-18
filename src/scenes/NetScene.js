@@ -278,6 +278,14 @@ export default class NetScene extends Phaser.Scene {
     // it goes off when you let go. Both edges are read off this one level.
     const aiming = k.R.isDown
     this.holdingAim = aiming && (this.aimingNow || this.predict.allows('moon'))
+    // Pressing it before the meter is full did nothing whatsoever — no line, no
+    // sound, no refusal — which is the same thing a broken key looks like.
+    if (aiming && !this.holdingAim && !this.refusedAim) {
+      this.refusedAim = true
+      this.view.refuse(this.client.you)
+    } else if (!aiming) {
+      this.refusedAim = false
+    }
     this.aimingNow = this.holdingAim
     const sent = this.client.pump({
       move: {

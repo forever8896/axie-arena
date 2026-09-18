@@ -81,6 +81,18 @@ try {
       if ((me()?.flags & ${AIMING}) === 0) fired = true
     }
     out.aimEnded = fired
+    // The bolt has to be on screen long enough to be watched crossing the
+    // arena — a shot that resolves in a flicker is the thing being fixed.
+    let boltFrames = 0
+    let sawBolt = false
+    const t0 = performance.now()
+    for (let f = 0; f < 90; f++) {
+      await frame()
+      const live = s.view.scene.tweens.getTweens().length
+      if (live > 0) { sawBolt = true; boltFrames++ }
+    }
+    out.boltMs = Math.round(performance.now() - t0)
+    out.sawBolt = sawBolt
     for (let f = 0; f < 40; f++) await frame()
     out.quietAfterShot = actor()?.aimFx?.commandBuffer?.length ?? -1
     out.moon = me()?.moon ?? null
@@ -94,7 +106,12 @@ try {
   check('the room confirms the aim', r.roomSawAim === true)
   check('the line stays while held', r.lineWhileHeld > 0, `${r.lineWhileHeld} commands`)
   check('letting go ends the aim', r.aimEnded === true)
-  check('and clears the line', r.quietAfterShot === 0, `${r.quietAfterShot} commands`)
+  // -1 means there is no longer an actor to ask: this runs in a live room and
+  // the hunters in it do not pause for a test. No Axie is also no line.
+  check('and clears the line', r.quietAfterShot <= 0,
+    r.quietAfterShot < 0 ? 'the Axie went down first' : `${r.quietAfterShot} commands`)
+
+  check('the bolt is drawn travelling, not flickered', r.sawBolt === true)
 
   const errs = await b.eval('(window.__errors ?? []).length')
   check('nothing threw', errs === 0, `${errs} errors`)

@@ -477,8 +477,27 @@ export default class RoomView {
    * covered or why it missed. What you see is exactly the cone the room tested.
    */
   /**
-   * The lane a Moonshot went down, shown for long enough to see what it hit and
-   * short enough not to clutter the fight.
+   * An action the player asked for that the rules will not give them yet.
+   *
+   * Only the Moonshot uses this so far, because it is the one thing with a
+   * meter long enough that a player will press it while it is still filling and
+   * conclude the key is dead.
+   */
+  refuse(id) {
+    const actor = this.actors.get(id)
+    if (!actor || actor.refusedAt > this.scene.time.now - 600) return
+    actor.refusedAt = this.scene.time.now
+    playStatusPlate(this.scene, actor, 'power_gain', { size: 0.9, tint: 0x8899aa })
+  }
+
+  /**
+   * The bolt a Moonshot sends down its lane.
+   *
+   * This was a rectangle that grew over 150ms and faded, which at 620px of
+   * reach is not a projectile, it is a flicker — there was nothing to watch
+   * travel and nothing to tell a hit from a miss. It is now a head that crosses
+   * the arena at the speed the rules use, with the lane burning behind it, and
+   * the room strikes each fighter as it reaches them.
    */
   lanceFlash(actor, e) {
     const scene = this.scene
@@ -486,30 +505,44 @@ export default class RoomView {
     const half = (e.width ?? 80) / 2
     const x = actor.x
     const y = actor.y - 10
+    const aim = e.aim ?? 0
     const colour = actor.colors.rim
-    const g = scene.add.graphics().setDepth(y + 4)
-    const state = { a: 1, grow: 0 }
+    const whiff = Boolean(e.whiff)
+
+    const g = scene.add.graphics().setDepth(y + 6)
+    const state = { travel: 0, fade: 1 }
     const draw = () => {
       g.clear()
       g.save()
       g.translateCanvas(x, y)
-      g.rotateCanvas(e.aim ?? 0)
-      const reach = range * state.grow
-      g.fillStyle(colour, (e.whiff ? 0.12 : 0.3) * state.a)
-      g.fillRect(0, -half, reach, half * 2)
-      g.lineStyle(3, e.whiff ? 0x9ecbff : 0xffe9a8, (e.whiff ? 0.4 : 0.9) * state.a)
-      g.strokeRect(0, -half, reach, half * 2)
-      g.lineStyle(5, 0xffffff, (e.whiff ? 0.3 : 0.85) * state.a)
-      g.beginPath(); g.moveTo(0, 0); g.lineTo(reach, 0); g.strokePath()
+      g.rotateCanvas(aim)
+      const head = range * state.travel
+      // The lane it has already crossed, burning down behind the head.
+      const tail = Math.max(0, head - range * 0.55)
+      g.fillStyle(colour, (whiff ? 0.1 : 0.26) * state.fade)
+      g.fillRect(tail, -half, head - tail, half * 2)
+      g.lineStyle(2, whiff ? 0x9ecbff : 0xffe9a8, (whiff ? 0.3 : 0.7) * state.fade)
+      g.beginPath(); g.moveTo(tail, -half); g.lineTo(head, -half); g.strokePath()
+      g.beginPath(); g.moveTo(tail, half); g.lineTo(head, half); g.strokePath()
+      // The core, brightest right behind the head.
+      g.lineStyle(6, 0xffffff, (whiff ? 0.28 : 0.85) * state.fade)
+      g.beginPath(); g.moveTo(tail, 0); g.lineTo(head, 0); g.strokePath()
+      if (state.travel < 1) {
+        // The head itself, which is the thing the eye actually follows.
+        g.fillStyle(0xffffff, 0.95 * state.fade)
+        g.fillCircle(head, 0, half * 0.55)
+        g.fillStyle(whiff ? 0x9ecbff : 0xffd964, 0.75 * state.fade)
+        g.fillCircle(head, 0, half * 0.9)
+      }
       g.restore()
     }
-    // Thrown out at the speed the rules say it travels, so what you see leave
-    // the Axie is what the room resolved.
+
     scene.tweens.add({
-      targets: state, grow: 1, duration: Math.min(150, (range / (e.speed ?? LANCE.speed)) * 1000),
-      ease: 'Quad.easeOut', onUpdate: draw,
+      targets: state, travel: 1,
+      duration: e.travelMs ?? Math.round((range / (e.speed ?? LANCE.speed)) * 1000),
+      ease: 'Linear', onUpdate: draw,
       onComplete: () => scene.tweens.add({
-        targets: state, a: 0, duration: 260, ease: 'Quad.easeIn',
+        targets: state, fade: 0, duration: 220, ease: 'Quad.easeIn',
         onUpdate: draw, onComplete: () => g.destroy(),
       }),
     })
@@ -913,8 +946,10 @@ export default class RoomView {
         if (mine || e.hits) this.scene.cameras.main.shake(e.hits ? 260 : 140, e.hits ? 0.009 : 0.004)
         break
       }
+      // A Moonshot that found nobody still crosses the arena: a miss you
+      // cannot see is indistinguishable from a key that did nothing.
       case 'lance-miss':
-        if (actor) this.lanceFlash(actor, { ...e, width: CLASS_KITS[actor.cls]?.ultimate?.width ?? 80, whiff: true })
+        if (actor) this.lanceFlash(actor, { ...e, whiff: true })
         break
 
       // Pointing one, and giving it up. The line itself is drawn every frame in

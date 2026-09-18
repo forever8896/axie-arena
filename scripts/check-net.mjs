@@ -17,6 +17,7 @@ import { attachNet } from '../src/net/wsServer.js'
 import * as P from '../src/net/protocol.js'
 import { WILDS, ROOMS } from '../src/wilds/config.js'
 import { FLAGS, has } from '../src/sim/constants.js'
+import { LANCE } from '../src/axie/combatConfig.js'
 
 const SPEED = 4              // simulated milliseconds per real millisecond
 const started = Date.now()
@@ -197,6 +198,63 @@ try {
       await sleep(16)
     }
     check('and lowers when the key comes up', !has(a.me()?.flags ?? 0, FLAGS.GUARDING), `flags ${a.me()?.flags}`)
+
+    // The Moonshot, all the way through the wire rather than in the simulation
+    // alone. It is aimed and held, so everything that can go wrong between a
+    // key and a hit — the level never arriving, the aim going stale, the shot
+    // firing down the wrong line — goes wrong somewhere in here.
+    const sim = roomSim('glade')
+    const mine = fighterOf(a)
+    // One of the stand-ins already in the room, borrowed rather than added: a
+    // fighter conjured for a test carries a stake, and the room's books have to
+    // balance at the end of this file.
+    const mark = sim.fighters.find(f => f.alive && f.id !== a.you && f.brain)
+    const markWas = { brain: mark.brain, hp: mark.hp, maxHp: mark.maxHp, x: mark.x, y: mark.y }
+    mark.brain = null
+    mark.maxHp = 1e6
+    mark.hp = 1e6
+    // A fighter that just walked in is spawn-shielded and briefly invulnerable,
+    // and a Moonshot rightly passes straight through it. A target mid-fight is
+    // neither, so neither is this one.
+    mark.spawnShieldUntil = 0
+    mark.invulnerableUntil = 0
+    mine.moon = 1
+
+    const place = () => {
+      mine.pos.set(900, 900)
+      mine.vel.set(0, 0)
+      mark.pos.set(900 + 160, 900)
+      mark.vel.set(0, 0)
+    }
+    place()
+    a.events.length = 0
+    for (let i = 0; i < 28; i++) {
+      place()
+      mark.spawnShieldUntil = 0
+      mark.invulnerableUntil = 0
+      a.drive({ mv: [0, 0], aim: 0, gd: 0, extra: { ul: 1 } })
+      await sleep(16)
+    }
+    check('an aimed Moonshot reaches the room', has(a.me()?.flags ?? 0, FLAGS.AIMING), `flags ${a.me()?.flags}`)
+
+    place()
+    mark.spawnShieldUntil = 0
+    mark.invulnerableUntil = 0
+    a.drive({ mv: [0, 0], aim: 0, gd: 0, extra: { ul: 0 } })
+    await waitFor(() => a.events.some(e => e.t === 'lance' && e.id === a.you), 2000, 'a lance event')
+    const shot = a.events.find(e => e.t === 'lance' && e.id === a.you)
+    check('letting go fires it', true, `hits ${shot?.hits} range ${shot?.range} width ${shot?.width}`)
+    // The bolt crosses the arena before it strikes, so the damage arrives a
+    // beat after the shot rather than with it.
+    await waitFor(() => 1e6 - mark.hp > 0, 2000, 'the bolt to arrive')
+    check('and it damages what it was pointed at', 1e6 - mark.hp > 0,
+      `${Math.round(1e6 - mark.hp)} damage | me ${Math.round(mine.x)},${Math.round(mine.y)} aim ${mine.aim.toFixed(2)} | mark ${Math.round(mark.x)},${Math.round(mark.y)} shielded ${mark.shielded} invuln ${mark.invulnerable} alive ${mark.alive}`)
+    check('and spends the meter', fighterOf(a).moon < 0.05, `moon ${fighterOf(a).moon}`)
+    // Put it back the way it was found.
+    mark.brain = markWas.brain
+    mark.maxHp = markWas.maxHp
+    mark.hp = markWas.hp
+    mark.pos.set(markWas.x, markWas.y)
   }
 
   // --- Inputs are acknowledged, so a client can reconcile -------------------

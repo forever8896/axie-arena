@@ -105,18 +105,35 @@ export function fireLance(fighter, now = fighter.now) {
   // one number to double. Each of these is about twice what that class's
   // special really lands, which is what LANCE.damageFactor documents.
   const damage = ult.damage ?? damageFor(fighter.kit) * LANCE.damageFactor
+  const travelMs = (ult.range / LANCE.speed) * 1000
   fighter.room.event({
     t: 'lance', id: fighter.id, kind: fighter.axieClass, aim,
     range: ult.range, width: ult.width, speed: LANCE.speed, hits: hit.length,
+    travelMs: Math.round(travelMs),
   })
 
+  // Who it hits is decided now, along the line it was aimed down — but each one
+  // is struck as the bolt reaches them, nearest first. It used to land on
+  // everyone the instant it was released while the drawing was still crossing
+  // the arena, so a shot that hit three fighters read as a flicker and a
+  // mystery. The rules and the picture now agree about when.
   for (const other of hit) {
-    other.takeDamage(damage, fighter, ult.knockback)
-    if (ult.slow) other.applySlow(ult.slow)
-    if (ult.stun) other.applyStun(ult.stun)
-    if (ult.poison) other.applyPoison(ult.poison, fighter)
+    const reach = distance(fighter.x, fighter.y, other.x, other.y)
+    const at = Math.max(0, (reach / LANCE.speed) * 1000)
+    fighter.room.after(at, () => {
+      if (!other.alive) return
+      other.takeDamage(damage, fighter, ult.knockback)
+      if (ult.slow) other.applySlow(ult.slow)
+      if (ult.stun) other.applyStun(ult.stun)
+      if (ult.poison) other.applyPoison(ult.poison, fighter)
+    })
   }
-  if (!hit.length) fighter.room.event({ t: 'lance-miss', id: fighter.id, aim, range: ult.range })
+  if (!hit.length) {
+    fighter.room.event({
+      t: 'lance-miss', id: fighter.id, aim, range: ult.range,
+      width: ult.width, speed: LANCE.speed, travelMs: Math.round(travelMs),
+    })
+  }
   return true
 }
 

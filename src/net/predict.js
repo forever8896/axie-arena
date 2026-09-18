@@ -123,6 +123,11 @@ export default class Prediction {
     // movement is the thing a round trip ruins. Everything else — whether a
     // blow landed, whether a parry caught it — stays the room's to say.
     if (input.guard && !input.act?.includes('attack')) f.hold(this.room.now)
+    // Aiming plants you almost still, and the room knows it. A client that did
+    // not predict that ran at full speed for a round trip and was dragged back
+    // every snapshot, which is the one thing prediction exists to prevent.
+    if (input.aiming) f.beginAim(this.room.now)
+    else if (f.aiming) f.releaseAim(this.room.now)
     if (input.act?.includes('dash')) f.dash(f.intent, this.room.now)
     this.room.step(TICK_MS)
     f.update(TICK_MS)
