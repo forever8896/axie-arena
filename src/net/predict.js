@@ -45,6 +45,14 @@ class StubRoom {
 
   event() {}
 
+  /**
+   * A predicted swing goes through the same code as a real one, and that code
+   * asks the room to resolve contact. Whether anything was hit is never the
+   * client's to say, so this is where the prediction stops: the swing exists
+   * here only so that its timing, its stamina and its footwork are right.
+   */
+  strike() {}
+
   after(ms, fn) {
     this.timers.push({ at: this.now + ms, fn })
   }
@@ -129,6 +137,11 @@ export default class Prediction {
     if (input.aiming) f.beginAim(this.room.now)
     else if (f.aiming) f.releaseAim(this.room.now)
     if (input.act?.includes('dash')) f.dash(f.intent, this.room.now)
+    // The swing is predicted for one reason: without it this client believed it
+    // could always attack, so every click past the first replayed the wind-up
+    // animation from the start and the swing looked like it was being reset.
+    // The room was refusing those clicks all along; only the screen was lying.
+    if (input.act?.includes('attack')) f.beginSwing(f.kit?.basic, [], this.room.now)
     this.room.step(TICK_MS)
     f.update(TICK_MS)
   }
