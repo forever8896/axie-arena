@@ -19,6 +19,7 @@ import SimFighter from '../sim/fighter.js'
 import SimArena from '../sim/arena.js'
 import { Vec2 } from '../sim/math.js'
 import { FLAGS, has } from '../sim/constants.js'
+import { STAMINA } from '../axie/combatConfig.js'
 import { TICK_MS } from './protocol.js'
 
 /** Corrections smaller than this are eased away; larger ones are obeyed at once. */
@@ -95,6 +96,10 @@ export default class Prediction {
     f.lastDash = this.room.now - (snap.ready?.dash ?? 1) * f.dashCooldown
     f.lastParry = this.room.now - (snap.ready?.parry ?? 1) * 1000
     f.spawnShieldUntil = has(snap.flags, FLAGS.SHIELDED) ? this.room.now + 1 : 0
+    // Stamina and a broken guard both change how fast you move, so the local
+    // copy has to carry them or it will predict a sprint the room refuses.
+    f.stamina = (snap.stamina ?? 1) * STAMINA.max
+    f.guardBrokenUntil = has(snap.flags, FLAGS.GUARD_BROKEN) ? this.room.now + 1 : 0
   }
 
   /**
@@ -116,6 +121,7 @@ export default class Prediction {
     // Only the dash is predicted among the actions: it is movement, and
     // movement is the thing a round trip ruins. Everything else — whether a
     // blow landed, whether a parry caught it — stays the room's to say.
+    if (input.guard && !input.act?.includes('attack')) f.hold(this.room.now)
     if (input.act?.includes('dash')) f.dash(f.intent, this.room.now)
     this.room.step(TICK_MS)
     f.update(TICK_MS)
@@ -133,7 +139,8 @@ export default class Prediction {
     // knocked back, dead — prediction has nothing to add and everything to get
     // wrong. Follow the authority and take control back afterwards.
     const driven = !snap.alive ||
-      has(snap.flags, FLAGS.STUNNED) || has(snap.flags, FLAGS.CHARGING) || has(snap.flags, FLAGS.CASTING)
+      has(snap.flags, FLAGS.STUNNED) || has(snap.flags, FLAGS.CHARGING) ||
+      has(snap.flags, FLAGS.CASTING) || has(snap.flags, FLAGS.GUARD_BROKEN)
     if (driven) {
       this.following = true
       this.adopt(snap)

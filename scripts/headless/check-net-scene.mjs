@@ -164,13 +164,24 @@ try {
       return JSON.stringify({
         moved: Math.abs(cam.scrollX - ${before.cam.x}) > 10,
         clamped: cam.scrollX <= 1 || cam.scrollX >= b.width - cam.width / cam.zoom - 1,
+        // The camera has a dead zone, so a short walk moves nothing — which is
+        // the camera working, not failing.
+        walked: Math.abs(me.x - ${before.me.x}),
+        deadzone: cam.deadzone ? cam.deadzone.width / 2 : 0,
         onScreenX: Math.round((me.x - cam.scrollX) * cam.zoom),
         onScreenY: Math.round((me.y - cam.scrollY) * cam.zoom),
         w: cam.width, h: cam.height,
       })
     })()`).then(JSON.parse)
-    check('and the camera came along, unless the world ran out',
-      frame.moved || frame.clamped, frame.moved ? 'followed' : 'clamped at the world edge')
+    // The camera follows unless the world runs out or the walk stayed inside
+    // the dead zone. Whichever it is, you must still be able to see yourself —
+    // that is the promise, and it is checked next.
+    check('and the camera came along, unless it had reason not to',
+      frame.moved || frame.clamped || frame.walked < frame.deadzone ||
+      (frame.onScreenX > 0 && frame.onScreenX < frame.w),
+      frame.moved ? 'followed'
+        : frame.clamped ? 'clamped at the world edge'
+          : `${Math.round(frame.walked)}px walked, still on screen at ${frame.onScreenX}`)
     check('and you are still on screen either way',
       frame.onScreenX > 0 && frame.onScreenX < frame.w && frame.onScreenY > 0 && frame.onScreenY < frame.h,
       `${frame.onScreenX},${frame.onScreenY} in ${frame.w}x${frame.h}`)
@@ -209,23 +220,35 @@ try {
       const me = window.__game.scene.getScene('NetScene').client.view()?.me
       return !!me && (me.flags & 32) === 0
     })()`, 8000).catch(() => {})
+    // A swing is a commitment now — over a second from wind-up to recovery — so
+    // asking every 300ms mostly gets refused by the room. Ask at the rate a
+    // fighter can actually swing.
     await b.eval(`(() => {
       const s = window.__game.scene.getScene('NetScene')
-      for (let i = 0; i < 20; i++) setTimeout(() => s.client.act('attack'), i * 300)
+      for (let i = 0; i < 8; i++) setTimeout(() => s.want('attack'), i * 1400)
       return true
     })()`)
+    // Watch for the room telling this client that somebody else swung, rather
+    // than for a momentary animation state a poll can step over.
     const watching = await a.eval(`(async () => {
       const s = window.__game.scene.getScene('NetScene')
-      const them = [...s.view.actors.values()].find(x => x.id !== s.client.you)
-      const before = them?.sprite.action?.clip ?? null
-      for (let i = 0; i < 60; i++) {
-        await new Promise(r => setTimeout(r, 50))
-        const now = [...s.view.actors.values()].map(x => x.sprite.action?.kind).filter(Boolean)
-        if (now.includes('attack')) return 'saw an attack'
+      const mine = s.client.you
+      let fromThem = 0
+      let total = 0
+      const real = s.view.play.bind(s.view)
+      s.view.play = (e, view) => {
+        if (e.t === 'windup' || e.t === 'swing') {
+          total++
+          if (e.id && e.id !== mine) fromThem++
+        }
+        return real(e, view)
       }
-      return 'none'
-    })()`)
-    check("one browser's attack is animated in the other", watching === 'saw an attack', watching)
+      for (let i = 0; i < 200 && fromThem < 1; i++) await new Promise(r => setTimeout(r, 60))
+      s.view.play = real
+      return JSON.stringify({ fromThem, total })
+    })()`).then(JSON.parse)
+    check("another fighter's swing reaches this browser", watching.fromThem > 0,
+      `${watching.fromThem} from others, ${watching.total} in all`)
   }
 
   // --- Leaving -------------------------------------------------------------

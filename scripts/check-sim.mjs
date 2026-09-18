@@ -12,6 +12,14 @@ import { CLASS_KITS, PARRY } from '../src/axie/classKits.js'
 import { WILDS, ROOMS } from '../src/wilds/config.js'
 import { MOONWELL, POWERUPS } from '../src/arena/boonConfig.js'
 import { CONNECT_MS } from '../src/sim/constants.js'
+import { SWING, GUARD, STAMINA, PACE, phasesFor, damageFor } from '../src/axie/combatConfig.js'
+
+/** A swing winds up before it lands; wait out the longest of them. */
+const CONTACT = Math.max(...Object.values(CLASS_KITS).map(k => phasesFor(k).windupMs)) + 60
+/** Damage is paced down so a fight holds more than one decision. */
+const paced = raw => Math.round(raw * PACE.damage)
+/** What one blow is worth: the class's old rate, delivered in one commitment. */
+const blow = cls => damageFor(CLASS_KITS[cls])
 
 const DT = 1000 / 60
 let pass = 0
@@ -46,10 +54,10 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
     B.hp = 1e6
     A.aim = 0
     r.useBasic(A)
-    wait(CONNECT_MS + 60)
+    wait(CONTACT)
     const dealt = 1e6 - B.hp
-    const expected = CLASS_KITS[cls].basic.damage
-    check(`${cls} basic deals its damage`, dealt === expected, `${dealt} of ${expected}`)
+    const expected = paced(blow(cls)) * (CLASS_KITS[cls].basic.hits ?? 1)
+    check(`${cls} basic lands after its wind-up`, dealt === expected, `${dealt} of ${expected}`)
   }
 }
 
@@ -58,46 +66,86 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
   const { r, A, B, wait } = duel({ a: 'beast', gap: 60 })
   A.aim = Math.PI     // aimed away
   r.useBasic(A)
-  wait(CONNECT_MS + 60)
+  wait(CONTACT)
   check('a blow aimed away misses', B.hp === B.maxHp, `hp ${B.hp}`)
 
   const far = duel({ a: 'beast', gap: 400 })
   far.A.aim = 0
   far.r.useBasic(far.A)
-  far.wait(CONNECT_MS + 60)
+  far.wait(CONTACT)
   check('a blow out of reach misses', far.B.hp === far.B.maxHp, `hp ${far.B.hp}`)
 }
 
-// --- Parry ----------------------------------------------------------------
+// --- The guard ------------------------------------------------------------
+//
+// The parry's 200ms window is gone. In its place a guard you hold: a decision
+// with a cost rather than a reaction inside a gate nobody on a real connection
+// can hit. See docs/COMBAT.md.
 {
   const { r, A, B, wait } = duel({ a: 'beast', b: 'reptile', gap: 60 })
   B.aim = Math.PI
-  r.useBasic(A)
-  wait(20)
-  B.parry(r.now)
-  wait(CONNECT_MS + 80)
-  check('a parry stops the blow', B.hp === B.maxHp, `hp ${B.hp}/${B.maxHp}`)
-  check('a parry staggers the attacker', A.stunned, `stun in ${Math.round(A.stunUntil - r.now)}ms`)
-  check('a parry refunds charge', B.charge >= PARRY.chargeReward - 0.01, B.charge.toFixed(2))
+  const full = B.maxHp
+  // Raise the guard and hold it, the way a player holds the key.
+  const holdFor = ms => { const end = r.now + ms; while (r.now < end) { B.hold(r.now); r.step(DT) } }
+  B.hold(r.now)
+  holdFor(GUARD.raiseMs + 20)
+  check('a guard comes up', B.guarding, `stamina ${Math.round(B.stamina)}`)
 
-  const back = duel({ a: 'beast', b: 'reptile', gap: 60 })
-  back.B.aim = 0      // facing away from the attacker
-  back.r.useBasic(back.A)
-  back.wait(20)
-  back.B.parry(back.r.now)
-  back.wait(CONNECT_MS + 80)
-  check('a parry does not cover your back', back.B.hp < back.B.maxHp, `hp ${back.B.hp}`)
+  r.useBasic(A)
+  holdFor(CONTACT)
+  const taken = full - B.hp
+  const unguarded = paced(blow('beast'))
+  check('a guard takes most of a blow', taken > 0 && taken < unguarded * 0.5, `${taken} of ${unguarded}`)
+  check('and blocking earns a riposte', B.riposting, `${Math.round(B.riposteUntil - r.now)}ms left`)
+  check('and costs stamina', B.stamina < STAMINA.max, Math.round(B.stamina))
+
+  // A riposte hits harder and comes out faster: the opening is real.
+  const before = A.hp
+  B.aim = Math.PI          // A stands to B's left; face them to answer
+  r.useBasic(B)
+  wait(SWING.windupMs * GUARD.riposteWindup + 60)
+  const answered = before - A.hp
+  check('a riposte answers harder', answered > paced(blow('reptile')), `${answered} dealt`)
+}
+{
+  // A guard is not a wall: hold it long enough and it breaks.
+  const { r, B, wait } = duel({ a: 'beast', b: 'plant', gap: 60 })
+  B.stamina = 8
+  B.hold(r.now)
+  const end = r.now + GUARD.raiseMs + 400
+  while (r.now < end) { B.hold(r.now); r.step(DT) }
+  check('an empty guard breaks', B.guardBroken, `stamina ${Math.round(B.stamina)}`)
+  check('and leaves you open', !B.canAttack(r.now) && !B.guarding, 'cannot act')
+}
+{
+  // Facing still matters: a guard covers the front, not the back.
+  const { r, A, B, wait } = duel({ a: 'beast', b: 'reptile', gap: 60 })
+  B.aim = 0          // facing away from A
+  const holdFor = ms => { const end = r.now + ms; while (r.now < end) { B.hold(r.now); r.step(DT) } }
+  holdFor(GUARD.raiseMs + 20)
+  const full = B.hp
+  r.useBasic(A)
+  holdFor(CONTACT)
+  check('a guard does not cover your back', full - B.hp === paced(blow('beast')), `${full - B.hp} taken`)
+}
+{
+  // Stamina is the clock the fight is played against.
+  const { r, A, wait } = duel({ a: 'beast', gap: 60 })
+  A.stamina = STAMINA.floor - 1
+  check('a winded fighter cannot swing', !A.canAttack(r.now), `stamina ${Math.round(A.stamina)}`)
+  wait(STAMINA.idleMs + 1200)
+  check('and gets it back by not spending', A.canAttack(r.now), `stamina ${Math.round(A.stamina)}`)
 }
 
 // --- Poison, stun, slow, shields ------------------------------------------
 {
   const { r, A, B, wait } = duel({ a: 'bug', gap: 60 })
   r.useBasic(A)
-  wait(CONNECT_MS + 60)
+  wait(CONTACT)
   const afterHit = B.hp
   wait(CLASS_KITS.bug.basic.poison.interval * 3 + 100)
   const poisonDealt = afterHit - B.hp
-  const expected = CLASS_KITS.bug.basic.poison.damage * CLASS_KITS.bug.basic.poison.ticks
+  const expected = paced(CLASS_KITS.bug.basic.poison.damage) * CLASS_KITS.bug.basic.poison.ticks
   check('poison ticks for its full course', poisonDealt === expected, `${poisonDealt} of ${expected}`)
 }
 {
@@ -105,15 +153,17 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
   B.applyPowerUp('bulwark', POWERUPS.bulwark)
   const shield = B.shieldHp
   B.takeDamage(200, A, 0)
-  check('a shield soaks damage first', B.hp === B.maxHp && B.shieldHp === shield - 200, `shield ${B.shieldHp}`)
-  B.takeDamage(shield, A, 0)
+  check('a shield soaks damage first', B.hp === B.maxHp && B.shieldHp === shield - paced(200), `shield ${B.shieldHp}`)
+  // Enough to spend the rest of the shield and still reach health, whatever
+  // the pacing takes off it.
+  B.takeDamage(B.shieldHp / PACE.damage + 200, A, 0)
   check('damage past the shield lands', B.hp < B.maxHp, `hp ${B.hp}`)
 }
 {
   const { r, A, B } = duel({ a: 'beast', gap: 60 })
   A.applyPowerUp('fury', POWERUPS.fury)
   B.takeDamage(100, A, 0)
-  check('fury adds 30%', B.maxHp - B.hp === 130, `${B.maxHp - B.hp}`)
+  check('fury adds 30%', B.maxHp - B.hp === paced(130), `${B.maxHp - B.hp}`)
 }
 
 // --- Specials -------------------------------------------------------------

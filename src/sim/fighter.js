@@ -1,6 +1,7 @@
 import { CLASS_KITS, CHARGE_PER_SECOND, PARRY } from '../axie/classKits.js'
 import { Vec2, clamp, distance, wrapAngle, degToRad } from './math.js'
 import { FLAGS } from './constants.js'
+import { SWING, GUARD, STAMINA, PACE, phasesFor } from '../axie/combatConfig.js'
 
 /**
  * One Axie, as the simulation sees it: position, health, timers and the rules
@@ -46,6 +47,16 @@ export default class SimFighter {
     this.parryUntil = 0
     this.parryRecoverUntil = 0
     this.parrySucceeded = false
+
+    // The reworked fight: a swing in phases, a guard you hold, and one bar
+    // behind everything you can spend. See docs/COMBAT.md.
+    this.swing = null            // { startedAt, releaseAt, endsAt, aim, spec, riposte }
+    this.guardUntil = 0          // held: refreshed every tick the button is down
+    this.guardReadyAt = 0        // a guard takes a moment to come up
+    this.riposteUntil = 0        // earned by blocking: a real opening to answer
+    this.guardBrokenUntil = 0
+    this.stamina = STAMINA.max
+    this.spentAt = -Infinity
 
     this.poisonTicks = 0
     this.poisonNext = 0
@@ -101,9 +112,34 @@ export default class SimFighter {
 
   get parryCommitted() { return this.parrying || this.parryRecovering }
 
+  /** Holding a guard, and it has finished coming up. */
+  get guarding() {
+    return this.now < this.guardUntil && this.now >= this.guardReadyAt && !this.guardBroken
+  }
+
+  get guardBroken() { return this.now < this.guardBrokenUntil }
+
+  /** Mid-swing: winding up, striking, or open afterwards. */
+  get swinging() { return Boolean(this.swing) }
+
+  get winding() { return Boolean(this.swing) && this.now < this.swing.releaseAt }
+
+  /** Earned by blocking a blow: a window to answer it. */
+  get riposting() { return this.now < this.riposteUntil }
+
+  /** Everything that costs stamina goes through here. */
+  spend(amount) {
+    this.stamina = Math.max(0, this.stamina - amount)
+    this.spentAt = this.now
+  }
+
+  get winded() { return this.stamina < STAMINA.floor }
+
   get speed() {
     const slowed = this.now < this.slowUntil ? this.slowFactor : 1
-    const planted = this.parryCommitted ? PARRY.moveFactor : 1
+    const planted = this.parryCommitted ? PARRY.moveFactor
+      : this.winding ? SWING.moveFactor
+        : this.guarding ? GUARD.moveFactor : 1
     const wind = this.buff('tailwind')?.speedMult ?? 1
     return this.baseSpeed * slowed * planted * wind * (this.casting ? 0.35 : 1)
   }
@@ -125,7 +161,13 @@ export default class SimFighter {
 
   canAttack(now = this.now) {
     return this.alive && !this.shielded && !this.dashing && !this.stunned && !this.chargeState &&
-      !this.casting && !this.parryCommitted && now - this.lastAttack >= this.attackCooldown
+      !this.casting && !this.swinging && !this.guardBroken && !this.winded &&
+      now - this.lastAttack >= this.attackCooldown
+  }
+
+  canGuard(now = this.now) {
+    return this.alive && !this.dashing && !this.stunned && !this.chargeState &&
+      !this.casting && !this.swinging && !this.guardBroken && this.stamina > 0
   }
 
   canSpecial(now = this.now) {
@@ -134,7 +176,8 @@ export default class SimFighter {
   }
 
   canDash(now = this.now) {
-    return this.alive && !this.dashing && !this.parryCommitted && now - this.lastDash >= this.dashCooldown
+    return this.alive && !this.dashing && !this.guardBroken && !this.winded &&
+      now - this.lastDash >= this.dashCooldown
   }
 
   canParry(now = this.now) {
@@ -159,6 +202,102 @@ export default class SimFighter {
     this.vel.copy(d.scale(this.dashSpeed))
     this.room.event({ t: 'dash', id: this.id, dir: { x: d.x, y: d.y } })
     return true
+  }
+
+  /**
+   * Begin a swing. It winds up where everyone can see it, lands, and leaves you
+   * open — and after the commit point you cannot call it off.
+   *
+   * The old attack was a cone resolved 165ms after the button, which over a
+   * network meant the blow landed before its victim had been shown the swing.
+   */
+  beginSwing(spec, targets, now = this.now) {
+    if (!this.canAttack(now)) return false
+    const riposte = this.riposting
+    const phases = phasesFor(this.kit)
+    const windup = phases.windupMs * (riposte ? GUARD.riposteWindup : 1)
+
+    this.lastAttack = now
+    this.spend(phases.stamina)
+    this.guardUntil = 0            // you cannot swing from behind your own guard
+    if (riposte) this.riposteUntil = 0
+    this.swing = {
+      spec,
+      targets,
+      aim: this.aim,
+      riposte,
+      startedAt: now,
+      commitAt: now + Math.min(SWING.commitMs, windup),
+      releaseAt: now + windup,
+      contactAt: now + windup,
+      endsAt: now + windup + phases.releaseMs + phases.recoveryMs,
+      struck: false,
+    }
+    this.lockFacing(this.aim, windup + SWING.releaseMs)
+    this.room.event({
+      t: 'windup', id: this.id, aim: this.aim, ms: Math.round(windup),
+      range: spec.range, arc: spec.arc, riposte,
+    })
+    return true
+  }
+
+  /** Called every tick: carries a swing through its phases. */
+  updateSwing() {
+    const s = this.swing
+    if (!s) return
+    // Being stunned, broken or knocked out of it cancels the whole thing.
+    if (!this.alive || this.stunned || this.guardBroken || this.chargeState) {
+      this.swing = null
+      this.room.event({ t: 'swing-cancel', id: this.id })
+      return
+    }
+    if (!s.struck && this.now >= s.contactAt) {
+      s.struck = true
+      // The aim is the one the swing started with: what was drawn is what lands.
+      this.room.event({ t: 'swing', id: this.id, aim: s.aim, index: 0, riposte: s.riposte })
+      this.room.strike(this, s)
+    }
+    if (this.now >= s.endsAt) this.swing = null
+  }
+
+  /**
+   * Hold a guard. Called every tick the button is down, so it is a state the
+   * player maintains rather than a moment they have to hit.
+   */
+  hold(now = this.now) {
+    if (!this.canGuard(now)) return false
+    if (this.guardUntil <= now) {
+      // Coming up fresh: it costs something and takes a moment, so it cannot be
+      // thrown up after seeing the blow.
+      this.spend(GUARD.raiseCost)
+      this.guardReadyAt = now + GUARD.raiseMs
+      this.room.event({ t: 'guard-up', id: this.id })
+    }
+    // Refreshed each tick; it drops the moment the button does.
+    this.guardUntil = now + 90
+    return true
+  }
+
+  /** A blow arrived while guarding. Returns what got through. */
+  block(attacker, amount) {
+    const toAttacker = Math.atan2(attacker.y - this.y, attacker.x - this.x)
+    const covered = Math.abs(wrapAngle(toAttacker - this.aim)) <= degToRad(GUARD.arcDeg) / 2
+    if (!covered) return amount
+
+    // Guarding is not immunity: it costs stamina in proportion to the blow, and
+    // a big enough hit on a tired guard breaks it.
+    this.spend(amount / 28)
+    this.riposteUntil = this.now + GUARD.riposteMs
+    this.room.event({ t: 'block', id: this.id, by: attacker.id, x: this.x, y: this.y })
+    if (this.stamina <= 0) this.breakGuard()
+    return Math.round(amount * GUARD.damageTaken)
+  }
+
+  breakGuard() {
+    this.guardUntil = 0
+    this.riposteUntil = 0
+    this.guardBrokenUntil = this.now + GUARD.breakStunMs
+    this.room.event({ t: 'guard-break', id: this.id })
   }
 
   /** Raise a parry: a short window, then a recovery if nothing lands. */
@@ -274,7 +413,10 @@ export default class SimFighter {
 
     this.poisonTicks--
     this.poisonNext = now + this.poisonSpec.interval
-    const dealt = this.absorb(this.poisonSpec.damage)
+    // Paced like every other source of damage. It used to go straight to health
+    // and so would have been the one thing the rework did not slow down, making
+    // poison quietly stronger than everything it was balanced against.
+    const dealt = this.absorb(Math.round(this.poisonSpec.damage * PACE.damage))
     this.hp -= dealt
     this.room.event({ t: 'tick', id: this.id, amount: dealt, kind: 'poison' })
     if (this.hp <= 0) this.fall(this.poisonFrom)
@@ -282,7 +424,12 @@ export default class SimFighter {
 
   takeDamage(amount, from, knockback = 210, { projectile = false } = {}) {
     if (!this.alive || this.invulnerable) return
-    amount = Math.round(amount * (from?.damageMult ?? 1))
+    // Fights are paced to hold two decisions rather than one, so every blow
+    // lands a little softer than it used to.
+    amount = Math.round(amount * PACE.damage * (from?.damageMult ?? 1))
+    // A raised guard takes most of it, costs stamina in proportion, and earns
+    // the window to answer. Everything the guard does happens here.
+    if (from && from !== this && this.guarding) amount = this.block(from, amount)
     if (from && from !== this) {
       this.lastHurtAt = this.now
       this.lastHitBy = from
@@ -340,6 +487,16 @@ export default class SimFighter {
     if (!this.alive) return
 
     if (this.spawnShieldUntil && this.now >= this.spawnShieldUntil) this.spawnShieldUntil = 0
+
+    // Stamina comes back once you stop spending, and holding a guard is
+    // spending. This is the clock a fight is actually played against.
+    if (this.guarding) this.spend(GUARD.drainPerSec * step)
+    if (this.stamina <= 0 && this.guarding) this.breakGuard()
+    if (this.now - this.spentAt > STAMINA.idleMs) {
+      this.stamina = Math.min(STAMINA.max, this.stamina + STAMINA.regenPerSec * step)
+    }
+    this.updateSwing()
+
     if (this.frozen) return
 
     if (this.stunned) {
@@ -420,7 +577,9 @@ export default class SimFighter {
       flags: (this.dashing ? FLAGS.DASHING : 0) | (this.stunned ? FLAGS.STUNNED : 0) |
         (this.parrying ? FLAGS.PARRYING : 0) | (this.parryRecovering ? FLAGS.PARRY_RECOVER : 0) |
         (this.casting ? FLAGS.CASTING : 0) | (this.shielded ? FLAGS.SHIELDED : 0) |
-        (this.chargeState ? FLAGS.CHARGING : 0) | (this.hidden ? FLAGS.HIDDEN : 0),
+        (this.chargeState ? FLAGS.CHARGING : 0) | (this.hidden ? FLAGS.HIDDEN : 0) |
+        (this.guarding ? FLAGS.GUARDING : 0) | (this.winding ? FLAGS.WINDING : 0) |
+        (this.riposting ? FLAGS.RIPOSTE : 0) | (this.guardBroken ? FLAGS.GUARD_BROKEN : 0),
       shield: Math.round(this.shieldHp),
       buffs: Object.entries(this.buffs)
         .filter(([, b]) => b && this.now < b.until)
@@ -432,6 +591,12 @@ export default class SimFighter {
         dash: Math.round(clamp((this.now - this.lastDash) / this.dashCooldown, 0, 1) * 100) / 100,
         parry: Math.round(clamp((this.now - this.lastParry) / PARRY.cooldownMs, 0, 1) * 100) / 100,
       },
+      // The bar a fight is played against, and how far through a swing is, so
+      // the wind-up can be drawn as the warning it is meant to be.
+      stamina: Math.round(clamp(this.stamina / STAMINA.max, 0, 1) * 100) / 100,
+      wind: this.swing
+        ? Math.round(clamp((this.now - this.swing.startedAt) / (this.swing.releaseAt - this.swing.startedAt), 0, 1) * 100) / 100
+        : 0,
       bounty: this.wilds ? Math.round(this.wilds.bounty * 1000) / 1000 : null,
       leaving: Boolean(this.wilds?.leaving),
       channel: this.channel

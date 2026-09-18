@@ -177,7 +177,7 @@ export default class RoomClient {
    *
    * Returns each input it sent, so the caller can predict with it.
    */
-  pump({ move = { x: 0, y: 0 }, aim = 0, point = null } = {}, delta = P.TICK_MS) {
+  pump({ move = { x: 0, y: 0 }, aim = 0, point = null, guard = false } = {}, delta = P.TICK_MS) {
     if (this.status !== 'playing') return []
     // A long stall (an alt-tab, a slow load) is not a backlog of intent worth
     // replaying: catch up a little, then carry on from now.
@@ -193,6 +193,7 @@ export default class RoomClient {
         aim,
         act,
         point,
+        guard,
       }
       this.send(P.input({
         seq: input.seq,
@@ -200,6 +201,7 @@ export default class RoomClient {
         aim,
         act,
         pt: point ? [Math.round(point.x), Math.round(point.y)] : null,
+        gd: guard ? 1 : 0,
       }))
       sent.push(input)
     }

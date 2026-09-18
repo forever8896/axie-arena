@@ -14,6 +14,7 @@ import { attachNet } from '../src/net/wsServer.js'
 import RoomClient, { INTERP_MS } from '../src/net/client.js'
 import { FLAGS, has } from '../src/sim/constants.js'
 import * as P from '../src/net/protocol.js'
+import { LIVE_ROOM } from '../src/wilds/config.js'
 
 let pass = 0
 let fail = 0
@@ -34,7 +35,14 @@ async function waitFor(fn, ms = 3000, what = 'condition') {
 }
 
 const server = createServer((req, res) => res.end('ok'))
-const net = attachNet(server)
+// A second, empty room. Interpolation is about drawing, and in a room full of
+// hunters a walk is interrupted by collisions and combat — which measures the
+// arena rather than the renderer.
+const QUIET = {
+  id: 'quiet', name: 'Quiet Field', stake: 0.1, currency: 'AXS',
+  blurb: 'Nobody here.', hunters: [0, 0],
+}
+const net = attachNet(server, { rooms: [LIVE_ROOM, QUIET] })
 await new Promise(resolve => server.listen(0, resolve))
 const url = `ws://127.0.0.1:${server.address().port}/ws`
 
@@ -80,11 +88,21 @@ try {
 
   // --- Interpolation -------------------------------------------------------
   {
+    // In the empty room, where a walk is only a walk.
+    const alone = new RoomClient({ url, name: 'Alone' })
+    await alone.connect({ room: 'quiet', cls: 'beast' })
+    await frames(alone, 300)
     // Walking in a straight line: between two snapshots the drawn position has
     // to move in small steps, not sit still and then jump 20 times a second.
-    const views = await frames(client, 900, { move: { x: 1, y: 0 }, aim: 0 })
+    const views = await frames(alone, 900, { move: { x: 1, y: 0 }, aim: 0 })
     const mine = views.map(v => v.me).filter(Boolean)
-    const hops = mine.slice(1).map((m, i) => Math.hypot(m.x - mine[i].x, m.y - mine[i].y))
+    // Only the frames where the room says this fighter is moving. A fighter
+    // accelerating from rest, or walking into a wall, is legitimately still,
+    // and counting those frames measures the arena rather than the renderer.
+    const hops = mine.slice(1)
+      .map((m, i) => ({ d: Math.hypot(m.x - mine[i].x, m.y - mine[i].y), moving: m.speed > 20 }))
+      .filter(h => h.moving)
+      .map(h => h.d)
     const moved = hops.filter(h => h > 0.01).length
     const biggest = Math.max(...hops)
     // A frame here and there repeats a position: the render clock has not
@@ -101,6 +119,7 @@ try {
     check('and no frame jumps a whole snapshot', biggest < 40, `biggest hop ${biggest.toFixed(1)}px`)
     check('the walk actually went somewhere', mine.at(-1).x - mine[0].x > 40,
       `${Math.round(mine.at(-1).x - mine[0].x)}px`)
+    alone.close()
   }
 
   // --- What the view carries ----------------------------------------------

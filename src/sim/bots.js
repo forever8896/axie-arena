@@ -39,6 +39,9 @@ export default class SimBrain {
     this.stateUntil = 0
     this.wanderTarget = null
     this.parryFocus = null
+    // When this stand-in first noticed a wind-up, so it reacts like a person
+    // rather than on the exact frame.
+    this.sawWindup = -Infinity
   }
 
   get rng() { return this.room.rng }
@@ -50,6 +53,12 @@ export default class SimBrain {
 
     const target = this.nearest(targets)
     const dist = target ? distance(me.x, me.y, target.x, target.y) : Infinity
+
+    // When this stand-in first saw the wind-up it is now reacting to. Reading
+    // one takes a moment, the way it does for a person.
+    if (target?.winding && this.sawWindup < target.swing.startedAt) {
+      this.sawWindup = target.swing.startedAt
+    }
 
     // While parrying, keep facing the threat being parried.
     const focus = me.parryCommitted && this.parryFocus?.alive ? this.parryFocus : target
@@ -113,10 +122,29 @@ export default class SimBrain {
 
       case 'strike':
         me.intent.set(0, 0)
-        // Don't swing into a parry you have had time to see.
-        if (target?.parrying && now - target.lastParry >= this.noticeDelay) {
+        // A wind-up is information, and a stand-in reads it like anyone else:
+        // guard what is coming, then answer it. This is the whole point of the
+        // reworked fight — the decision is made before the blow, not inside a
+        // window nobody can hit.
+        if (target?.winding && dist <= target.attackRange * 1.2 && now - this.sawWindup > this.noticeDelay) {
+          this.state = 'guard'
+          this.stateUntil = now + 900
+          break
+        }
+        // They are open: either recovering from a swing, or their guard broke.
+        if (target?.guardBroken || (target?.swinging && !target.winding)) {
+          if (this.room.useBasic(me)) {
+            this.state = 'backoff'
+            this.stateUntil = now + this.backoffTime
+          }
+          break
+        }
+        // Swinging into a raised guard is how a fight is lost slowly.
+        // The room's own randomness, not the global one: two rooms with the
+        // same seed have to play out the same fight.
+        if (target?.guarding && this.room.rng.chance(0.75)) {
           this.state = 'bait'
-          this.stateUntil = target.parryRecoverUntil
+          this.stateUntil = now + 700
           break
         }
         if (this.room.useBasic(me)) {
@@ -124,6 +152,22 @@ export default class SimBrain {
           this.stateUntil = now + this.backoffTime
         } else if (dist > me.attackRange) {
           this.state = 'chase'
+        }
+        break
+
+      // Hold a guard while the blow comes in, then take the opening it earns.
+      case 'guard':
+        me.intent.set(0, 0)
+        me.hold(now)
+        if (me.riposting && dist <= me.attackRange) {
+          if (this.room.useBasic(me)) {
+            this.state = 'backoff'
+            this.stateUntil = now + this.backoffTime
+          }
+          break
+        }
+        if (now >= this.stateUntil || !target?.alive || me.winded) {
+          this.state = dist <= me.attackRange ? 'strike' : 'chase'
         }
         break
 

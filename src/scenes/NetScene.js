@@ -148,7 +148,7 @@ export default class NetScene extends Phaser.Scene {
   }
 
   bindInput() {
-    this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,SHIFT')
+    this.keys = this.input.keyboard.addKeys('W,A,S,D,Q,F,SPACE,SHIFT')
     this.input.on('pointerdown', p => {
       if (p.leftButtonDown()) this.want('attack')
       else if (p.rightButtonDown()) this.want('special')
@@ -156,8 +156,9 @@ export default class NetScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-SPACE', () => this.want('dash'))
     this.input.keyboard.on('keydown-SHIFT', () => this.want('dash'))
     this.input.keyboard.on('keydown-E', () => this.want('special'))
-    this.input.keyboard.on('keydown-Q', () => this.want('parry'))
-    this.input.keyboard.on('keydown-F', () => this.want('parry'))
+    // The guard is held rather than pressed: it is a state you maintain, and
+    // the decision is whether to spend stamina on it, not whether you can hit a
+    // 200ms window.
     this.input.keyboard.on('keydown-ESC', () => this.wilds?.requestLeave() ?? this.backToLobby())
     // A panel is waiting for an answer; Enter takes the one it recommends.
     this.input.keyboard.on('keydown-ENTER', () => {
@@ -269,6 +270,7 @@ export default class NetScene extends Phaser.Scene {
     const pointer = this.input.activePointer
     const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y)
     this.aim = Math.atan2(world.y - me.y, world.x - me.x)
+    const guard = k.Q.isDown || k.F.isDown
     const sent = this.client.pump({
       move: {
         x: (k.D.isDown ? 1 : 0) - (k.A.isDown ? 1 : 0),
@@ -276,6 +278,7 @@ export default class NetScene extends Phaser.Scene {
       },
       aim: this.aim,
       point: { x: world.x, y: world.y },
+      guard,
     }, delta)
     for (const input of sent) this.predict.step(input, input.seq)
   }

@@ -13,6 +13,7 @@
  * Usage: node scripts/check-windows.mjs [ping]
  */
 import { CLASS_KITS, PARRY, TELEGRAPH_MS } from '../src/axie/classKits.js'
+import { SWING, GUARD, STAMINA, SPECIAL_TELEGRAPH_MS, phasesFor } from '../src/axie/combatConfig.js'
 import { CONNECT_MS } from '../src/sim/constants.js'
 import { INTERP_MS } from '../src/net/client.js'
 import { TICK_MS, SNAPSHOT_EVERY } from '../src/net/protocol.js'
@@ -43,21 +44,39 @@ console.log(`A player sees the room ${Math.round(staleness)}ms late:`)
 console.log(`  ${PING_MS}ms round trip + ${INTERP_MS}ms interpolation + ${Math.round(TICK_MS * SNAPSHOT_EVERY)}ms between snapshots`)
 console.log(`So a window they must hit on reaction needs to be at least ${Math.round(needed)}ms.\n`)
 
-// --- The windows the combat asks a player to hit ----------------------------
+// --- The reworked fight, in src/sim ----------------------------------------
 
-check('parry window', PARRY.windowMs)
-check('special telegraph', TELEGRAPH_MS)
-check('time from swing to contact', CONNECT_MS)
-
-// A whiffed parry leaves an opening the other player must see and punish.
-check('opening after a whiffed parry', PARRY.recoveryMs)
-
-// Cooldowns are not reactions; they are pacing. Shown for context.
-check('parry cooldown', PARRY.cooldownMs, { mustReact: false })
-
+console.log('THE REWORKED FIGHT (multiplayer)\n')
+// The wind-up is the warning: the whole window in which to move, guard, or
+// decide to trade. It is per class now — a heavier blow is slower to start —
+// so the lightest one is the one that has to clear the bar.
 for (const [cls, kit] of Object.entries(CLASS_KITS)) {
-  check(`${cls}: recovery between blows`, kit.basic.cooldown, { mustReact: false })
+  check(`${cls}: warning before its blow`, phasesFor(kit).windupMs)
 }
+// After the guard is up, blocking is automatic — but it has to be raised in
+// time, which is the decision this replaces the parry with.
+const lightest = Math.min(...Object.values(CLASS_KITS).map(k => phasesFor(k).windupMs))
+check('raising a guard against the fastest', lightest - GUARD.raiseMs)
+check('riposte after a block', GUARD.riposteMs)
+check('opening after the fastest whiff',
+  Math.min(...Object.values(CLASS_KITS).map(k => phasesFor(k).recoveryMs)))
+check('special telegraph', SPECIAL_TELEGRAPH_MS)
+
+console.log('\nPacing, which is not reacted to:\n')
+for (const [cls, kit] of Object.entries(CLASS_KITS)) {
+  const p = phasesFor(kit)
+  check(`${cls}: a swing start to finish`,
+    p.windupMs + p.releaseMs + p.recoveryMs, { mustReact: false })
+}
+check('guard held before it empties',
+  (STAMINA.max / GUARD.drainPerSec) * 1000, { mustReact: false })
+check('stamina back from empty',
+  (STAMINA.max / STAMINA.regenPerSec) * 1000 + STAMINA.idleMs, { mustReact: false })
+
+console.log('\nTHE OLD FIGHT (single-player Wilds, for comparison)\n')
+check('parry window', PARRY.windowMs)
+check('time from swing to contact', CONNECT_MS)
+check('opening after a whiffed parry', PARRY.recoveryMs)
 
 console.log(`\n${pass}/${pass + fail} windows are inside human reach at ${PING_MS}ms`)
 if (fail) {

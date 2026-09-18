@@ -19,6 +19,7 @@ import { playPlate, playImpactPlate, playStatusPlate } from '../fx/SkillVfx.js'
 import { damageNumber, impact, dustEmitter } from '../fx/Juice.js'
 import { drawFighterStatus, HUD_DEPTH } from '../fx/FighterHud.js'
 import { POWERUPS } from '../arena/boonConfig.js'
+import { GUARD } from '../axie/combatConfig.js'
 import { Orb } from '../arena/PowerUps.js'
 import { Well } from '../arena/Moonwell.js'
 import { money } from '../wilds/config.js'
@@ -149,6 +150,7 @@ export default class RoomView {
       hp: f.hp,
       maxHp: f.maxHp,
       shield: f.shield ?? 0,
+      stamina: f.stamina,
       charge: f.charge,
       specialReady: actor.specialReady,
       colors: actor.colors,
@@ -405,6 +407,41 @@ export default class RoomView {
   }
 
   /**
+   * A blow being wound up: the cone it will sweep, filling as it comes.
+   *
+   * This is the single most important thing on the screen in the reworked
+   * fight. It is the information the whole thing is built on — move out of it,
+   * raise a guard into it, or trade with it — and it is drawn for long enough
+   * that a player on a real connection can actually act on it.
+   */
+  windup(actor, e) {
+    const scene = this.scene
+    const g = scene.add.graphics().setDepth(-19)
+    const arc = Phaser.Math.DegToRad(e.arc ?? 100)
+    const range = e.range ?? 96
+    const colour = e.riposte ? 0xffd964 : actor.colors.rim
+    const state = { t: 0 }
+    const draw = () => {
+      g.clear()
+      const x = actor.x
+      const y = actor.y
+      // The outline is the whole cone; the fill grows to show the time left.
+      g.lineStyle(2, colour, 0.5 + state.t * 0.4)
+      g.beginPath()
+      g.arc(x, y, range, e.aim - arc / 2, e.aim + arc / 2)
+      g.strokePath()
+      g.fillStyle(colour, 0.10 + state.t * 0.22)
+      g.slice(x, y, range * (0.25 + 0.75 * state.t), e.aim - arc / 2, e.aim + arc / 2)
+      g.fillPath()
+    }
+    draw()
+    scene.tweens.add({
+      targets: state, t: 1, duration: e.ms ?? 560, ease: 'Sine.easeIn',
+      onUpdate: draw, onComplete: () => g.destroy(),
+    })
+  }
+
+  /**
    * The cone a swing sweeps, flashed where it landed.
    *
    * Every basic attack in the local game draws this, and nothing drew it here:
@@ -453,8 +490,40 @@ export default class RoomView {
   drawParry(actor, f) {
     const g = actor.parryFx
     g.clear()
+    const guarding = has(f.flags, FLAGS.GUARDING)
+    const broken = has(f.flags, FLAGS.GUARD_BROKEN)
+    const riposte = has(f.flags, FLAGS.RIPOSTE)
     const parrying = has(f.flags, FLAGS.PARRYING)
     const recovering = has(f.flags, FLAGS.PARRY_RECOVER)
+
+    if (f.alive && (guarding || broken || riposte)) {
+      const r = 30 + 22
+      const half = Phaser.Math.DegToRad(GUARD.arcDeg) / 2
+      const cy = f.y - 14
+      g.setDepth(f.y + 5)
+      if (broken) {
+        // Shattered: the opening everyone can see.
+        g.lineStyle(3, 0xff8098, 0.8)
+        for (let i = 0; i < 5; i++) {
+          const a0 = f.aim - half + (i / 5) * half * 2
+          g.beginPath(); g.arc(f.x, cy, r + 4, a0, a0 + half / 10); g.strokePath()
+        }
+      } else if (guarding) {
+        // Held: thickness shows what is left in the bar behind it.
+        const left = Math.max(0.15, f.stamina ?? 1)
+        g.lineStyle(9, 0x1d2b12, 0.35)
+        g.beginPath(); g.arc(f.x, cy, r, f.aim - half, f.aim + half); g.strokePath()
+        g.lineStyle(3 + 5 * left, 0x7ce8ff, 0.9)
+        g.beginPath(); g.arc(f.x, cy, r, f.aim - half, f.aim + half); g.strokePath()
+      }
+      if (riposte) {
+        // Earned: answer now.
+        g.lineStyle(3, 0xffd964, 0.9)
+        g.beginPath(); g.arc(f.x, cy, r + 9, f.aim - half, f.aim + half); g.strokePath()
+      }
+      return
+    }
+
     if (!f.alive || (!parrying && !recovering)) return
 
     const r = 30 + 22
@@ -593,6 +662,36 @@ export default class RoomView {
     const kit = f ? CLASS_KITS[f.cls] : null
 
     switch (e.t) {
+      // The wind-up: a blow is coming, from there, in this long. Everything the
+      // reworked fight asks of a player depends on being able to see this.
+      case 'windup':
+        if (actor && kit?.basic) this.windup(actor, e)
+        if (kit?.basic?.sfx) playVaried(this.scene, kit.basic.sfx, 0.22)
+        break
+      case 'swing-cancel':
+        actor?.sprite.flash(0x9aa88a, 90)
+        break
+      case 'guard-up':
+        playSfx(this.scene, 'shield', { volume: 0.3 })
+        break
+      case 'block':
+        if (actor) {
+          playStatusPlate(this.scene, actor, 'shield', { size: 1.5 })
+          playSfx(this.scene, 'shield', { volume: 0.7 })
+          actor.sprite.flash(0xbfe6ff, 110)
+        }
+        if (e.x != null) impact(this.scene, e.x, e.y - 8, 0x7ce8ff, 0.8)
+        break
+      case 'guard-break':
+        if (actor) {
+          actor.sprite.playState('stun', { loop: true, holdMs: 600, kind: 'stagger' })
+          actor.sprite.flash(0xff8098, 200)
+          playStatusPlate(this.scene, actor, 'debuff_apply', { size: 1.8 })
+        }
+        playSfx(this.scene, 'stunned', { volume: 0.6 })
+        if (mine) this.scene.cameras.main.shake(180, 0.005)
+        break
+
       // Your own swing was already played the moment you clicked; playing the
       // room's copy of it would restart the animation a round trip later. The
       // sound still comes from here, because the room decides whether the swing

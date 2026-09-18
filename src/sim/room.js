@@ -1,7 +1,7 @@
 import SimArena from './arena.js'
 import SimFighter from './fighter.js'
 import SimBrain from './bots.js'
-import { useBasic, useSpecial, SimProjectile, SimZone } from './abilities.js'
+import { useBasic, useSpecial, resolveSwing, SimProjectile, SimZone } from './abilities.js'
 import { Rng, Vec2, clamp, distance, lerp } from './math.js'
 import { POWERUPS, POWERUP_RULES, MOONWELL, CLOSE } from '../arena/boonConfig.js'
 import { WILDS, hunterName } from '../wilds/config.js'
@@ -110,6 +110,11 @@ export default class SimRoom {
     return useBasic(f, this.fighters, this.now)
   }
 
+  /** A swing has reached its contact frame: resolve what it hits. */
+  strike(fighter, swing) {
+    resolveSwing(fighter, swing)
+  }
+
   useSpecial(f, aimPoint) {
     return useSpecial(f, this.fighters, this.now, aimPoint)
   }
@@ -137,6 +142,9 @@ export default class SimRoom {
     if (input.move) {
       f.intent.set(clamp(input.move.x, -1, 1), clamp(input.move.y, -1, 1))
     }
+    // Held first: raising a guard and swinging are mutually exclusive, and the
+    // swing wins, so a player who asks for both gets the attack.
+    if (input.guard && !input.attack) f.hold(this.now)
     if (input.attack) this.useBasic(f)
     if (input.special) this.useSpecial(f, input.point ?? { x: f.x + Math.cos(f.aim) * 200, y: f.y + Math.sin(f.aim) * 200 })
     if (input.dash) f.dash(f.intent, this.now)

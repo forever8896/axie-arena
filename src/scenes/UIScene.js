@@ -43,7 +43,9 @@ export default class UIScene extends Phaser.Scene {
     }).setOrigin(1, 0).setDepth(500)
 
     this.hint = this.add.text(34, this.scale.height - 40,
-      'WASD  MOVE     MOUSE  AIM     LEFT  ATTACK     RIGHT / E  SPECIAL     Q  PARRY     SPACE  DASH     M  MUTE', {
+      this.game_?.scene.key === 'NetScene'
+        ? 'WASD  MOVE     MOUSE  AIM     LEFT  ATTACK     RIGHT / E  SPECIAL     HOLD Q  GUARD     SPACE  DASH     M  MUTE'
+        : 'WASD  MOVE     MOUSE  AIM     LEFT  ATTACK     RIGHT / E  SPECIAL     Q  PARRY     SPACE  DASH     M  MUTE', {
         fontFamily: MONO, fontSize: '12px', color: '#b9c4a6',
       })
 

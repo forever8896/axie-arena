@@ -1,4 +1,5 @@
 import { CHARGE_PER_HIT, TELEGRAPH_MS } from '../axie/classKits.js'
+import { GUARD, SPECIAL_TELEGRAPH_MS, damageFor } from '../axie/combatConfig.js'
 import { CONNECT_MS } from './constants.js'
 import { Vec2, clamp, distance, wrapAngle, degToRad } from './math.js'
 
@@ -10,24 +11,32 @@ import { Vec2, clamp, distance, wrapAngle, degToRad } from './math.js'
  * timings, with the drawing left to the client.
  */
 
+/**
+ * Ask for a swing. It winds up first, and the room resolves it when it lands.
+ *
+ * The blow no longer happens inside this call: the fighter carries it through
+ * wind-up, contact and recovery, so what an opponent sees is a commitment they
+ * have time to answer rather than damage that has already happened.
+ */
 export function useBasic(fighter, targets, now) {
   const spec = fighter.kit?.basic
-  if (!spec || !fighter.canAttack(now)) return false
-  fighter.lastAttack = now
+  if (!spec) return false
+  return fighter.beginSwing(spec, targets, now)
+}
 
+/** The cone, resolved at the moment of contact. Called by the fighter. */
+export function resolveSwing(fighter, swing) {
+  const spec = swing.spec
   const hits = spec.hits ?? 1
-  const strike = i => {
-    if (!fighter.alive || fighter.stunned) return
-    // The direction is fixed when the blow starts, so the hit lands where the
-    // swing was drawn even if the aim has moved on.
-    const aim = fighter.aim
-    fighter.lockFacing(aim, CONNECT_MS + 60)
-    fighter.room.event({ t: 'swing', id: fighter.id, aim, index: i })
-    fighter.room.after(CONNECT_MS, () => coneHit(fighter, spec, targets, aim))
+  coneHit(fighter, spec, swing.targets, swing.aim, swing.riposte)
+  // Multi-hit kits land their extra blows inside the release window.
+  for (let i = 1; i < hits; i++) {
+    fighter.room.after(i * 110, () => {
+      if (!fighter.alive || fighter.stunned) return
+      fighter.room.event({ t: 'swing', id: fighter.id, aim: swing.aim, index: i })
+      coneHit(fighter, spec, swing.targets, swing.aim, swing.riposte)
+    })
   }
-  strike(0)
-  for (let i = 1; i < hits; i++) fighter.room.after(i * 150, () => strike(i))
-  return true
 }
 
 /**
@@ -47,9 +56,12 @@ export function useSpecial(fighter, targets, now, aimPoint) {
 
   const lockedAim = fighter.aim
   const lockedPoint = { x: aimPoint?.x ?? fighter.x + Math.cos(lockedAim) * 200, y: aimPoint?.y ?? fighter.y + Math.sin(lockedAim) * 200 }
-  fighter.room.event({ t: 'telegraph', id: fighter.id, kind: spec.kind, aim: lockedAim, point: lockedPoint })
+  fighter.room.event({
+    t: 'telegraph', id: fighter.id, kind: spec.kind, aim: lockedAim, point: lockedPoint,
+    ms: SPECIAL_TELEGRAPH_MS,
+  })
 
-  fighter.room.after(TELEGRAPH_MS, () => {
+  fighter.room.after(SPECIAL_TELEGRAPH_MS, () => {
     fighter.casting = false
     if (!fighter.alive || fighter.stunned) return
     fighter.aim = lockedAim
@@ -64,7 +76,7 @@ export function useSpecial(fighter, targets, now, aimPoint) {
  * reach and arc from where the attacker stands, along the aim locked when the
  * swing began, and a hit counts when the body touches the cone.
  */
-export function coneHit(fighter, spec, targets, aim = fighter.aim) {
+export function coneHit(fighter, spec, targets, aim = fighter.aim, riposte = false) {
   if (!fighter.alive || fighter.stunned) return
   const arc = degToRad(spec.arc)
   let connected = false
@@ -75,7 +87,10 @@ export function coneHit(fighter, spec, targets, aim = fighter.aim) {
     if (!inCone(fighter, other, spec.range, arc, aim)) continue
     if (other.tryParry(fighter)) return
 
-    other.takeDamage(spec.damage, fighter, spec.knockback)
+    // A riposte is the reward for having read the blow that was coming. The
+    // blow itself is worth what this class used to deal over the same time.
+    const damage = damageFor(fighter.kit) * (riposte ? GUARD.riposteDamage : 1)
+    other.takeDamage(damage, fighter, spec.knockback)
     if (spec.poison) other.applyPoison(spec.poison, fighter)
     connected = true
   }

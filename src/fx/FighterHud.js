@@ -43,6 +43,18 @@ export function drawFighterStatus(scene, g, icons, status, now) {
   // A lighter top edge, so the bar reads as a bar and not a flat block.
   g.fillStyle(0xffffff, 0.25).fillRoundedRect(x + 1, y + 1, Math.max(2, w * frac - 2), Math.max(1, h * 0.35), 2)
 
+  // The bar a fight is played against: everything you can spend comes from it,
+  // and an empty one is how a fight is lost. Under the health, so the two read
+  // as one block.
+  if (status.stamina != null && status.stamina < 0.999) {
+    const sw = w
+    const sy = y + h + 3
+    g.fillStyle(0x16200f, 0.85).fillRoundedRect(x - 3, sy - 2, sw + 6, 7, 3)
+    g.fillStyle(0x2c3a22, 1).fillRoundedRect(x, sy, sw, 4, 2)
+    g.fillStyle(status.stamina < 0.2 ? 0xff8098 : 0xffd964, 1)
+      .fillRoundedRect(x, sy, Math.max(2, sw * clamp01(status.stamina)), 4, 2)
+  }
+
   if (status.shield > 0) {
     const sf = Math.min(1, status.shield / status.maxHp)
     g.fillStyle(0x16200f, 0.85).fillRoundedRect(x - 3, y - 9, w + 6, 6, 3)

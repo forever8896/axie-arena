@@ -25,6 +25,11 @@ export const FLAGS = {
   SHIELDED: 32,
   CHARGING: 64,
   HIDDEN: 128,
+  /** The reworked fight: what a player is doing with their hands. */
+  GUARDING: 256,
+  WINDING: 512,
+  RIPOSTE: 1024,
+  GUARD_BROKEN: 2048,
 }
 
 export const has = (flags, bit) => (flags & bit) !== 0
