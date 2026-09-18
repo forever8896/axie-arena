@@ -57,6 +57,7 @@ export default class RoomView {
     actor = {
       id: f.id, sprite, cls: f.cls, axieClass: f.cls, label: null, lastHp: f.hp, flags: 0,
       statusFx: this.scene.add.graphics().setDepth(9000),
+      parryFx: this.scene.add.graphics(),
       dust: dustEmitter(this.scene, sprite.root),
       hudIcons: {},
       get x() { return this.sprite.x },
@@ -99,6 +100,7 @@ export default class RoomView {
       this.describe(actor, f)
       this.drawLabel(actor, f)
       drawFighterStatus(this.scene, actor.statusFx, actor.hudIcons, this.status(actor, f), now)
+      this.drawParry(actor, f)
       actor.flags = f.flags
       actor.lastHp = f.hp
     }
@@ -185,6 +187,7 @@ export default class RoomView {
   }
 
   forget(actor) {
+    actor.parryFx.destroy()
     actor.dust?.destroy()
     actor.sprite.destroy()
     actor.label.destroy()
@@ -402,6 +405,80 @@ export default class RoomView {
   }
 
   /**
+   * The cone a swing sweeps, flashed where it landed.
+   *
+   * Every basic attack in the local game draws this, and nothing drew it here:
+   * a swing was an animation with no reach, so there was no telling what it had
+   * covered or why it missed. What you see is exactly the cone the room tested.
+   */
+  zoneFlash(actor, spec, aim) {
+    const scene = this.scene
+    const arc = Phaser.Math.DegToRad(spec.arc ?? 100)
+    const range = spec.range ?? 96
+    const g = scene.add.graphics().setDepth(-19)
+    const x = actor.x
+    const y = actor.y
+    const colour = actor.colors.rim
+    const state = { a: 1 }
+    const draw = () => {
+      g.clear()
+      g.fillStyle(colour, 0.22 * state.a)
+      g.lineStyle(2, 0xffffff, 0.55 * state.a)
+      if (arc >= Math.PI * 2) {
+        g.fillCircle(x, y, range)
+        g.strokeCircle(x, y, range)
+      } else {
+        g.slice(x, y, range, aim - arc / 2, aim + arc / 2)
+        g.fillPath()
+        g.beginPath()
+        g.arc(x, y, range, aim - arc / 2, aim + arc / 2)
+        g.strokePath()
+      }
+    }
+    draw()
+    scene.tweens.add({
+      targets: state, a: 0, duration: 170, ease: 'Quad.easeIn',
+      onUpdate: draw, onComplete: () => g.destroy(),
+    })
+  }
+
+  /**
+   * The parry arc: bright while the window is open, broken and dim while you
+   * recover from a whiff.
+   *
+   * This is the whole visual language of parrying — a rival has to see it to
+   * decide not to swing, and you have to see your own opening. It is drawn from
+   * the flags in the snapshot, so it appears over everyone who raises one.
+   */
+  drawParry(actor, f) {
+    const g = actor.parryFx
+    g.clear()
+    const parrying = has(f.flags, FLAGS.PARRYING)
+    const recovering = has(f.flags, FLAGS.PARRY_RECOVER)
+    if (!f.alive || (!parrying && !recovering)) return
+
+    const r = 30 + 22
+    const half = Phaser.Math.DegToRad(PARRY.arcDeg) / 2
+    const cy = f.y - 14
+    g.setDepth(f.y + 5)
+
+    if (parrying) {
+      g.lineStyle(9, 0x1d2b12, 0.35)
+      g.beginPath(); g.arc(f.x, cy, r, f.aim - half, f.aim + half); g.strokePath()
+      g.lineStyle(6, 0xffffff, 0.95)
+      g.beginPath(); g.arc(f.x, cy, r, f.aim - half, f.aim + half); g.strokePath()
+      g.lineStyle(3, actor.colors.rim, 1)
+      g.beginPath(); g.arc(f.x, cy, r + 6, f.aim - half, f.aim + half); g.strokePath()
+    } else {
+      g.lineStyle(3, 0x9aa88a, 0.45)
+      for (let i = 0; i < 6; i++) {
+        const a0 = f.aim - half + (i / 6) * half * 2
+        g.beginPath(); g.arc(f.x, cy, r, a0, a0 + half / 8); g.strokePath()
+      }
+    }
+  }
+
+  /**
    * The wind-up before a special, drawn exactly as the local game draws it:
    * the shape of what is coming, growing over the reaction window.
    *
@@ -474,6 +551,31 @@ export default class RoomView {
     })
   }
 
+  /**
+   * Play your own action the instant you asked for it, rather than when the
+   * room's word gets back.
+   *
+   * Only ever animation: no damage, no charge spent, no bounty moved. If the
+   * room disagrees, the worst that happens is an Axie that swung at nothing,
+   * which is also what happens when you mistime a swing.
+   */
+  echo(kind, actor, aim) {
+    if (!actor) return
+    this.echoes.set(kind, this.scene.time.now)
+    const kit = CLASS_KITS[actor.cls]
+    if (kind === 'swing' && kit?.basic) {
+      actor.sprite.setFacing(Math.cos(aim) >= 0 ? 1 : -1)
+      actor.sprite.playAttack(null, kit.basic.anim)
+      this.zoneFlash(actor, kit.basic, aim)
+    } else if (kind === 'dash') {
+      actor.sprite.playState('dash', { fit: 300 })
+      actor.sprite.dashTrail({ x: Math.cos(aim), y: Math.sin(aim) })
+      actor.sprite.flash(0x7ce8ff, 140)
+    } else if (kind === 'parry') {
+      actor.sprite.play('defense/hit-with-shield', { kind: 'parry', peakAt: PARRY.windowMs, peakFraction: 0.4 })
+    }
+  }
+
   /** True if this client already played that action for itself, recently. */
   echoed(kind) {
     const at = this.echoes.get(kind)
@@ -500,6 +602,7 @@ export default class RoomView {
           actor.sprite.setFacing(Math.cos(e.aim) >= 0 ? 1 : -1)
           actor.sprite.playAttack(null, kit.basic.anim)
         }
+        if (actor && kit?.basic) this.zoneFlash(actor, kit.basic, e.aim)
         if (kit?.basic?.sfx) playVaried(this.scene, kit.basic.sfx, 0.4)
         break
       // `id` on a hit is whoever was hit; `by` is whoever swung. The plate

@@ -108,17 +108,27 @@ try {
       const me = s.view.actors.get(s.client.you)
       if (!me) return { found: false }
       const cam = s.cameras.main
+      const b = cam.getBounds()
       return {
         found: true,
         drawn: me.sprite.root.active && me.sprite.root.visible,
-        offCentreX: Math.round(Math.abs((me.sprite.x - cam.scrollX) * cam.zoom - cam.width / 2)),
-        offCentreY: Math.round(Math.abs((me.sprite.y - cam.scrollY) * cam.zoom - cam.height / 2)),
+        screenX: Math.round((me.sprite.x - cam.scrollX) * cam.zoom),
+        screenY: Math.round((me.sprite.y - cam.scrollY) * cam.zoom),
+        w: cam.width,
+        h: cam.height,
+        // Near the edge of the world the view stops following, and your Axie
+        // sits off centre on purpose. Being visible is the promise, not being
+        // in the middle.
+        clamped: cam.scrollX <= 1 || cam.scrollY <= 1 ||
+          cam.scrollX >= b.width - cam.width / cam.zoom - 1 ||
+          cam.scrollY >= b.height - cam.height / cam.zoom - 1,
         labelled: me.label.text.length > 0,
       }
     })()`)
     check('your own Axie is on screen', self.found && self.drawn, self.found ? 'drawn' : 'missing')
-    check('and the camera is looking at it', self.offCentreX < 260 && self.offCentreY < 260,
-      `${self.offCentreX}px, ${self.offCentreY}px off centre`)
+    check('and the camera is looking at it',
+      self.screenX > 0 && self.screenX < self.w && self.screenY > 0 && self.screenY < self.h,
+      `${self.screenX},${self.screenY} in ${self.w}x${self.h}${self.clamped ? ', clamped at the world edge' : ''}`)
     check('and it is not labelled with your own name', !self.labelled)
   }
 
