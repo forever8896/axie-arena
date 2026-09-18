@@ -122,7 +122,14 @@ export default class AxieSprite {
    * so the moment `peakFraction` of the way through lands at `peakAt` ms —
    * which is how an attack's visual impact is lined up with gameplay.
    */
-  play(clip, { kind = 'attack', loop = false, fit, peakAt, peakFraction = 0.4, holdMs } = {}) {
+  /**
+   * `minSpeed` exists for the reworked combat, where a blow winds up for half a
+   * second or more. The clamp below never let a clip play slower than authored,
+   * so a long wind-up finished its animation early and then stood still waiting
+   * to land — you saw the whole swing before it meant anything. Passing a lower
+   * floor lets the clip stretch so its impact frame arrives with the blow.
+   */
+  play(clip, { kind = 'attack', loop = false, fit, peakAt, peakFraction = 0.4, holdMs, minSpeed = 1 } = {}) {
     if (!clip || !this.rig.has(clip)) return false
 
     const priority = PRIORITY[kind] ?? 1
@@ -131,7 +138,7 @@ export default class AxieSprite {
     const length = this.rig.duration(clip)
     let speed = 1
     if (fit && length > 0) speed = length / (fit / 1000)
-    else if (peakAt && length > 0) speed = Math.max(1, (length * peakFraction) / (peakAt / 1000))
+    else if (peakAt && length > 0) speed = Math.max(minSpeed, (length * peakFraction) / (peakAt / 1000))
 
     this.rig.play(clip, { loop, speed })
     this.action = {

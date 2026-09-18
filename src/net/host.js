@@ -202,6 +202,9 @@ export default class RoomHost {
     client.pending.move = read.move
     client.pending.aim = read.aim
     client.pending.point = read.point ?? client.pending.point
+    // A guard is a level, not an edge: it is whatever the last packet said,
+    // where the actions below accumulate until the next tick consumes them.
+    client.pending.guard = read.guard
     for (const a of read.act) client.pending.act.add(a)
   }
 

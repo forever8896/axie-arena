@@ -196,6 +196,7 @@ export default class Prediction {
     if (action === 'attack') return f.canAttack(now)
     if (action === 'dash') return f.canDash(now)
     if (action === 'parry') return f.canParry(now)
+    if (action === 'guard') return f.canGuard(now)
     if (action === 'special') return f.canSpecial(now)
     return false
   }

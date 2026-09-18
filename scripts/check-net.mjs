@@ -16,6 +16,7 @@ import { createServer } from 'node:http'
 import { attachNet } from '../src/net/wsServer.js'
 import * as P from '../src/net/protocol.js'
 import { WILDS, ROOMS } from '../src/wilds/config.js'
+import { FLAGS, has } from '../src/sim/constants.js'
 
 const SPEED = 4              // simulated milliseconds per real millisecond
 const started = Date.now()
@@ -75,8 +76,8 @@ class TestClient {
   }
 
   /** Drive the fighter the way the real client will: wishes, every frame. */
-  drive({ mv = [0, 0], aim = 0, act = [], pt = null, extra = {} } = {}) {
-    this.send({ ...P.input({ seq: ++this.seq, mv, aim, act, pt }), ...extra })
+  drive({ mv = [0, 0], aim = 0, act = [], pt = null, gd = 0, extra = {} } = {}) {
+    this.send({ ...P.input({ seq: ++this.seq, mv, aim, act, pt, gd }), ...extra })
   }
 
   get you() { return this.welcome?.you ?? null }
@@ -174,6 +175,28 @@ try {
     a.drive({ mv: [0, 0], aim: 0, act: ['parry'] })
     await waitFor(() => a.events.some(e => e.t === 'parry-raise' && e.id === a.you), 2000, 'a parry event')
     check('a parry reaches the room', true)
+
+    // A guard is held rather than pressed, so it travels as a flag on every
+    // input instead of an action. The host once read that flag and dropped it
+    // on the floor, which left the key doing nothing at all for a real player
+    // while the bots guarded happily — so this follows it all the way to the
+    // fighter rather than trusting an event that anyone could have raised.
+    await simWait(700)
+    a.events.length = 0
+    for (let i = 0; i < 20; i++) {
+      a.drive({ mv: [0, 0], aim: 0, gd: 1 })
+      await sleep(16)
+    }
+    const up = await waitFor(() => a.events.some(e => e.t === 'guard-up' && e.id === a.you), 2000, 'a guard-up event')
+    check('a held guard reaches the room', Boolean(up))
+    check('and the room says that Axie is guarding', has(a.me()?.flags ?? 0, FLAGS.GUARDING), `flags ${a.me()?.flags}`)
+
+    // And it has to come back down with the key, or a guard becomes a stance.
+    for (let i = 0; i < 20; i++) {
+      a.drive({ mv: [0, 0], aim: 0, gd: 0 })
+      await sleep(16)
+    }
+    check('and lowers when the key comes up', !has(a.me()?.flags ?? 0, FLAGS.GUARDING), `flags ${a.me()?.flags}`)
   }
 
   // --- Inputs are acknowledged, so a client can reconcile -------------------

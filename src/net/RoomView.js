@@ -19,7 +19,7 @@ import { playPlate, playImpactPlate, playStatusPlate } from '../fx/SkillVfx.js'
 import { damageNumber, impact, dustEmitter } from '../fx/Juice.js'
 import { drawFighterStatus, HUD_DEPTH } from '../fx/FighterHud.js'
 import { POWERUPS } from '../arena/boonConfig.js'
-import { GUARD } from '../axie/combatConfig.js'
+import { GUARD, phasesFor } from '../axie/combatConfig.js'
 import { Orb } from '../arena/PowerUps.js'
 import { Well } from '../arena/Moonwell.js'
 import { money } from '../wilds/config.js'
@@ -78,7 +78,7 @@ export default class RoomView {
    * One frame. `view` is the interpolated room; `events` is what the authority
    * says happened since the last one.
    */
-  render(view, events, delta, self = null) {
+  render(view, events, delta, self = null, wants = null) {
     if (!view) return
     this.you = view.me?.id ?? null
 
@@ -99,6 +99,12 @@ export default class RoomView {
       actor.sprite.update(delta, f.speed > RUN_SPEED ? f.speed : 0)
       actor.sprite.root.setAlpha(f.alive ? (has(f.flags, FLAGS.HIDDEN) ? 0.45 : 1) : 0.35)
       this.describe(actor, f)
+      // A guard is the one thing a player holds rather than presses, and
+      // waiting a round trip to see it come up reads as the key not working.
+      // Shown from the local key, then corrected by the room like everything
+      // else — it changes nothing about who blocks what.
+      if (wants?.guard && actor.isPlayer && f.alive) actor.wantsGuard = true
+      else if (actor.isPlayer) actor.wantsGuard = false
       this.drawLabel(actor, f)
       drawFighterStatus(this.scene, actor.statusFx, actor.hudIcons, this.status(actor, f), now)
       this.drawParry(actor, f)
@@ -407,6 +413,22 @@ export default class RoomView {
   }
 
   /**
+   * The swing animation, stretched so the clip's impact frame lands with the
+   * blow rather than half a second before it.
+   */
+  swingAnimation(actor, kit, aim, ms) {
+    if (!kit?.basic?.anim) return
+    actor.sprite.setFacing(Math.cos(aim) >= 0 ? 1 : -1)
+    actor.sprite.play(kit.basic.anim, {
+      kind: 'attack',
+      peakAt: ms,
+      // Enough room to stretch across the longest wind-up without the motion
+      // becoming a slideshow.
+      minSpeed: 0.28,
+    })
+  }
+
+  /**
    * A blow being wound up: the cone it will sweep, filling as it comes.
    *
    * This is the single most important thing on the screen in the reworked
@@ -490,7 +512,7 @@ export default class RoomView {
   drawParry(actor, f) {
     const g = actor.parryFx
     g.clear()
-    const guarding = has(f.flags, FLAGS.GUARDING)
+    const guarding = has(f.flags, FLAGS.GUARDING) || (actor.wantsGuard && !has(f.flags, FLAGS.GUARD_BROKEN))
     const broken = has(f.flags, FLAGS.GUARD_BROKEN)
     const riposte = has(f.flags, FLAGS.RIPOSTE)
     const parrying = has(f.flags, FLAGS.PARRYING)
@@ -633,9 +655,9 @@ export default class RoomView {
     this.echoes.set(kind, this.scene.time.now)
     const kit = CLASS_KITS[actor.cls]
     if (kind === 'swing' && kit?.basic) {
-      actor.sprite.setFacing(Math.cos(aim) >= 0 ? 1 : -1)
-      actor.sprite.playAttack(null, kit.basic.anim)
-      this.zoneFlash(actor, kit.basic, aim)
+      const ms = phasesFor(kit).windupMs
+      this.swingAnimation(actor, kit, aim, ms)
+      this.windup(actor, { aim, ms, range: kit.basic.range, arc: kit.basic.arc })
     } else if (kind === 'dash') {
       actor.sprite.playState('dash', { fit: 300 })
       actor.sprite.dashTrail({ x: Math.cos(aim), y: Math.sin(aim) })
@@ -665,7 +687,10 @@ export default class RoomView {
       // The wind-up: a blow is coming, from there, in this long. Everything the
       // reworked fight asks of a player depends on being able to see this.
       case 'windup':
-        if (actor && kit?.basic) this.windup(actor, e)
+        if (actor && kit?.basic) {
+          this.windup(actor, e)
+          if (!(mine && this.echoed('swing'))) this.swingAnimation(actor, kit, e.aim, e.ms)
+        }
         if (kit?.basic?.sfx) playVaried(this.scene, kit.basic.sfx, 0.22)
         break
       case 'swing-cancel':
@@ -696,11 +721,9 @@ export default class RoomView {
       // room's copy of it would restart the animation a round trip later. The
       // sound still comes from here, because the room decides whether the swing
       // actually happened.
+      // Contact. The animation has been running since the wind-up, so this is
+      // the sweep and the noise of it landing, not the start of a swing.
       case 'swing':
-        if (actor && kit && !(mine && this.echoed('swing'))) {
-          actor.sprite.setFacing(Math.cos(e.aim) >= 0 ? 1 : -1)
-          actor.sprite.playAttack(null, kit.basic.anim)
-        }
         if (actor && kit?.basic) this.zoneFlash(actor, kit.basic, e.aim)
         if (kit?.basic?.sfx) playVaried(this.scene, kit.basic.sfx, 0.4)
         break

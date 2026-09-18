@@ -202,7 +202,7 @@ export default class NetScene extends Phaser.Scene {
     this.predict.settle(delta)
     this.view.render(view, events, delta, this.predict.fighter ? {
       id: client.you, x: this.predict.x, y: this.predict.y, speed: this.predict.speed,
-    } : null)
+    } : null, { guard: this.holdingGuard })
 
     // The shapes the HUD reads, refreshed from this frame's snapshot.
     this.fighters = [...this.view.actors.values()]
@@ -270,7 +270,10 @@ export default class NetScene extends Phaser.Scene {
     const pointer = this.input.activePointer
     const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y)
     this.aim = Math.atan2(world.y - me.y, world.x - me.x)
+    // Remembered for the renderer, so the guard appears under the hand that
+    // raised it rather than after a round trip.
     const guard = k.Q.isDown || k.F.isDown
+    this.holdingGuard = guard && this.predict.allows('guard')
     const sent = this.client.pump({
       move: {
         x: (k.D.isDown ? 1 : 0) - (k.A.isDown ? 1 : 0),
