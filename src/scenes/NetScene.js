@@ -126,7 +126,12 @@ export default class NetScene extends Phaser.Scene {
       })
       .catch(err => {
         this.status = 'failed'
-        this.hud.banner.setText(`could not join: ${err.message}`)
+        // A version refusal means this page is older than the room. That is
+        // fixable by the person reading it, so it says how rather than showing
+        // them the word "version".
+        this.hud.banner.setText(err.message === 'version'
+          ? 'Lunacy was updated — reload the page to play'
+          : `could not join: ${err.message}`)
       })
   }
 

@@ -11,7 +11,11 @@
  * bounty, because it does not get to decide any of those.
  */
 
-export const PROTOCOL_VERSION = 1
+// 2: the reworked combat. A swing has phases, the parry became a guard you
+// hold, and the Moonshot is aimed — a page cached from before any of that
+// predicts rules the room no longer plays by, so it is turned away and told to
+// reload rather than left to fight a game that is not there.
+export const PROTOCOL_VERSION = 2
 
 /** Fixed simulation step. The balance numbers were measured at 60Hz. */
 export const TICK_MS = 1000 / 60
