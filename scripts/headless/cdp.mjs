@@ -71,6 +71,8 @@ export async function launch({ width = 1480, height = 812 } = {}) {
 
   return {
     logs,
+    /** The raw protocol, for what the helpers here do not cover. */
+    cdp: send,
     async goto(url) { await send('Page.navigate', { url }); await sleep(500) },
     async eval(expression) {
       const r = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })
