@@ -21,6 +21,7 @@ No code copied verbatim so far.
 | phaser ^3.90 | MIT | game engine |
 | vite ^6 | MIT | dev server, build |
 | @axieinfinity/mixer ^1.4.9 | MIT | builds Axie bodies from part combos |
+| ws ^8.21 | MIT | WebSocket server for the multiplayer rooms; no transitive dependencies |
 | opentype.js 1.3.4 (dev only) | MIT | converts the logo lettering to vector outlines at build time; not shipped |
 
 | Font | Licence | Use |
