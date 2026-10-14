@@ -17,7 +17,7 @@ import { attachNet } from '../src/net/wsServer.js'
 import * as P from '../src/net/protocol.js'
 import { WILDS, ROOMS } from '../src/wilds/config.js'
 import { FLAGS, has } from '../src/sim/constants.js'
-import { LANCE } from '../src/axie/combatConfig.js'
+import { LANCE } from '../src/game/combatConfig.js'
 
 const SPEED = 4              // simulated milliseconds per real millisecond
 const started = Date.now()
@@ -84,7 +84,7 @@ class TestClient {
   get you() { return this.welcome?.you ?? null }
   get last() { return this.snaps.at(-1)?.s ?? null }
   me(snap = this.last) { return snap?.fighters.find(f => f.id === this.you) ?? null }
-  async join(room = 'glade', cls = 'beast', resume = null) {
+  async join(room = 'glade', cls = 'ronke', resume = null) {
     await this.ready()
     this.send(P.hello({ room, cls, name: this.name, resume }))
     await waitFor(() => this.welcome, 2000, `${this.name} welcome`)
@@ -117,7 +117,7 @@ try {
   check('the lobby sees the live room', listed.hunters > 1 && listed.players === 1, `${listed.hunters} hunters, ${listed.players} player`)
 
   // --- Two clients, one world ---------------------------------------------
-  const b = await new TestClient('Bram').join('glade', 'plant')
+  const b = await new TestClient('Bram').join('glade', 'ronke')
   await waitFor(() => a.snaps.length > 2 && b.snaps.length > 2, 2000, 'snapshots')
   check('each client sees the other', Boolean(a.me(a.last) && a.last.fighters.some(f => f.id === b.you)), `${a.last.fighters.length} in room`)
   check('both are shown the same tick', Math.abs(a.last.tick - b.last.tick) <= P.SNAPSHOT_EVERY, `${a.last.tick} vs ${b.last.tick}`)
@@ -190,7 +190,7 @@ try {
     }
     const up = await waitFor(() => a.events.some(e => e.t === 'guard-up' && e.id === a.you), 2000, 'a guard-up event')
     check('a held guard reaches the room', Boolean(up))
-    check('and the room says that Axie is guarding', has(a.me()?.flags ?? 0, FLAGS.GUARDING), `flags ${a.me()?.flags}`)
+    check('and the room says that Ronke is guarding', has(a.me()?.flags ?? 0, FLAGS.GUARDING), `flags ${a.me()?.flags}`)
 
     // And it has to come back down with the key, or a guard becomes a stance.
     for (let i = 0; i < 20; i++) {
@@ -273,7 +273,7 @@ try {
       sim.addFighter({ bot: true, name: `filler${crowd.length}` })
       crowd.push(1)
     }
-    const c = await new TestClient('Cass').join('glade', 'bird')
+    const c = await new TestClient('Cass').join('glade', 'ronke')
     check('a player gets a seat in a full room', Boolean(c.you) && !c.errors.length, `${sim.fighters.filter(f => f.alive).length} alive`)
     check('the room stays within its cap', sim.fighters.filter(f => f.alive).length <= WILDS.maxHunters, `${sim.fighters.filter(f => f.alive).length}`)
     check('displacing a stand-in destroys no value', near(sim.imbalance, 0, 1e-9), sim.imbalance)
@@ -282,19 +282,19 @@ try {
 
   // --- Dropping the connection is not an escape ----------------------------
   {
-    const d = await new TestClient('Dree').join('grove', 'reptile')
+    const d = await new TestClient('Dree').join('grove', 'ronke')
     const sim = roomSim('grove')
     const id = d.you
     const carried = fighterOf(d).wilds.bounty
     d.close()
     await sleep(120)
     const left = sim.fighters.find(f => f.id === id)
-    check('a dropped Axie stays in the room', Boolean(left?.alive), left ? 'still standing' : 'gone')
+    check('a dropped Ronke stays in the room', Boolean(left?.alive), left ? 'still standing' : 'gone')
     check('and defends itself while nobody drives it', Boolean(left?.brain), left?.brain ? 'brain attached' : 'no brain')
 
-    // Back inside the window: the same Axie, with what it was carrying.
-    const again = await new TestClient('Dree').join('grove', 'reptile', d.welcome.token)
-    check('reconnecting takes the same Axie back', again.you === id, `${again.you} vs ${id}`)
+    // Back inside the window: the same Ronke, with what it was carrying.
+    const again = await new TestClient('Dree').join('grove', 'ronke', d.welcome.token)
+    check('reconnecting takes the same Ronke back', again.you === id, `${again.you} vs ${id}`)
     check('and the bounty came back with it', near(fighterOf(again).wilds.bounty, carried, 0.001), fighterOf(again).wilds.bounty)
     check('and it is under a player again', !fighterOf(again).brain, 'brain cleared')
 
@@ -302,26 +302,26 @@ try {
     again.close()
     await simWait(P.ABANDON_MS + 600)
     const gone = sim.fighters.find(f => f.id === id)
-    check('an abandoned Axie forfeits in the end', !gone?.alive, gone?.alive ? 'still up' : 'forfeited')
+    check('an abandoned Ronke forfeits in the end', !gone?.alive, gone?.alive ? 'still up' : 'forfeited')
     check('and what it carried stayed in the room', near(sim.imbalance, 0, 1e-9), sim.imbalance)
   }
 
   // --- Leaving on purpose --------------------------------------------------
   {
-    const e = await new TestClient('Esk').join('meadow', 'bug')
+    const e = await new TestClient('Esk').join('meadow', 'ronke')
     const sim = roomSim('meadow')
     const id = e.you
     e.send(P.leave())
     await waitFor(() => e.closed, 2000, 'a goodbye')
     check('leaving is answered', e.closed === 'left', e.closed)
-    check('and the Axie is out of the room', !sim.fighters.find(f => f.id === id)?.alive, 'gone')
+    check('and Ronke is out of the room', !sim.fighters.find(f => f.id === id)?.alive, 'gone')
     check('and its bounty stayed behind', near(sim.imbalance, 0, 1e-9), sim.imbalance)
     e.close()
   }
 
   // --- The server defends its own loop -------------------------------------
   {
-    const f = await new TestClient('Flin').join('glade', 'aquatic')
+    const f = await new TestClient('Flin').join('glade', 'ronke')
     f.send({ k: 'nonsense' })
     await waitFor(() => f.errors.includes('unknown'), 2000, 'an unknown-message error')
     check('an unknown message is refused, not obeyed', true)

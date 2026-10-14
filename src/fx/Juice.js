@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 
 /**
- * Impact feel. Nothing here knows what an Axie is, so all of it survives the
+ * Impact feel. Nothing here knows what a Ronke is, so all of it survives the
  * swap to real art — this is the layer that makes hits land.
  */
 

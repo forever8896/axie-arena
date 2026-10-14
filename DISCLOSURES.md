@@ -20,7 +20,6 @@ No code copied verbatim so far.
 | --- | --- | --- |
 | phaser ^3.90 | MIT | game engine |
 | vite ^6 | MIT | dev server, build |
-| @axieinfinity/mixer ^1.4.9 | MIT | builds Axie bodies from part combos |
 | ws ^8.21 | MIT | WebSocket server for the multiplayer rooms; no transitive dependencies |
 | opentype.js 1.3.4 (dev only) | MIT | converts the logo lettering to vector outlines at build time; not shipped |
 
@@ -42,58 +41,21 @@ Limited team)** on 2026-09-16: "yes to all three. no issues".
 
 ## Axie assets
 
-**In use.** Axie bodies are composed with `@axieinfinity/mixer` (MIT) via
-`exportAvatarLayers`, and their textures are fetched at runtime from the
-official Axie CDN (`axiecdn.axieinfinity.com/mixer-stuffs/v6/`). No Axie art is
-copied into or redistributed from this repository.
+**Removed.** Ronkacy was built as an Axie game and is not one any more. The
+mixer dependency, the runtime part assembly, the animation reader written
+against it, the Origins Battle Kit (22 effect plates, 6 status icons, 25 battle
+sounds) and every Axie texture path are gone from the repository and the build.
+The kit's licence covered the Vibeathon and Sky Mavis-approved programs; this is
+neither, so none of it ships.
 
-Axie characters and art are Sky Mavis / Axie Infinity IP, used here for an Axie
-Vibeathon entry.
+Nothing of Axie's remains in `src/`, `public/` or the dependency tree.
 
-**Axie Origins Battle Kit — in use.** Twenty-two effect plates are vendored
-from the revision licensed by Official Rules §5,
-`069a59b772e54633d04a3d9d12ecde73b3e4be5d`:
+## The character
 
-- Specials: `beast_gore`, `aquatic_slash`, `plant_projectile`, `bird_throw`,
-  `bug_projectile`, `reptile_projectile`
-- Basics: `beast_bite`, `aquatic_gore`, `plant_bite`, `bird_bite`, `bug_bite`,
-  `reptile_slash`
-- Statuses: `stunned`, `poison_apply`, `debuff_apply`, `power_gain`, `shield`
-- Power-ups and Moonwells: `heal`, `dmg_boost`, `shield_boost`, `power_awaken`,
-  `buff_apply`
-
-Six status icons from the same revision, used unmodified in `public/vfx/icons/`:
-`buff_dmg_boost`, `buff_shield_boost`, `buff_summerbreeze`,
-`power_energy_master`, `buff_leaf`, `buff_mushroom`.
-
-**Modified:** each atlas is downscaled (to 50% for attacks, 40% for statuses) on
-an exact frame grid, and the geometry in its `clip.json` is scaled to match;
-frame timing is unchanged. About 26MB of source atlases ship as about 11.5MB. This is done
-by `scripts/vendor-origins-vfx.mjs`, which pulls from the pinned revision and
-records the source and scale factor inside each `clip.json`. They are
-pre-rendered PNG frames — no Spine runtime is involved. The kit's `LICENSE.md`
-and `THIRD_PARTY_NOTICES.md` are kept alongside them in `public/vfx/`.
-
-**Battle audio — in use.** 25 sounds from the same licensed revision, under
-`public/sfx/`: per-class attack and impact sounds, `poison`, `stunned`,
-`shield`, `heal`, `power_awaken`, `bubble`, `damage_boost` and `buff`.
-Transcoded from the kit's WAV originals to mono Ogg Vorbis with ffmpeg (about
-520KB in total); no other modification. The kit is not open source; use is limited to Vibeathon. Its `LICENSE.md` and
-`THIRD_PARTY_NOTICES.md` are kept alongside the plates in `public/vfx/`.
-
-**Axie animation.** Bodies are animated with the 46 authored clips the mixer
-embeds in every skeleton it builds (horn-gore, tail-smash, cast-fly, run, idle,
-hit reactions, victory…). They are read by `src/axie/AxieRig.js`, a small solver
-written for this project. It interprets the animation data itself; it is not,
-and does not include, Esoteric Software's Spine runtime. Its rest pose matches
-the mixer's own `exportAvatarLayers` output exactly with leg IK disabled, and to
-under one screen pixel with it enabled.
-
-**No Spine runtime code is shipped.** `pixi-spine` and equivalents are avoided
-deliberately: Official Rules §5 and Esoteric Software's Spine Runtimes License
-require each user integrating the runtimes to hold a Spine Editor licence. See
-README for what that costs us. Confirmed acceptable by the Axie team on
-2026-09-16 (see Organizer confirmations above).
+**Ronke** is the author's own IP. The fighter is driven from `ronkebase.png`,
+the collection's own base art, composited onto a green field by
+`scripts/ronke/build-plate.mjs` — the character is the asset itself, not a
+likeness of it generated from a description.
 
 ## Generated assets
 
@@ -101,6 +63,20 @@ README for what that costs us. Confirmed acceptable by the Axie team on
 confirm, back, start, denied — generated with the Venice AI audio API
 (ElevenLabs Sound Effects v2), trimmed, levelled and transcoded to Ogg Vorbis.
 Prompts are in `scripts/audio/generate-music.mjs`.
+
+**Animation** (`public/sprites/`, `art/`). Six sprite sheets — idle, run,
+punch, lick, hurt, guard — generated with **MiniMax Hailuo 2.3** image-to-video
+through fal.ai, each driven from the same green-screen plate of the real Ronke
+art. The green is keyed out with ffmpeg and the frames packed into strips by
+`scripts/ronke/cut-frames.mjs`. The source clips are kept in `art/clips/`.
+
+**Combat sounds** (`public/sfx/ronke_*.ogg` and the status sounds). Sixteen
+effects — punch, impact, the tongue and its landing, hurt, guard, dash, death,
+plus poison, stun, shield, heal, power, bubble, damage boost and buff —
+generated with **ElevenLabs Sound Effects v2** through fal.ai, trimmed,
+loudness-normalised and transcoded to Ogg Vorbis. Prompts are in
+`scripts/audio/generate-sfx.mjs`. They replace the 25 Origins Battle Kit sounds
+that left with the kit.
 
 **Music** (`public/music/`). Instrumental tracks generated with the **Venice
 AI** audio API and kept in the repository: `theme-hunt` (the front end, wired
@@ -112,7 +88,7 @@ which regenerates them from an API key held in the environment (no key is
 stored in this repository). Each track was loudness-normalised to -20 LUFS and
 transcoded to Ogg Vorbis with ffmpeg. No third-party recordings are involved.
 
-**Lunacy logo** (`public/brand/`). Original artwork authored as code with AI
+**Ronkacy logo** (`public/brand/`). Original artwork authored as code with AI
 assistance (Claude) in `scripts/brand/build-logo.mjs`: Rowdies letter outlines,
 a crescent moon, a leaf and sparkles drawn as SVG paths, rendered to PNG with
 headless Chromium. It uses no Axie Infinity logo, mark or character art.

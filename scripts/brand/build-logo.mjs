@@ -3,7 +3,7 @@
  * Builds the Lunacy logo as self-contained SVG: no font dependency, so it
  * renders the same in the game, on GitHub and in a submission page.
  *
- * Letters are Rowdies Bold — the font the Axie brand kit names — converted to
+ * Letters are Rowdies Bold — the font Ronke brand kit names — converted to
  * outlines (SIL Open Font License 1.1, see OFL.txt beside this file). The "C"
  * is a crescent moon with a sprouting leaf: Lunacia, and the name's pun.
  *

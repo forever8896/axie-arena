@@ -4,7 +4,7 @@ import { CONNECT_MS } from '../sim/constants.js'
 /**
  * One Ronke on screen.
  *
- * It stands in for AxieSprite and answers the same calls, because the game
+ * It stands in for RonkeSprite and answers the same calls, because the game
  * above it — fighters, the tutorial, the networked view — asks for animation by
  * name and should not care whether that name resolves to a skeleton or a strip
  * of frames. The difference is underneath: there is no rig and no runtime
@@ -44,7 +44,7 @@ export function clipFor(name) {
   if (!name) return 'idle'
   const key = String(name).toLowerCase()
   if (CLIP_FOR[key]) return CLIP_FOR[key]
-  // Axie clip paths look like 'attack/melee/horn-gore' or 'defense/hit-by-…'.
+  // Ronke clip paths look like 'attack/melee/horn-gore' or 'defense/hit-by-…'.
   // Ranged attacks are the tongue; everything else in reach is the fist.
   if (key.includes('attack')) return key.includes('ranged') || key.includes('cast') ? 'lick' : 'punch'
   if (key.includes('defense') || key.includes('hit')) return 'hurt'
@@ -71,8 +71,8 @@ export function registerAnimations(scene) {
 
 export default class RonkeSprite {
   /**
-   * `build` and `axieClass` are accepted and ignored. Every caller still passes
-   * them because every caller used to assemble an Axie from parts; there is one
+   * `build` and `cls` are accepted and ignored. Every caller still passes
+   * them because every caller used to assemble a Ronke from parts; there is one
    * Ronke now and he needs neither, and swallowing them here kept the swap to a
    * change of import at ten call sites instead of a rewrite of all ten.
    */
@@ -128,7 +128,7 @@ export default class RonkeSprite {
 
   /**
    * An animation by its old name. `peakAt` is honoured the way it was on the
-   * Axie rig: the clip is slowed or hurried so its most committed frame lands
+   * Ronke rig: the clip is slowed or hurried so its most committed frame lands
    * when the game says the blow lands.
    */
   play(clip, { kind, fit, peakAt, peakFraction = 0.4, holdMs, minSpeed = 0.25 } = {}) {

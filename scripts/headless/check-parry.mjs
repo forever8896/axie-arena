@@ -43,8 +43,8 @@ try {
 
     // 1. Parry a basic from the front.
     {
-      const { s, p, wait } = await setup('beast')
-      const atk = s.bots.find(x => x.axieClass === 'reptile')
+      const { s, p, wait } = await setup('ronke')
+      const atk = s.bots.find(x => x.cls === 'ronke')
       p.pos.set(1200, 900); p.aim = Math.PI; p.charge = 0; p.hp = p.maxHp
       atk.pos.set(1130, 900); atk.aim = 0; atk.lastAttack = -1e9
       // Parry the way a player reads it: shortly after the swing starts, before impact.
@@ -60,8 +60,8 @@ try {
 
     // 2. A blow from behind is not parried.
     {
-      const { s, p, wait } = await setup('beast')
-      const atk = s.bots.find(x => x.axieClass === 'reptile')
+      const { s, p, wait } = await setup('ronke')
+      const atk = s.bots.find(x => x.cls === 'ronke')
       p.pos.set(1200, 900); p.aim = Math.PI; p.hp = p.maxHp
       atk.pos.set(1270, 900); atk.aim = Math.PI; atk.lastAttack = -1e9
       atk.swing(s.fighters, s.time.now)
@@ -73,7 +73,7 @@ try {
 
     // 3. Whiff: committed recovery, then free again; and cooldown blocks a re-parry.
     {
-      const { s, p, wait } = await setup('beast')
+      const { s, p, wait } = await setup('ronke')
       p.pos.set(1200, 900); p.aim = Math.PI
       const t0 = s.time.now
       check('parry raises', p.parry(t0), '')
@@ -89,8 +89,8 @@ try {
 
     // 4. Projectiles are not parryable.
     {
-      const { s, p, wait } = await setup('beast')
-      const bird = s.bots.find(x => x.axieClass === 'bird')
+      const { s, p, wait } = await setup('ronke')
+      const bird = s.bots.find(x => x.cls === 'ronke')
       p.pos.set(1200, 900); p.aim = Math.PI; p.hp = p.maxHp
       bird.pos.set(1000, 900); bird.aim = 0; bird.charge = 1
       bird.special(s.fighters, s.time.now, { x: 1200, y: 900 })
@@ -102,8 +102,8 @@ try {
 
     // 5. A telegraphed melee special can be parried, and stops a charging beast.
     {
-      const { s, p, wait } = await setup('bird')
-      const beast = s.bots.find(x => x.axieClass === 'beast')
+      const { s, p, wait } = await setup('ronke')
+      const beast = s.bots.find(x => x.cls === 'ronke')
       p.pos.set(1200, 900); p.aim = Math.PI; p.hp = p.maxHp
       beast.pos.set(1080, 900); beast.aim = 0; beast.charge = 1
       beast.special(s.fighters, s.time.now, { x: 1200, y: 900 })
@@ -117,9 +117,9 @@ try {
 
     // 6. Bots bait a parry they have had time to see, and punish the recovery.
     {
-      const { s, p, wait } = await setup('beast')
+      const { s, p, wait } = await setup('ronke')
       const { default: BotBrain } = await import('/src/ai/BotBrain.js')
-      const atk = s.bots.find(x => x.axieClass === 'reptile')
+      const atk = s.bots.find(x => x.cls === 'ronke')
       atk.brain = new BotBrain(atk, { parryReadChance: 0, parryReadRate: 0, parryReactChance: 0 })
       atk.brain.noticeDelay = 40
       atk.brain.state = 'strike'
@@ -141,9 +141,9 @@ try {
 
     // 7. A parry raised just before a bot's swing goes unseen, and lands.
     {
-      const { s, p, wait } = await setup('beast')
+      const { s, p, wait } = await setup('ronke')
       const { default: BotBrain } = await import('/src/ai/BotBrain.js')
-      const atk = s.bots.find(x => x.axieClass === 'reptile')
+      const atk = s.bots.find(x => x.cls === 'ronke')
       atk.brain = new BotBrain(atk, { parryReadChance: 0, parryReadRate: 0, parryReactChance: 0 })
       atk.brain.noticeDelay = 190
       atk.brain.state = 'strike'

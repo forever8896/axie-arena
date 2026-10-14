@@ -29,7 +29,7 @@ export default class NetScene extends Phaser.Scene {
 
   init(data) {
     this.builds = data.builds
-    this.playerClass = data.playerClass ?? 'beast'
+    this.playerClass = data.playerClass ?? 'ronke'
     this.roomId = data.roomId ?? 'glade'
     this.regionId = data.regionId ?? null
     this.playerName = data.name ?? 'You'
@@ -130,7 +130,7 @@ export default class NetScene extends Phaser.Scene {
         // fixable by the person reading it, so it says how rather than showing
         // them the word "version".
         this.hud.banner.setText(err.message === 'version'
-          ? 'Lunacy was updated — reload the page to play'
+          ? 'Ronkacy was updated — reload the page to play'
           : `could not join: ${err.message}`)
       })
   }
@@ -199,7 +199,7 @@ export default class NetScene extends Phaser.Scene {
     const view = client.view()
     if (!view) return
 
-    // Your own Axie is drawn where this client has worked out it is, not where
+    // Your own Ronke is drawn where this client has worked out it is, not where
     // the room said it was a round trip ago. Everyone else is interpolated,
     // because the room's word is all there is about them.
     const events = client.drainEvents()
@@ -226,7 +226,7 @@ export default class NetScene extends Phaser.Scene {
     const me = view.me
     if (me) {
       // The camera and the reach marker follow the predicted body, or they
-      // would lag behind the Axie the player is actually steering.
+      // would lag behind Ronke the player is actually steering.
       const here = this.predict.fighter ? { ...me, x: this.predict.x, y: this.predict.y } : me
       this.follow(here, delta)
       this.drawReticle(here)
@@ -252,7 +252,7 @@ export default class NetScene extends Phaser.Scene {
    * An action the player asked for: queued for the room, and — when this
    * client's own copy of the rules says it is allowed — shown immediately.
    *
-   * Waiting a round trip to see your own Axie move is what made this feel
+   * Waiting a round trip to see your own Ronke move is what made this feel
    * broken. The room still decides what the swing did; this only decides that
    * you swung, which you did, because you pressed the button.
    */
@@ -336,7 +336,7 @@ export default class NetScene extends Phaser.Scene {
     this.hud.link.setText(`MULTIPLAYER · ${this.status.toUpperCase()} · ${ping}ms · PREDICTED`)
       .setColor(live ? (ping > 250 ? '#ffc22e' : '#7f8c6a') : '#ffc22e')
     this.hud.banner.setText(this.status === 'dropped'
-      ? 'CONNECTION LOST — your Axie stays in the room for a few seconds'
+      ? 'CONNECTION LOST — Ronke stays in the room for a few seconds'
       : '')
   }
 
@@ -374,7 +374,7 @@ export default class NetScene extends Phaser.Scene {
 
 // --- Coming back to a room you were dropped from ----------------------------
 
-const key = roomId => `lunacy.room.${roomId}`
+const key = roomId => `ronkacy.room.${roomId}`
 
 function rememberToken(roomId, token) {
   try {

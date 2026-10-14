@@ -3,7 +3,7 @@ import Fighter from '../entities/Fighter.js'
 import BotBrain from '../ai/BotBrain.js'
 import { WORLD } from '../arena/Arena.js'
 import { findOpenSpot, floatLabel } from '../arena/PowerUps.js'
-import { CLASS_KITS } from '../axie/classKits.js'
+import { CLASS_KITS } from '../game/classKits.js'
 import { play as playSfx } from '../fx/Sfx.js'
 import { play as playMusic } from '../fx/Music.js'
 import MoonGate from './MoonGate.js'
@@ -110,13 +110,13 @@ export default class WildsDirector {
     }) ?? { x: WORLD.width / 2, y: WORLD.height / 2 }
   }
 
-  spawnHunter({ bounty = this.entry, quiet = false, axieClass } = {}) {
+  spawnHunter({ bounty = this.entry, quiet = false, cls: want } = {}) {
     const scene = this.scene
     const classes = Object.keys(scene.builds)
-    const cls = axieClass ?? pick(classes)
+    const cls = want ?? pick(classes)
     const spot = this.safeSpawn()
     const taken = new Set(scene.fighters.map(f => f.name))
-    const bot = new Fighter(scene, spot.x, spot.y, { axieClass: cls, build: scene.builds[cls], name: hunterName(taken) })
+    const bot = new Fighter(scene, spot.x, spot.y, { cls: cls, build: scene.builds[cls], name: hunterName(taken) })
     bot.brain = new BotBrain(bot)
     bot.wilds = {
       bounty,
@@ -151,7 +151,7 @@ export default class WildsDirector {
     if (old) scene.fighters = scene.fighters.filter(f => f !== old)
     const spot = this.safeSpawn()
     const p = new Fighter(scene, spot.x, spot.y, {
-      axieClass: this.playerClass, build: scene.builds[this.playerClass], isPlayer: true, name: 'You',
+      cls: this.playerClass, build: scene.builds[this.playerClass], isPlayer: true, name: 'You',
     })
     p.wilds = { bounty, kills: 0, joinedAt: this.now, stake: this.room.stake }
     this.shield(p)

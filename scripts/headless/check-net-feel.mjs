@@ -3,7 +3,7 @@
  * How long the game takes to answer you.
  *
  * The number that decides whether a networked brawler is playable, measured
- * rather than felt: press a key, and count the milliseconds until your own Axie
+ * rather than felt: press a key, and count the milliseconds until your own Ronke
  * has moved on screen. Without prediction that is a full round trip plus the
  * interpolation delay — about a third of a second to the deployed server, which
  * is unplayable. With it, the answer should arrive in the next frame.
@@ -29,7 +29,7 @@ const check = (name, ok, detail = '') => {
 
 const b = await launch({ width: 1000, height: 640 })
 try {
-  await b.goto(`${PAGE}/?net=glade&cls=beast&name=Feel${SERVER}`)
+  await b.goto(`${PAGE}/?net=glade&cls=ronke&name=Feel${SERVER}`)
   await b.waitFor("!!window.__game?.scene.getScene('NetScene')?.scene.isActive()", 90000)
   await b.eval('window.__game.loop.wake(); true')
   await b.waitFor("window.__game.scene.getScene('NetScene').client?.status === 'playing'", 60000)
@@ -46,7 +46,7 @@ try {
   })()`)
   console.log(`      the room is ${ping}ms away, round trip`)
 
-  // --- Does your own Axie answer the key, or the round trip? --------------
+  // --- Does your own Ronke answer the key, or the round trip? --------------
   //
   // Counted in frames, not milliseconds. Headless Chromium draws WebGL in
   // software at about ten frames a second, so a wall-clock answer here measures
@@ -81,7 +81,7 @@ try {
   const median = [...felt.runs].sort((a, b) => a - b)[Math.floor(felt.runs.length / 2)]
   console.log(`      key to movement: ${felt.runs.join(', ')} frames (this browser draws one every ~${felt.frameMs}ms)`)
   // Two frames: the one that reads the key, and the one that draws the result.
-  check('your Axie answers the key, not the round trip', median > 0 && median <= 2,
+  check('Ronke answers the key, not the round trip', median > 0 && median <= 2,
     `${median} frames median, ${worst} worst`)
   // Only worth asserting where there is a real distance to beat. Against a
   // server on this machine the frame time swamps everything and the comparison

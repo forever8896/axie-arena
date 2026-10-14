@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 
 /**
- * Lunacia foliage, painted in the Axie style: chunky clustered lobes inside
+ * the Ronkeverse foliage, painted in Ronke style: chunky clustered lobes inside
  * one dark outline, soft top-lit gradients, a highlight on every lobe, leaf
  * tips at the rim and a few flowers. Painted once with Canvas 2D, which has
  * the gradients and clean round-joined outlines Phaser's Graphics lacks, then
@@ -126,7 +126,7 @@ export function paintBush(scene, key, rx, ry, { seed = key, flowers = 3, shadow 
     ctx.stroke()
   }
 
-  // 3. Flowers, Axie-bright, each with an outline so they read at a distance.
+  // 3. Flowers, Ronke-bright, each with an outline so they read at a distance.
   for (let i = 0; i < flowers; i++) {
     const a = rng.realInRange(0, Math.PI * 2)
     const d = rng.realInRange(0.1, 0.65)

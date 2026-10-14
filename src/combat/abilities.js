@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import Projectile from './Projectile.js'
 import Zone from './Zone.js'
 import { impact } from '../fx/Juice.js'
-import { CHARGE_PER_HIT, TELEGRAPH_MS } from '../axie/classKits.js'
+import { CHARGE_PER_HIT, TELEGRAPH_MS } from '../game/classKits.js'
 import { playVaried, play } from '../fx/Sfx.js'
 import { CONNECT_MS } from '../sim/constants.js'
 
@@ -445,7 +445,7 @@ function strikeShape(fighter, spec, hitIndex = 0, aim = fighter.aim) {
     },
   }
 
-  const draw = shapes[fighter.axieClass] ?? shapes.beast
+  const draw = shapes[fighter.cls] ?? shapes.beast
   scene.tweens.add({
     targets: state, t: 1, duration: 260, ease: 'Sine.easeOut',
     onUpdate: () => {

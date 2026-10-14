@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { PARRY, TELEGRAPH_MS } from '../axie/classKits.js'
+import { PARRY, TELEGRAPH_MS } from '../game/classKits.js'
 
 /** Specials a parry can stop. Projectiles and lobbed zones cannot be parried. */
 const PARRYABLE_SPECIALS = new Set(['charge', 'radial'])
@@ -7,7 +7,7 @@ const PARRYABLE_SPECIALS = new Set(['charge', 'radial'])
 /**
  * Deliberately simple: wander until something is close, close the gap, swing,
  * back off to reset. Four states is enough to keep the arena alive, and every
- * state maps onto an Axie animation we can play once real art is in.
+ * state maps onto a Ronke animation we can play once real art is in.
  */
 export default class BotBrain {
   // 320 was too short for a 2400u field: bots rarely found each other before

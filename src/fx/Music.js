@@ -25,7 +25,7 @@ const FILES = {
   bloodmoon: 'bloodmoon',
 }
 
-const SETTINGS_KEY = 'lunacy.audio.v1'
+const SETTINGS_KEY = 'ronkacy.audio.v1'
 const CROSSFADE_MS = 2600
 const FADE_IN_MS = 900
 const FADE_OUT_MS = 700

@@ -45,7 +45,7 @@ export default class AboutScene extends Phaser.Scene {
     const bar = this.add.graphics().setDepth(50)
     bar.fillStyle(0x16200f, 1).fillRect(0, 0, width, 64)
     bar.lineStyle(2, 0x5f9330, 0.5).lineBetween(0, 64, width, 64)
-    this.add.text(width / 2 - this.colW / 2, 20, 'ABOUT LUNACY', {
+    this.add.text(width / 2 - this.colW / 2, 20, 'ABOUT RONKACY', {
       fontFamily: HEAD, fontSize: '22px', color: CREAM,
     }).setDepth(51)
     const back = this.add.text(width / 2 + this.colW / 2, 24, '◂  BACK  (ESC)', {
@@ -105,10 +105,10 @@ export default class AboutScene extends Phaser.Scene {
 
     this.section('THE GAME')
     this.para(
-      'Lunacy is an arena that never closes. There is no lobby and no queue: you pick a room, ' +
+      'Ronkacy is an arena that never closes. There is no lobby and no queue: you pick a room, ' +
       'you are in it, and other hunters are already fighting. You leave when you decide to.')
     this.para(
-      'Six Axie classes, each with its own basic attack and special. Parry a blow you saw coming, ' +
+      'Six Ronke classes, each with its own basic attack and special. Parry a blow you saw coming, ' +
       'dash out of one you did not, grab power-ups as they appear, heal in a Moonwell, hide in the ' +
       'long grass. A Blood Moon gathers everyone every so often, so nobody can sit in a corner.')
 
@@ -143,7 +143,7 @@ export default class AboutScene extends Phaser.Scene {
       'A bounty you have to carry out beats a flat payout per kill: it makes leaving a decision, and makes the leader everyone’s target.',
       'Bots never carry money. If killing a bot paid, the best players — and then scripts — would farm them all day, and the treasury would pay for it.',
       'Free rooms earn from a fixed seasonal pool instead. A fixed pool cannot be farmed for more than it holds.',
-      'No token is minted to pay rewards. Axie’s own history is the lesson there.',
+      'No token is minted to pay rewards. Ronke’s own history is the lesson there.',
     ])
 
     this.section('WHAT IS REAL IN THIS BUILD')
@@ -160,10 +160,10 @@ export default class AboutScene extends Phaser.Scene {
 
     this.section('CREDITS')
     this.para(
-      'Axie bodies are built with the official 2D mixer and animated with their own authored clips. ' +
-      'Battle effects, status icons and battle sounds come from the Axie Origins Battle Kit, used under ' +
+      'Ronke bodies are built with the official 2D mixer and animated with their own authored clips. ' +
+      'Battle effects, status icons and battle sounds come from Ronke Origins Battle Kit, used under ' +
       'the Vibeathon builder terms. The music was generated for this game. The logo was drawn for it. ' +
-      'Built for Axie Vibeathon 2026.', MUTED)
+      'Built for Ronke Vibeathon 2026.', MUTED)
 
     this.pageHeight = this.y + 40
   }

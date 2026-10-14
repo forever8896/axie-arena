@@ -1,18 +1,18 @@
 import Phaser from 'phaser'
-import { ARENA_PALETTE } from '../axie/palette.js'
-import { CLASS_KITS } from '../axie/classKits.js'
+import { ARENA_PALETTE } from '../game/palette.js'
+import { CLASS_KITS } from '../game/classKits.js'
 import { SHEETS } from '../ronke/RonkeSprite.js'
 import { POWERUPS, POWERUP_ICONS } from '../arena/PowerUps.js'
 import { makeMiniPortraits } from '../fx/MiniPortrait.js'
 import { makeGrassTexture } from '../arena/Arena.js'
 import { createFxTextures, ambientMotes } from '../fx/Juice.js'
-import { FIELD } from '../axie/palette.js'
+import { FIELD } from '../game/palette.js'
 
 const HEAD = 'Rowdies, ui-sans-serif, system-ui, sans-serif'
 const MONO = 'ui-monospace, monospace'
 const PHASES = 4
 
-/** Shown while the Axie parts come down from the CDN. */
+/** Shown while Ronke parts come down from the CDN. */
 const TIPS = [
   'Q parries. A blow you meet is a blow that hurts whoever threw it.',
   'Your stake buys a bounty. A kill takes the whole bounty its owner carried.',
@@ -27,7 +27,7 @@ import { loadSfx, SFX } from '../fx/Sfx.js'
 import { loadMusic, attachMusic, TRACKS } from '../fx/Music.js'
 
 /**
- * Builds every Axie the arena needs, then pulls their textures off the Axie
+ * Builds every Ronke the arena needs, then pulls their textures off Ronke
  * CDN before the game starts. Nothing renders until the art is in.
  */
 export default class BootScene extends Phaser.Scene {
@@ -41,7 +41,7 @@ export default class BootScene extends Phaser.Scene {
 
   async create() {
     createFxTextures(this)
-    this.setPhase('BUILDING AXIES', 0)
+    this.setPhase('WAKING RONKE', 0)
     await this.loadBrand()
     this.brandReady()
 
@@ -127,29 +127,58 @@ export default class BootScene extends Phaser.Scene {
       img.src = `${import.meta.env.BASE_URL}brand/${file}`
     })
     // The moon mark crowns every Moon Gate in the Wilds.
-    return Promise.all([one('brand-logo', 'lunacy-logo.svg'), one('brand-mark', 'lunacy-mark.svg')])
+    return Promise.all([one('brand-logo', 'ronkacy-logo.svg'), one('brand-mark', 'ronkacy-mark.svg')])
   }
 
-  loadTexture(path) {
-    return new Promise(resolve => {
+  /**
+   * The six sprite sheets, and one entry per class pointing at the same Ronke.
+   *
+   * The classes still exist above this — the lobby, the menu and the kits all
+   * speak in them — so rather than tear that out, every one of them resolves to
+   * the same fighter. Collapsing the roster itself is a separate job.
+   */
+  async loadRonke() {
+    const base = `${import.meta.env.BASE_URL}sprites/`
+    let done = 0
+    for (const name of SHEETS) {
+      try {
+        const meta = await (await fetch(`${base}${name}.json`)).json()
+        const img = await new Promise((resolve, reject) => {
+          const i = new Image()
+          i.onload = () => resolve(i)
+          i.onerror = () => reject(new Error(`${name}.png failed`))
+          i.src = `${base}${name}.png`
+        })
+        this.cache.json.add(`sprites-${name}`, meta)
+        this.textures.addSpriteSheet(`ronke-${name}`, img, {
+          frameWidth: meta.frameWidth, frameHeight: meta.frameHeight, endFrame: meta.frames - 1,
+        })
+      } catch (err) {
+        console.warn(`sheet ${name} failed:`, err.message)
+      }
+      this.setBar(++done / SHEETS.length)
+    }
+    if (!this.textures.exists('ronke-idle')) return null
+    return Object.fromEntries(Object.keys(CLASS_KITS).map(c => [c, { ronke: true }]))
+  }
+
+  /** The logo, as SVG rasterised at its authored size so it stays crisp. */
+  loadBrand() {
+    const one = (key, file) => new Promise(resolve => {
+      if (this.textures.exists(key)) return resolve()
       const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => {
-        if (!this.textures.exists(path)) this.textures.addImage(path, img)
-        resolve(true)
-      }
-      img.onerror = () => {
-        console.warn('texture failed:', path)
-        resolve(false)
-      }
-      img.src = AXIE_CDN + path
+      img.onload = () => { this.textures.addImage(key, img); resolve() }
+      img.onerror = () => { console.warn(`${file} failed to load`); resolve() }
+      img.src = `${import.meta.env.BASE_URL}brand/${file}`
     })
+    // The moon mark crowns every Moon Gate in the Wilds.
+    return Promise.all([one('brand-logo', 'ronkacy-logo.svg'), one('brand-mark', 'ronkacy-mark.svg')])
   }
 
   /**
    * The first thing anyone sees, so it is the field itself: grass, drifting
    * motes, the logo, and a moon that fills as the game loads. The phases are
-   * named as they happen and a tip rotates underneath, because the Axie parts
+   * named as they happen and a tip rotates underneath, because Ronke parts
    * come off a CDN and this screen is up for a few seconds on a cold load.
    */
   showProgress() {
@@ -172,7 +201,7 @@ export default class BootScene extends Phaser.Scene {
     const cx = width / 2
     const cy = height / 2
 
-    this.title = this.add.text(cx, cy - 150, 'LUNACY', {
+    this.title = this.add.text(cx, cy - 150, 'RONKACY', {
       fontFamily: HEAD, fontSize: '54px', color: '#fff8d8',
     }).setOrigin(0.5).setDepth(10)
     this.title.setShadow(0, 5, 'rgba(22,32,15,0.55)', 0, false, true)
@@ -199,7 +228,7 @@ export default class BootScene extends Phaser.Scene {
     this.showTip()
     this.time.addEvent({ delay: 4200, loop: true, callback: () => this.showTip() })
 
-    this.add.text(cx, height - 26, 'BUILT FOR AXIE VIBEATHON 2026', {
+    this.add.text(cx, height - 26, 'A RONKEVERSE GAME', {
       fontFamily: MONO, fontSize: '10px', color: '#b9c4a6',
     }).setOrigin(0.5).setDepth(11).setAlpha(0.75)
 

@@ -2,13 +2,13 @@ import Phaser from 'phaser'
 /**
  * A small round portrait of Ronke, for the minimap.
  *
- * It used to pose a real Axie off-screen and render it into a texture, which
+ * It used to pose a real Ronke off-screen and render it into a texture, which
  * was the only way to show the actual creature when the creature was assembled
  * from parts at runtime. There is one Ronke now and he already exists as a
  * sheet, so the portrait is simply his first idle frame inside a coloured disc.
  */
-export function makeMiniPortrait(scene, axieClass, build, size = 44) {
-  const key = `mini-${axieClass}`
+export function makeMiniPortrait(scene, cls, build, size = 44) {
+  const key = `mini-${cls}`
   if (scene.textures.exists(key)) return key
   if (!scene.textures.exists('ronke-idle')) return null
 
@@ -27,11 +27,11 @@ export function makeMiniPortrait(scene, axieClass, build, size = 44) {
 
 /** Portraits for every class in `builds`, built once at boot. */
 export function makeMiniPortraits(scene, builds) {
-  for (const [axieClass, build] of Object.entries(builds)) {
+  for (const [cls, build] of Object.entries(builds)) {
     try {
-      makeMiniPortrait(scene, axieClass, build)
+      makeMiniPortrait(scene, cls, build)
     } catch (err) {
-      console.warn(`mini portrait failed: ${axieClass}`, err)
+      console.warn(`mini portrait failed: ${cls}`, err)
     }
   }
 }
@@ -47,12 +47,12 @@ export function drawPortraitChip(g, x, y, r, color, { ring = 2, alpha = 1 } = {}
 
 export const PORTRAIT_KEY = c => `mini-${c}`
 
-export function hasPortrait(scene, axieClass) {
-  return scene.textures.exists(PORTRAIT_KEY(axieClass))
+export function hasPortrait(scene, cls) {
+  return scene.textures.exists(PORTRAIT_KEY(cls))
 }
 
-export function portraitFrameSize(scene, axieClass) {
-  const tex = scene.textures.get(PORTRAIT_KEY(axieClass))
+export function portraitFrameSize(scene, cls) {
+  const tex = scene.textures.get(PORTRAIT_KEY(cls))
   return tex ? Math.max(tex.source[0].width, tex.source[0].height) : 44
 }
 

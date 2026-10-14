@@ -1,13 +1,13 @@
 import Phaser from 'phaser'
 import Fighter, { HUD_DEPTH } from '../entities/Fighter.js'
 import BotBrain from '../ai/BotBrain.js'
-import { PARRY } from '../axie/classKits.js'
+import { PARRY } from '../game/classKits.js'
 import { CONNECT_MS } from '../sim/constants.js'
 import { play as playSfx } from '../fx/Sfx.js'
 import { floatLabel } from '../arena/PowerUps.js'
 import MoonGate from '../wilds/MoonGate.js'
 
-const KEY = 'lunacy.tutorial.done.v1'
+const KEY = 'ronkacy.tutorial.done.v1'
 
 export function tutorialDone() {
   try { return localStorage.getItem(KEY) === '1' } catch { return false }
@@ -48,7 +48,7 @@ export default class TutorialDirector {
   begin(playerClass) {
     const scene = this.scene
     const p = new Fighter(scene, this.cx, this.cy + 120, {
-      axieClass: playerClass, build: scene.builds[playerClass], isPlayer: true, name: 'You',
+      cls: playerClass, build: scene.builds[playerClass], isPlayer: true, name: 'You',
     })
     p.immortal = true
     p.sprite.playState('appear')
@@ -95,7 +95,7 @@ export default class TutorialDirector {
       },
       {
         id: 'special', title: 'SPECIAL', keys: ['LEFT CLICK', 'E'],
-        text: 'Landing hits charges your special: the bolt icon above your Axie.\nHit the dummy until its ring fills, then press E or right-click.',
+        text: 'Landing hits charges your special: the bolt icon above Ronke.\nHit the dummy until its ring fills, then press E or right-click.',
         hint: 'Specials only charge from hits that land. Stay close to the dummy.',
         enter: () => {
           P().charge = 0.5
@@ -165,11 +165,11 @@ export default class TutorialDirector {
         hint: 'Hit, then step back. Parry when it lines up a swing.',
         enter: () => {
           const scene = this.scene
-          const classes = Object.keys(scene.builds).filter(c => c !== P().axieClass)
+          const classes = Object.keys(scene.builds).filter(c => c !== P().cls)
           const cls = Phaser.Utils.Array.GetRandom(classes)
           const spot = this.clearSpotNear(P(), 260)
           const rival = new Fighter(scene, spot.x, spot.y, {
-            axieClass: cls, build: scene.builds[cls], name: 'Rival',
+            cls: cls, build: scene.builds[cls], name: 'Rival',
           })
           // A gentler rival: slower to strike and to parry, and it starts hurt.
           rival.brain = new BotBrain(rival, { parryReadChance: 0.15, parryReadRate: 0.1, parryReactChance: 0.2 })
@@ -296,8 +296,8 @@ export default class TutorialDirector {
   /** A dummy: stands still, never fights back, and never runs out of health. */
   spawnDummy({ x, y }) {
     const scene = this.scene
-    const cls = this.player.axieClass === 'plant' ? 'aquatic' : 'plant'
-    const d = new Fighter(scene, x, y, { axieClass: cls, build: scene.builds[cls], name: 'Dummy' })
+    const cls = this.player.cls === 'plant' ? 'aquatic' : 'plant'
+    const d = new Fighter(scene, x, y, { cls: cls, build: scene.builds[cls], name: 'Dummy' })
     d.brain = { update() {} }
     d.immortal = true
     d.isDummy = true
@@ -332,8 +332,8 @@ export default class TutorialDirector {
    */
   spawnPartner({ x, y }) {
     const scene = this.scene
-    const cls = this.player.axieClass === 'reptile' ? 'beast' : 'reptile'
-    const f = new Fighter(scene, x, y, { axieClass: cls, build: scene.builds[cls], name: 'Partner' })
+    const cls = 'ronke'
+    const f = new Fighter(scene, x, y, { cls: cls, build: scene.builds[cls], name: 'Partner' })
     f.brain = { update() {} }
     f.immortal = true
     f.sprite.playState('appear')

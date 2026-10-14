@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import RonkeSprite from '../ronke/RonkeSprite.js'
 import { makeGrassTexture } from '../arena/Arena.js'
-import { FIELD } from '../axie/palette.js'
+import { FIELD } from '../game/palette.js'
 import { ambientMotes } from '../fx/Juice.js'
 import { tutorialDone } from '../tutorial/TutorialDirector.js'
 import { play as playMusic } from '../fx/Music.js'
@@ -61,10 +61,10 @@ export default class HomeScene extends Phaser.Scene {
 
     ambientMotes(this, { left: 0, top: 0, right: width, bottom: height })
 
-    // A few Axies milling about on the grass behind the card.
+    // A few Ronkes milling about on the grass behind the card.
     const classes = Object.keys(this.builds ?? {})
     for (const cls of classes) {
-      const sprite = new RonkeSprite(this, 0, 0, { build: this.builds[cls], axieClass: cls })
+      const sprite = new RonkeSprite(this, 0, 0, { build: this.builds[cls], cls: cls })
       sprite.root.setScale(1.05)
       this.wanderers.push({
         sprite,
@@ -82,11 +82,11 @@ export default class HomeScene extends Phaser.Scene {
       // A slow bob, so the title feels as alive as the field under it.
       this.logoBob = 0
     }
-    this.titleShadow = this.add.text(0, 0, 'LUNACY', {
+    this.titleShadow = this.add.text(0, 0, 'RONKACY', {
       fontFamily: HEAD, fontSize: '120px', color: '#23300f',
     }).setOrigin(0.5).setAlpha(0.32).setDepth(1009)
 
-    this.title = this.add.text(0, 0, 'LUNACY', {
+    this.title = this.add.text(0, 0, 'RONKACY', {
       fontFamily: HEAD, fontSize: '120px', color: '#fff8d8',
     }).setOrigin(0.5).setDepth(1010)
     this.title.setShadow(0, 6, 'rgba(35,48,15,0.45)', 0, false, true)
@@ -241,7 +241,7 @@ export default class HomeScene extends Phaser.Scene {
 
   buildFooter() {
     this.footer = this.add.text(0, 0,
-      'ENTER  PLAY  ·  T  TUTORIAL  ·  N  MULTIPLAYER  ·  A  ABOUT  ·  M  MUTE  ·  BUILT FOR AXIE VIBEATHON 2026', {
+      'ENTER  PLAY  ·  T  TUTORIAL  ·  N  MULTIPLAYER  ·  A  ABOUT  ·  M  MUTE  ·  A RONKEVERSE GAME', {
         fontFamily: MONO, fontSize: '11px', color: '#e8f0d6',
       }).setOrigin(0.5).setDepth(1012).setAlpha(0.85)
     this.footer.setShadow(0, 2, 'rgba(35,48,15,0.6)', 3, false, true)
@@ -298,7 +298,7 @@ export default class HomeScene extends Phaser.Scene {
 
     this.footer?.setPosition(cx, height - 26)
 
-    // Park the Axies along the lower field, clear of the card.
+    // Park Ronkes along the lower field, clear of the card.
     this.wanderers.forEach((w, i) => {
       const n = this.wanderers.length
       const spread = Math.min(width - 200, 900)

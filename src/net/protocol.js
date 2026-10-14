@@ -23,7 +23,7 @@ export const TICK_MS = 1000 / 60
 /** One snapshot every third step: 20 a second. */
 export const SNAPSHOT_EVERY = 3
 
-/** A dropped player's Axie stays in the room this long before it forfeits. */
+/** A dropped player's Ronke stays in the room this long before it forfeits. */
 export const ABANDON_MS = 6000
 
 /** Inputs older than this are ignored: a client that far behind is resyncing. */

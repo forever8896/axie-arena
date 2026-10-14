@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import RonkeSprite from '../ronke/RonkeSprite.js'
-import { CLASS_KITS } from '../axie/classKits.js'
-import { CLASS_COLORS, ARENA_PALETTE } from '../axie/palette.js'
+import { CLASS_KITS } from '../game/classKits.js'
+import { CLASS_COLORS, ARENA_PALETTE } from '../game/palette.js'
 import { ambientMotes } from '../fx/Juice.js'
 import { play as playMusic } from '../fx/Music.js'
 import { uiSound } from '../fx/UiSound.js'
@@ -12,7 +12,7 @@ const MONO = 'ui-monospace, monospace'
 
 /**
  * Class select. Doubles as the instruction screen: every card shows the real
- * Axie, what it is good at, and both of its abilities before you commit.
+ * Ronke, what it is good at, and both of its abilities before you commit.
  */
 export default class MenuScene extends Phaser.Scene {
   constructor() {
@@ -21,7 +21,7 @@ export default class MenuScene extends Phaser.Scene {
 
   init(data) {
     this.builds = data.builds
-    // Which mode the chosen Axie is for: the Wilds lobby, or the tutorial.
+    // Which mode the chosen Ronke is for: the Wilds lobby, or the tutorial.
     this.mode = data.mode ?? 'wilds'
   }
 
@@ -38,13 +38,13 @@ export default class MenuScene extends Phaser.Scene {
 
     this.backdrop()
 
-    this.title = this.add.text(0, 0, 'LUNACY', {
+    this.title = this.add.text(0, 0, 'RONKACY', {
       fontFamily: HEAD, fontSize: '46px', color: '#fff8d8',
     }).setOrigin(0.5)
 
-    this.subtitle = this.add.text(0, 0, this.mode === 'tutorial' ? 'CHOOSE YOUR AXIE  ·  TUTORIAL'
-      : this.mode === 'net' ? 'CHOOSE YOUR AXIE  ·  MULTIPLAYER'
-        : 'CHOOSE YOUR AXIE  ·  THE ENDLESS WILDS', {
+    this.subtitle = this.add.text(0, 0, this.mode === 'tutorial' ? 'ENTER THE RONKEVERSE  ·  TUTORIAL'
+      : this.mode === 'net' ? 'ENTER THE RONKEVERSE  ·  MULTIPLAYER'
+        : 'ENTER THE RONKEVERSE  ·  THE ENDLESS WILDS', {
       fontFamily: MONO, fontSize: '13px', color: '#8b83ad',
     }).setOrigin(0.5)
 
@@ -98,11 +98,11 @@ export default class MenuScene extends Phaser.Scene {
     card.panel = panel
     card.add(panel)
 
-    // Pedestal the Axie stands on, so it does not float in the card.
+    // Pedestal Ronke stands on, so it does not float in the card.
     const pedestal = this.add.ellipse(0, -108, 124, 27, colors.body, 0.16)
     card.add(pedestal)
 
-    const sprite = new RonkeSprite(this, 0, 0, { build: this.builds[cls], axieClass: cls })
+    const sprite = new RonkeSprite(this, 0, 0, { build: this.builds[cls], cls: cls })
     sprite.root.setScale(1.15)
     sprite.root.setPosition(0, -106)
     card.add(sprite.root)
@@ -243,7 +243,7 @@ export default class MenuScene extends Phaser.Scene {
       const selected = i === this.selected
       card.sprite.update(delta, selected ? 40 : 0)
 
-      // The highlighted Axie shows off its attack every couple of seconds.
+      // The highlighted Ronke shows off its attack every couple of seconds.
       if (selected && time > card.attackAt) {
         card.attackAt = time + 2400
         const kit = CLASS_KITS[card.cls]

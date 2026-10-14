@@ -89,7 +89,7 @@ export default class WildsHud {
   }
 
   /**
-   * A compass ring around your Axie: one arrow per open gate you cannot see.
+   * A compass ring around Ronke: one arrow per open gate you cannot see.
    * Around the player rather than at the screen edge, where it covered HUD.
    */
   drawGateArrows(player) {

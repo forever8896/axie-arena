@@ -37,10 +37,10 @@ try {
   const door = await b.eval("window.__game.scene.getScene('HomeScene').netToggle?.text ?? ''")
   check('the home screen knows the rooms are unreachable', /OFFLINE/.test(door), door.replace(/\s+/g, ' '))
 
-  // Play, the way a person does: home, pick an Axie, pick a room, fight.
+  // Play, the way a person does: home, pick a Ronke, pick a room, fight.
   await b.eval("window.__game.scene.getScene('HomeScene').start('wilds'); true")
   await b.waitFor("!!window.__game.scene.getScene('MenuScene')?.scene.isActive()", 30000)
-  await b.eval("window.__game.scene.getScene('MenuScene').choose('beast'); true")
+  await b.eval("window.__game.scene.getScene('MenuScene').choose('ronke'); true")
   await b.waitFor("!!window.__game.scene.getScene('LobbyScene')?.scene.isActive()", 30000)
   const lobbyNet = await b.eval("Boolean(window.__game.scene.getScene('LobbyScene').net)")
   check('the lobby is the local one', !lobbyNet)

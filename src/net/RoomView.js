@@ -12,14 +12,14 @@
  */
 import Phaser from 'phaser'
 import RonkeSprite from '../ronke/RonkeSprite.js'
-import { CLASS_KITS, PARRY, TELEGRAPH_MS } from '../axie/classKits.js'
-import { CLASS_COLORS } from '../axie/palette.js'
+import { CLASS_KITS, PARRY, TELEGRAPH_MS } from '../game/classKits.js'
+import { CLASS_COLORS } from '../game/palette.js'
 import { FLAGS, has } from '../sim/constants.js'
 import { playPlate, playImpactPlate, playStatusPlate } from '../fx/SkillVfx.js'
 import { damageNumber, impact, dustEmitter } from '../fx/Juice.js'
 import { drawFighterStatus, HUD_DEPTH } from '../fx/FighterHud.js'
 import { POWERUPS } from '../arena/boonConfig.js'
-import { GUARD, LANCE, phasesFor } from '../axie/combatConfig.js'
+import { GUARD, LANCE, phasesFor } from '../game/combatConfig.js'
 import { Orb } from '../arena/PowerUps.js'
 import { Well } from '../arena/Moonwell.js'
 import { money } from '../wilds/config.js'
@@ -50,13 +50,13 @@ export default class RoomView {
     let actor = this.actors.get(f.id)
     if (actor) return actor
     const build = this.builds[f.cls] ?? this.builds[Object.keys(this.builds)[0]]
-    const sprite = new RonkeSprite(this.scene, f.x, f.y, { build, axieClass: f.cls })
+    const sprite = new RonkeSprite(this.scene, f.x, f.y, { build, cls: f.cls })
     // The effect helpers, the HUD and the minimap were all written against
     // Fighter, and want an object with a sprite, a position and some state. An
     // actor is exactly that much of a fighter — the part with no rules in it —
     // so all three take it without changes.
     actor = {
-      id: f.id, sprite, cls: f.cls, axieClass: f.cls, label: null, lastHp: f.hp, flags: 0,
+      id: f.id, sprite, cls: f.cls, cls: f.cls, label: null, lastHp: f.hp, flags: 0,
       statusFx: this.scene.add.graphics().setDepth(9000),
       parryFx: this.scene.add.graphics(),
       aimFx: this.scene.add.graphics(),
@@ -88,14 +88,14 @@ export default class RoomView {
     for (const raw of view.fighters) {
       seen.add(raw.id)
       // Your own body comes from the prediction: the room's word about you is
-      // a round trip old, and watching your own Axie lag your hands is the one
+      // a round trip old, and watching your own Ronke lag your hands is the one
       // thing no amount of smoothing forgives.
       const f = self && raw.id === self.id && raw.alive
         ? { ...raw, x: self.x, y: self.y, speed: self.speed }
         : raw
       const actor = this.actor(f)
       actor.sprite.setPosition(f.x, f.y)
-      // Facing follows aim, not travel: an Axie backing away still faces you.
+      // Facing follows aim, not travel: a Ronke backing away still faces you.
       if (!has(f.flags, FLAGS.STUNNED)) actor.sprite.setFacing(Math.cos(f.aim) >= 0 ? 1 : -1)
       actor.sprite.update(delta, f.speed > RUN_SPEED ? f.speed : 0)
       actor.sprite.root.setAlpha(f.alive ? (has(f.flags, FLAGS.HIDDEN) ? 0.45 : 1) : 0.35)
@@ -772,7 +772,7 @@ export default class RoomView {
    * room's word gets back.
    *
    * Only ever animation: no damage, no charge spent, no bounty moved. If the
-   * room disagrees, the worst that happens is an Axie that swung at nothing,
+   * room disagrees, the worst that happens is a Ronke that swung at nothing,
    * which is also what happens when you mistime a swing.
    */
   echo(kind, actor, aim) {

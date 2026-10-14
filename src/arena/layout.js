@@ -2,9 +2,9 @@
  * Arena geometry, as plain data so it can be verified without the engine
  * (scripts/check-terrain.mjs).
  *
- * Rule: two pieces of cover either join solidly or leave a gap an Axie fits
+ * Rule: two pieces of cover either join solidly or leave a gap a Ronke fits
  * through with room to spare. The first layout had corners 24–47px apart and
- * walls 17–20px from the border: they read as passages, and an Axie 60px
+ * walls 17–20px from the border: they read as passages, and a Ronke 60px
  * wide stuck in them.
  */
 

@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { FIELD } from '../axie/palette.js'
+import { FIELD } from '../game/palette.js'
 
 import { WORLD, BOUNDS, worldWalls, worldBushes } from './layout.js'
 import { paintBush } from './Foliage.js'
@@ -214,7 +214,7 @@ export default class Arena {
   }
 
   /**
-   * Blocks are drawn per wall and depth-sorted by their base, so an Axie can
+   * Blocks are drawn per wall and depth-sorted by their base, so a Ronke can
    * stand behind one and be occluded by it.
    */
   drawWalls() {
@@ -250,7 +250,7 @@ export default class Arena {
       g.lineStyle(1, WALL.edge, 0.5)
       g.strokeRoundedRect(w.left, w.top - lift, w.w, w.h, radius)
 
-      // A dark outline around the whole block, as the Axies and foliage have.
+      // A dark outline around the whole block, as Ronkes and foliage have.
       g.lineStyle(3, 0x3a2a18, 0.9)
       g.strokeRoundedRect(w.left, w.top - lift, w.w, w.h + lift, radius)
 
@@ -290,7 +290,7 @@ export default class Arena {
   /** Drawn above the fighters, so standing in one hides you. */
   drawBushCanopies() {
     this.bushes.forEach((b, i) => {
-      const key = paintBush(this.scene, `bush-${i}-${b.rx}x${b.ry}`, b.rx, b.ry, { seed: `axie-bush-${i}`, shadow: false })
+      const key = paintBush(this.scene, `bush-${i}-${b.rx}x${b.ry}`, b.rx, b.ry, { seed: `ronke-bush-${i}`, shadow: false })
       const image = this.scene.add.image(b.x, b.y, key).setDepth(b.y + b.ry + 40)
       this.canopies.push({ bush: b, image })
     })

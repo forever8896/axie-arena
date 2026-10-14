@@ -13,8 +13,8 @@
 
 /** Rooms are the same everywhere; only the distance differs. */
 export const REGIONS = [
-  { id: 'eu', name: 'Europe', where: 'Amsterdam', origin: 'https://lunacy.up.railway.app' },
-  { id: 'sg', name: 'Asia', where: 'Singapore', origin: 'https://lunacy-sg-production.up.railway.app' },
+  { id: 'eu', name: 'Europe', where: 'Amsterdam', origin: 'https://ronkacy.up.railway.app' },
+  { id: 'sg', name: 'Asia', where: 'Singapore', origin: 'https://ronkacy-sg-production.up.railway.app' },
 ]
 
 /** Anything more than this and the game is worth playing somewhere closer. */
@@ -23,7 +23,7 @@ export const FAR_MS = 120
 /** How much closer another region must be before it is worth suggesting. */
 export const WORTH_SWITCHING_MS = 60
 
-const KEY = 'lunacy.region'
+const KEY = 'ronkacy.region'
 
 /**
  * Playing against a server on this machine: development, or a copy of the game

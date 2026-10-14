@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import RonkeSprite from '../ronke/RonkeSprite.js'
 import { makeGrassTexture } from '../arena/Arena.js'
-import { CLASS_KITS } from '../axie/classKits.js'
+import { CLASS_KITS } from '../game/classKits.js'
 import { ambientMotes } from '../fx/Juice.js'
 import { ROOMS, LIVE_ROOM, WILDS, money } from '../wilds/config.js'
 import { wallet } from '../wilds/Wallet.js'
@@ -79,7 +79,7 @@ export default class LobbyScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-ESC', () => { uiSound(this, 'back'); this.go('HomeScene', { builds: this.builds }) })
     this.esc = this.add.text(width - pad, 30, 'ESC  BACK', { fontFamily: MONO, fontSize: '11px', color: '#b9c4a6' })
       .setOrigin(1, 0)
-    this.input.keyboard.on('keydown-C', () => this.changeAxie())
+    this.input.keyboard.on('keydown-C', () => this.changeRonke())
     ;['ONE', 'TWO', 'THREE', 'FOUR'].forEach((key, i) => this.input.keyboard.on(`keydown-${key}`, () => this.enter(i)))
 
     if (this.net) {
@@ -103,14 +103,14 @@ export default class LobbyScene extends Phaser.Scene {
   buildSide(x, y, w, h) {
     this.plate(x, y, w, h)
     const kit = CLASS_KITS[this.playerClass]
-    this.add.text(x + 20, y + 16, 'YOUR AXIE', { fontFamily: MONO, fontSize: '11px', color: '#b9c4a6' })
+    this.add.text(x + 20, y + 16, 'YOUR RONKE', { fontFamily: MONO, fontSize: '11px', color: '#b9c4a6' })
     this.add.text(x + 20, y + 32, kit?.title ?? this.playerClass, { fontFamily: HEAD, fontSize: '22px', color: CREAM })
     const change = this.add.text(x + w - 20, y + 38, 'CHANGE  (C)', { fontFamily: MONO, fontSize: '11px', color: '#ffd964' })
       .setOrigin(1, 0).setInteractive({ useHandCursor: true })
-    bindButton(this, change, () => this.changeAxie())
+    bindButton(this, change, () => this.changeRonke())
 
     if (this.builds?.[this.playerClass]) {
-      this.hero = new RonkeSprite(this, x + w / 2, y + 150, { build: this.builds[this.playerClass], axieClass: this.playerClass })
+      this.hero = new RonkeSprite(this, x + w / 2, y + 150, { build: this.builds[this.playerClass], cls: this.playerClass })
       this.hero.root.setScale(1.25)
       this.hero.setFacing(1)
     }
@@ -389,7 +389,7 @@ export default class LobbyScene extends Phaser.Scene {
     })
   }
 
-  changeAxie() {
+  changeRonke() {
     this.go('MenuScene', { builds: this.builds, mode: this.net ? 'net' : 'wilds' })
   }
 

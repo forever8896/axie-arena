@@ -63,7 +63,7 @@ async function frames(client, ms, input = {}, fps = 60) {
 
 try {
   const client = new RoomClient({ url, name: 'Ayla' })
-  const welcome = await client.connect({ room: 'glade', cls: 'beast' })
+  const welcome = await client.connect({ room: 'glade', cls: 'ronke' })
   check('a client connects and is seated', client.status === 'playing' && Boolean(client.you), client.you)
   check('the welcome names the room', welcome.room.id === 'glade', welcome.room.name)
   check('a first view is drawable straight away', Boolean(client.view()?.me), 'view ready')
@@ -90,7 +90,7 @@ try {
   {
     // In the empty room, where a walk is only a walk.
     const alone = new RoomClient({ url, name: 'Alone' })
-    await alone.connect({ room: 'quiet', cls: 'beast' })
+    await alone.connect({ room: 'quiet', cls: 'ronke' })
     await frames(alone, 300)
     // Walking in a straight line: between two snapshots the drawn position has
     // to move in small steps, not sit still and then jump 20 times a second.
@@ -199,7 +199,7 @@ try {
     check('a lost socket is noticed', client.status === 'dropped', client.status)
 
     const back = new RoomClient({ url, name: 'Ayla' })
-    await back.connect({ room: 'glade', cls: 'beast', resume: token })
+    await back.connect({ room: 'glade', cls: 'ronke', resume: token })
     check('and the game is picked back up', back.you === id, `${back.you} vs ${id}`)
     await frames(back, 300)
     check('with a drawable world again', Boolean(back.view()?.me), 'view ready')
@@ -212,7 +212,7 @@ try {
   {
     const lost = new RoomClient({ url })
     let refused = null
-    await lost.connect({ room: 'nowhere', cls: 'beast' }).catch(err => { refused = err.message })
+    await lost.connect({ room: 'nowhere', cls: 'ronke' }).catch(err => { refused = err.message })
     check('joining a room that does not exist fails cleanly', refused === 'no-such-room', refused)
     lost.close()
   }

@@ -32,7 +32,7 @@ try {
     // A room plays the arena loop.
     const builds = g.scene.getScene('HomeScene').builds
     ;['HomeScene', 'MenuScene', 'LobbyScene'].forEach(k => g.scene.stop(k))
-    g.scene.start('GameScene', { builds, playerClass: 'beast', mode: 'wilds', room: ROOMS[1], snapshot: { hunters: 4, topBounty: 0.5 } })
+    g.scene.start('GameScene', { builds, playerClass: 'ronke', mode: 'wilds', room: ROOMS[1], snapshot: { hunters: 4, topBounty: 0.5 } })
     await until(() => g.scene.getScene('GameScene').wilds?.gates)
     const s = g.scene.getScene('GameScene')
     check('a room plays the arena loop', await until(() => music.currentTrack() === 'arena', 5000), music.currentTrack())

@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { WORLD } from '../arena/Arena.js'
-import { FIELD } from '../axie/palette.js'
+import { FIELD } from '../game/palette.js'
 import { PORTRAIT_KEY } from '../fx/MiniPortrait.js'
 import WildsHud from '../wilds/WildsHud.js'
 import TutorialHud from '../tutorial/TutorialHud.js'
@@ -68,7 +68,7 @@ export default class UIScene extends Phaser.Scene {
   /**
    * Top-right map, drawn from the arena itself: the baked ground, the real
    * bushes and the real walls, so what you glance at matches what you are
-   * standing in. Everything that moves is drawn over it each frame — Axies as
+   * standing in. Everything that moves is drawn over it each frame — Ronkes as
    * little portraits of themselves, power-ups as their own icons.
    */
   buildMinimap() {
@@ -227,7 +227,7 @@ export default class UIScene extends Phaser.Scene {
       this.mmDots.fillCircle(f.x * s, f.y * s, f.isPlayer ? 11 : 9.5)
       this.mmDots.fillStyle(f.isPlayer ? 0xfff8d8 : f.colors.body, f.isPlayer ? 1 : 0.9)
       this.mmDots.fillCircle(f.x * s, f.y * s, f.isPlayer ? 9.5 : 8)
-      const portrait = place(f, PORTRAIT_KEY(f.axieClass), f.isPlayer ? 20 : 17, f.x, f.y, { depth: f.isPlayer ? 3 : 2 })
+      const portrait = place(f, PORTRAIT_KEY(f.cls), f.isPlayer ? 20 : 17, f.x, f.y, { depth: f.isPlayer ? 3 : 2 })
       if (!portrait) {
         this.mmDots.fillStyle(f.colors.rim, 1)
         this.mmDots.fillCircle(f.x * s, f.y * s, 4)

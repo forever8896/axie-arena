@@ -12,12 +12,9 @@ const BASE = `${import.meta.env.BASE_URL}sfx/`
 let ready = false
 
 export const SFX = [
-  'beast_bite_attack', 'aquatic_slash_attack', 'plant_bite_attack',
-  'bird_bite_attack', 'bug_bite_attack', 'reptile_slash_attack',
-  'beast_gore_attack', 'plant_projectile_attack', 'bird_throw_attack',
-  'bug_projectile_attack', 'reptile_projectile_attack',
-  'beast_projectile_hit', 'aquatic_projectile_hit', 'plant_projectile_hit',
-  'bird_throw_hit', 'bug_projectile_hit', 'reptile_projectile_hit',
+  // Ronke: what he does and what it sounds like when it lands.
+  'ronke_punch', 'ronke_punch_hit', 'ronke_lick', 'ronke_lick_hit',
+  'ronke_hurt', 'ronke_guard', 'ronke_dash', 'ronke_die',
   'poison', 'stunned', 'shield',
   'heal', 'power_awaken', 'bubble', 'damage_boost', 'buff',
   // Menu: hover tick, confirm, back, start, denied.

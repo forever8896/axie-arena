@@ -25,16 +25,16 @@ try {
     await sleep(4000)   // let the cards cycle through basic and special previews
     log.push('menu cards playing: ' + menu.cards.map(c => c.sprite.rig.playing?.split('/').pop()).join(','))
 
-    menu.choose('reptile')
+    menu.choose('ronke')
     log.push('class select -> lobby: ' + (await until(() => g.scene.getScene('LobbyScene').scene.isActive() && g.scene.getScene('LobbyScene').roomViews) && active()))
 
     g.scene.getScene('LobbyScene').enter(1)
     await until(() => g.scene.getScene('UIScene').wildsHud && g.scene.getScene('GameScene').player?.alive)
     const s = g.scene.getScene('GameScene')
     log.push('room: ' + s.wilds.room.name + ' | hunters ' + s.bots.filter(x => x.alive).length + ' | ' + active())
-    // The map is built from the arena itself, with a portrait per Axie.
+    // The map is built from the arena itself, with a portrait per Ronke.
     const ui = g.scene.getScene('UIScene')
-    log.push('minimap: layers ' + ui.mmRoot.length + ' | portrait ' + g.textures.exists('mini-' + s.player.axieClass) + ' | icons ' + ui.mmIcons.size)
+    log.push('minimap: layers ' + ui.mmRoot.length + ' | portrait ' + g.textures.exists('mini-' + s.player.cls) + ' | icons ' + ui.mmIcons.size)
 
     s.player.invulnerableUntil = 0; s.player.spawnShieldUntil = 0
     s.player.takeDamage(1e6, s.bots.find(x => x.alive))
@@ -64,7 +64,7 @@ try {
     await until(() => g.scene.getScene('HomeScene').scene.isActive())
     g.scene.getScene('HomeScene').start('tutorial')
     await until(() => g.scene.getScene('MenuScene').scene.isActive() && g.scene.getScene('MenuScene').mode === 'tutorial')
-    g.scene.getScene('MenuScene').choose('plant')
+    g.scene.getScene('MenuScene').choose('ronke')
     await until(() => g.scene.getScene('GameScene').tutorial?.step && g.scene.getScene('UIScene').tutorialHud)
     log.push('tutorial: step ' + g.scene.getScene('GameScene').tutorial.step.id + ' | ' + active())
     return log

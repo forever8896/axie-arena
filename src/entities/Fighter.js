@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import RonkeSprite from '../ronke/RonkeSprite.js'
-import { CLASS_COLORS } from '../axie/palette.js'
-import { CLASS_KITS, CHARGE_PER_SECOND, PARRY } from '../axie/classKits.js'
+import { CLASS_COLORS } from '../game/palette.js'
+import { CLASS_KITS, CHARGE_PER_SECOND, PARRY } from '../game/classKits.js'
 import { impact, damageNumber, hitStopFor, dustEmitter } from '../fx/Juice.js'
 import { useBasic, useSpecial } from '../combat/abilities.js'
 import { play, playVaried } from '../fx/Sfx.js'
@@ -12,18 +12,18 @@ import { drawFighterStatus, HUD_DEPTH } from '../fx/FighterHud.js'
 export { HUD_DEPTH }
 
 /**
- * One Axie in the arena. The player and the bots are the same thing; only the
+ * One Ronke in the arena. The player and the bots are the same thing; only the
  * source of `intent` differs, so anything that works for one works for both.
  */
 export default class Fighter {
-  constructor(scene, x, y, { axieClass = 'beast', build, isPlayer = false, name = 'axie' } = {}) {
+  constructor(scene, x, y, { cls = 'ronke', build, isPlayer = false, name = 'ronke' } = {}) {
     this.scene = scene
     this.isPlayer = isPlayer
     this.name = name
-    this.axieClass = axieClass
-    this.colors = CLASS_COLORS[axieClass] ?? CLASS_COLORS.beast
+    this.cls = cls
+    this.colors = CLASS_COLORS[cls] ?? CLASS_COLORS.beast
 
-    const kit = CLASS_KITS[axieClass]
+    const kit = CLASS_KITS[cls]
     this.kit = kit
     this.maxHp = kit?.hp ?? 5
     this.hp = this.maxHp
@@ -76,7 +76,7 @@ export default class Fighter {
     this.dashUntil = 0
     this.invulnerableUntil = 0
 
-    this.sprite = new RonkeSprite(scene, x, y, { axieClass, build })
+    this.sprite = new RonkeSprite(scene, x, y, { cls, build })
     this.pos = new Phaser.Math.Vector2(x, y)
     this.vel = new Phaser.Math.Vector2(0, 0)
     this.intent = new Phaser.Math.Vector2(0, 0)
@@ -91,7 +91,7 @@ export default class Fighter {
     // separate pool that soaks damage before health does.
     this.buffs = {}
     this.shieldHp = 0
-    // Icons above the Axie: dash, parry, special and any power-up held.
+    // Icons above Ronke: dash, parry, special and any power-up held.
     this.hudIcons = {}
     // Last time a rival hurt us. Moonwells stop healing for a moment after.
     this.lastHurtAt = -Infinity
@@ -275,7 +275,7 @@ export default class Fighter {
   }
 
   /**
-   * Everything you need mid-fight, above your own Axie: health, the shield,
+   * Everything you need mid-fight, above your own Ronke: health, the shield,
    * and a row of icons for dash, parry, special and any power-up, each filling
    * as it comes back.
    *

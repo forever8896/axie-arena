@@ -11,7 +11,7 @@
  */
 import { money } from '../wilds/config.js'
 import { wallet } from '../wilds/Wallet.js'
-import { CLASS_KITS } from '../axie/classKits.js'
+import { CLASS_KITS } from '../game/classKits.js'
 
 export default class NetWilds {
   constructor(scene, room) {

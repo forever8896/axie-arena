@@ -22,7 +22,7 @@ export default class SimRoom {
     this.room = room
     this.rng = new Rng(seed)
     this.arena = new SimArena()
-    this.classes = classes.length ? classes : ['beast', 'aquatic', 'plant', 'bird', 'bug', 'reptile']
+    this.classes = classes.length ? classes : ['ronke']
 
     this.now = 0
     this.tickCount = 0
@@ -67,11 +67,11 @@ export default class SimRoom {
 
   // --- Population ---------------------------------------------------------
 
-  addFighter({ axieClass, isPlayer = false, name, x, y, bot = false, bounty = null, brainOptions }) {
-    const cls = axieClass ?? this.rng.pick(this.classes)
+  addFighter({ cls: want, isPlayer = false, name, x, y, bot = false, bounty = null, brainOptions }) {
+    const cls = want ?? this.rng.pick(this.classes)
     const spot = x == null ? this.safeSpawn() : { x, y }
     const f = new SimFighter(this, {
-      id: this.nextId(isPlayer ? 'u' : 'b'), axieClass: cls, isPlayer, name: name ?? cls, x: spot.x, y: spot.y,
+      id: this.nextId(isPlayer ? 'u' : 'b'), cls: cls, isPlayer, name: name ?? cls, x: spot.x, y: spot.y,
     })
     if (bot) f.brain = new SimBrain(f, brainOptions)
     if (this.room) {
@@ -122,7 +122,7 @@ export default class SimRoom {
   addProjectile(opts) {
     const p = new SimProjectile(this, opts)
     this.projectiles.push(p)
-    this.event({ t: 'shot', id: p.id, cls: opts.owner.axieClass, x: p.pos.x, y: p.pos.y, a: p.angle, seeking: p.seeking })
+    this.event({ t: 'shot', id: p.id, cls: opts.owner.cls, x: p.pos.x, y: p.pos.y, a: p.angle, seeking: p.seeking })
     return p
   }
 
@@ -377,8 +377,8 @@ export default class SimRoom {
   }
 
   /** A player pays a stake and joins. Returns the fighter. */
-  joinPlayer({ axieClass, name = 'You' }) {
-    const f = this.addFighter({ axieClass, isPlayer: true, name })
+  joinPlayer({ cls, name = 'You' }) {
+    const f = this.addFighter({ cls, isPlayer: true, name })
     if (this.room && !this.room.free) this.ledger.fees += this.room.stake * WILDS.feeRate
     return f
   }

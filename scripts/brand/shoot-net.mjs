@@ -24,8 +24,8 @@ async function player(name, cls) {
   return b
 }
 
-const a = await player('Ayla', 'beast')
-const b = await player('Bram', 'plant')
+const a = await player('Ayla', 'ronke')
+const b = await player('Bram', 'ronke')
 try {
   // Walk them toward each other so both frames hold the same meeting.
   await a.eval(`(async () => {

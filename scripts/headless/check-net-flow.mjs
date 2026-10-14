@@ -2,7 +2,7 @@
 /**
  * The way in to multiplayer, as a player walks it.
  *
- * Home screen, the experimental switch, choosing an Axie, a lobby listing the
+ * Home screen, the experimental switch, choosing a Ronke, a lobby listing the
  * server's real rooms, and into one of them with the game's own HUD around it.
  *
  * Needs `npm start` (the rooms) and `npm run dev` (the page).
@@ -35,9 +35,9 @@ try {
   await b.eval(`window.__game.scene.getScene('HomeScene').start('net'); true`)
   await b.waitFor("window.__game.scene.getScene('MenuScene')?.scene.isActive()", 20000)
   const sub = await b.eval("window.__game.scene.getScene('MenuScene').subtitle.text")
-  check('choosing an Axie says what it is for', sub.includes('MULTIPLAYER'), sub)
+  check('choosing a Ronke says what it is for', sub.includes('MULTIPLAYER'), sub)
 
-  await b.eval(`window.__game.scene.getScene('MenuScene').choose('beast'); true`)
+  await b.eval(`window.__game.scene.getScene('MenuScene').choose('ronke'); true`)
   await b.waitFor("!!window.__game.scene.getScene('LobbyScene')?.roomViews", 20000)
 
   const lobby = await b.waitFor(`(() => {
@@ -94,7 +94,7 @@ try {
   check('the minimap draws the room', read.portraits > 0, `${read.portraits} icons on the map`)
   check('the room is named as the one you picked', /GLADE/i.test(read.room ?? ''), read.room)
   check('the leaderboard has hunters on it', read.leaders > 0, `${read.leaders} rows`)
-  check('your ability icons are above your Axie', read.icons >= 3, `${read.icons} icons`)
+  check('your ability icons are above Ronke', read.icons >= 3, `${read.icons} icons`)
   check('the Moon Gates are known to the HUD', read.gates > 0, `${read.gates} gates`)
   check('the room count is shown', (read.status ?? '').length > 0, read.status)
 } catch (err) {

@@ -24,7 +24,7 @@ const check = (name, ok, detail = '') => {
 
 const b = await launch({ width: 900, height: 600 })
 try {
-  await b.goto(`${PAGE}/?net=glade&cls=beast&name=Spam`)
+  await b.goto(`${PAGE}/?net=glade&cls=ronke&name=Spam`)
   await b.waitFor("!!window.__game?.scene.getScene('NetScene')?.scene.isActive()", 90000)
   await b.eval('window.__game.loop.wake(); true')
   await b.waitFor("window.__game.scene.getScene('NetScene').client?.status === 'playing'", 60000)
@@ -35,7 +35,7 @@ try {
     const frame = () => new Promise(r => requestAnimationFrame(r))
     const sprite = () => s.view.actors.get(s.client.you)?.sprite
 
-    // Count every time an attack animation is started on this Axie.
+    // Count every time an attack animation is started on this Ronke.
     for (let f = 0; f < 120 && !sprite(); f++) await frame()
     const sp = sprite()
     if (!sp) return JSON.stringify({ error: 'no sprite' })

@@ -21,8 +21,8 @@
  *
  * Usage: node scripts/check-windows.mjs [ping]
  */
-import { CLASS_KITS, PARRY, TELEGRAPH_MS } from '../src/axie/classKits.js'
-import { SWING, GUARD, STAMINA, SPECIAL_TELEGRAPH_MS, phasesFor } from '../src/axie/combatConfig.js'
+import { CLASS_KITS, PARRY, TELEGRAPH_MS } from '../src/game/classKits.js'
+import { SWING, GUARD, STAMINA, SPECIAL_TELEGRAPH_MS, phasesFor } from '../src/game/combatConfig.js'
 import { CONNECT_MS } from '../src/sim/constants.js'
 import { INTERP_MS } from '../src/net/client.js'
 import { TICK_MS, SNAPSHOT_EVERY } from '../src/net/protocol.js'

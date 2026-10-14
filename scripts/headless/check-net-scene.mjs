@@ -3,7 +3,7 @@
  * The networked room, drawn in a real browser.
  *
  * check-net and check-client prove the wire; this proves the picture: that a
- * room running in another process arrives on screen as Axies with their own
+ * room running in another process arrives on screen as Ronkes with their own
  * animations, that the player's keys move the one they are driving, and that a
  * second browser in the same room sees the same fight.
  *
@@ -40,7 +40,7 @@ async function player(name, cls) {
 
 /**
  * A room full of hunters kills people, including test subjects. A player whose
- * Axie went down walks back in, which is what a person would do, and what the
+ * Ronke went down walks back in, which is what a person would do, and what the
  * checks below need before they can mean anything.
  */
 async function alive(b, name, cls) {
@@ -79,7 +79,7 @@ const read = `(() => {
 let a = null
 let b = null
 try {
-  a = await player('Ayla', 'beast')
+  a = await player('Ayla', 'ronke')
   const first = await a.eval(read)
   check('the browser joins a room on the server', first.status === 'playing' && Boolean(first.you), first.you)
   check('the room arrives with hunters already in it', first.fighters > 1, `${first.fighters} fighters`)
@@ -100,7 +100,7 @@ try {
   check('and every sprite is playing an animation', first.clip === first.actors, `${first.clip} animating`)
   check('the gates are drawn to aim for', first.gates > 0, `${first.gates} open`)
 
-  // You have to be able to find yourself: your own Axie, drawn, near the middle
+  // You have to be able to find yourself: your own Ronke, drawn, near the middle
   // of the screen, and without a name tag over it — you know who you are.
   {
     const self = await a.eval(`(() => {
@@ -116,7 +116,7 @@ try {
         screenY: Math.round((me.sprite.y - cam.scrollY) * cam.zoom),
         w: cam.width,
         h: cam.height,
-        // Near the edge of the world the view stops following, and your Axie
+        // Near the edge of the world the view stops following, and Ronke
         // sits off centre on purpose. Being visible is the promise, not being
         // in the middle.
         clamped: cam.scrollX <= 1 || cam.scrollY <= 1 ||
@@ -125,14 +125,14 @@ try {
         labelled: me.label.text.length > 0,
       }
     })()`)
-    check('your own Axie is on screen', self.found && self.drawn, self.found ? 'drawn' : 'missing')
+    check('your own Ronke is on screen', self.found && self.drawn, self.found ? 'drawn' : 'missing')
     check('and the camera is looking at it',
       self.screenX > 0 && self.screenX < self.w && self.screenY > 0 && self.screenY < self.h,
       `${self.screenX},${self.screenY} in ${self.w}x${self.h}${self.clamped ? ', clamped at the world edge' : ''}`)
     check('and it is not labelled with your own name', !self.labelled)
   }
 
-  // --- The keys move the Axie the server says is yours ---------------------
+  // --- The keys move Ronke the server says is yours ---------------------
   {
     const before = await a.eval(read)
     // Walk toward the middle of the arena. Walking into the edge is a fine way
@@ -189,9 +189,9 @@ try {
 
   // --- A second browser, the same room ------------------------------------
   {
-    b = await player('Bram', 'plant')
-    const backA = await alive(a, 'Ayla', 'beast')
-    const backB = await alive(b, 'Bram', 'plant')
+    b = await player('Bram', 'ronke')
+    const backA = await alive(a, 'Ayla', 'ronke')
+    const backB = await alive(b, 'Bram', 'ronke')
     check('both players are in the room', true, `Ayla ${backA}, Bram ${backB}`)
     const mine = await a.eval(read)
     const theirs = await b.eval(read)
@@ -212,7 +212,7 @@ try {
     // One browser swings. The other must animate it, because neither of them
     // decided it: the room did, and told them both. A corpse cannot swing, so
     // make sure the swinger is on its feet first.
-    await alive(b, 'Bram', 'plant')
+    await alive(b, 'Bram', 'ronke')
     // The arrival shield protects a new hunter and also stops them swinging, so
     // wait it out rather than asking for an attack the room will refuse.
     // FLAGS.SHIELDED is bit 32 in the snapshot; a snapshot has no `shielded`.
@@ -253,7 +253,7 @@ try {
 
   // --- Leaving -------------------------------------------------------------
   {
-    await alive(a, 'Ayla', 'beast')
+    await alive(a, 'Ayla', 'ronke')
     // A frame has to have been drawn, or there is nobody in the room to leave.
     await a.waitFor("!!window.__game.scene.getScene('NetScene').wilds?.fighters.length", 8000)
     const panel = () => a.eval("window.__game.scene.getScene('NetScene').wilds?.panel?.kind ?? null")
@@ -274,11 +274,11 @@ try {
   }
   // --- A fallen player is not trapped --------------------------------------
   //
-  // The HUD used to stop drawing entirely once your Axie was gone, so the panel
+  // The HUD used to stop drawing entirely once Ronke was gone, so the panel
   // offering the way back never appeared and Esc had nothing to dismiss. The
   // only way out of the room was reloading the page.
   {
-    await alive(a, 'Ayla', 'beast')
+    await alive(a, 'Ayla', 'ronke')
     await a.eval(`(() => {
       const s = window.__game.scene.getScene('NetScene')
       // Fall the way a player falls: tell the room, and let it decide.

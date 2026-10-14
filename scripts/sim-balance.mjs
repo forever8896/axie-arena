@@ -11,7 +11,7 @@
  */
 import SimRoom from '../src/sim/room.js'
 
-const CLASSES = ['beast', 'aquatic', 'plant', 'bird', 'bug', 'reptile']
+const CLASSES = ['ronke']
 const DT = 1000 / 60
 const matches = Number(process.argv[2]) || 120
 
@@ -20,7 +20,7 @@ for (let m = 0; m < matches; m++) {
   const room = new SimRoom({ mode: 'showdown', seed: 1000 + m })
   // One of each class; the seat order rotates so no class is favoured by spawn.
   const order = CLASSES.map((_, i) => CLASSES[(i + m) % CLASSES.length])
-  for (const cls of order) room.addFighter({ axieClass: cls, bot: true, name: cls })
+  for (const cls of order) room.addFighter({ cls: cls, bot: true, name: cls })
 
   const deaths = []
   let elapsed = 0
@@ -30,12 +30,12 @@ for (let m = 0; m < matches; m++) {
     room.drainEvents()
     elapsed += DT
     const fell = before.filter(b => !b.f.alive)
-    fell.sort((a, b) => a.hp - b.hp).forEach(b => deaths.push(b.f.axieClass))
+    fell.sort((a, b) => a.hp - b.hp).forEach(b => deaths.push(b.f.cls))
   }
   const alive = room.fighters.filter(f => f.alive)
   results.push({
-    winner: alive.length === 1 ? alive[0].axieClass : null,
-    placements: [...alive.map(f => f.axieClass), ...deaths.reverse()],
+    winner: alive.length === 1 ? alive[0].cls : null,
+    placements: [...alive.map(f => f.cls), ...deaths.reverse()],
     seconds: elapsed / 1000,
   })
 }

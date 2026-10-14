@@ -14,13 +14,13 @@ try {
     const builds = g.scene.getScene('HomeScene').builds
     const results = []
     const check = (name, pass, detail) => results.push({ name, pass: !!pass, detail })
-    const { CONNECT_MS } = await import('/src/axie/RonkeSprite.js')
+    const { CONNECT_MS } = await import('/src/game/RonkeSprite.js')
     try { localStorage.removeItem('lunacy.tutorial.done.v1') } catch {}
 
     g.loop.sleep()
     let clock = 5e8
     ;['UIScene', 'GameScene', 'HomeScene', 'MenuScene', 'LobbyScene'].forEach(k => g.scene.stop(k))
-    g.scene.start('GameScene', { builds, playerClass: 'beast', mode: 'tutorial' })
+    g.scene.start('GameScene', { builds, playerClass: 'ronke', mode: 'tutorial' })
     g.scene.stop('UIScene')
     const s = g.scene.getScene('GameScene')
     const t = s.tutorial
@@ -143,7 +143,7 @@ try {
     // every frame inside the scene update and froze the whole game.
     {
       ;['UIScene', 'GameScene'].forEach(k => g.scene.stop(k))
-      g.scene.start('GameScene', { builds, playerClass: 'plant', mode: 'tutorial' })
+      g.scene.start('GameScene', { builds, playerClass: 'ronke', mode: 'tutorial' })
       // GameScene launches UIScene from create(), which the manual stepping
       // below never processes on its own.
       g.scene.processQueue()
@@ -169,7 +169,7 @@ try {
 
     // Skipping.
     ;['GameScene'].forEach(k => g.scene.stop(k))
-    g.scene.start('GameScene', { builds, playerClass: 'bird', mode: 'tutorial' })
+    g.scene.start('GameScene', { builds, playerClass: 'ronke', mode: 'tutorial' })
     g.scene.stop('UIScene')
     const s2 = g.scene.getScene('GameScene')
     s2.sys.step((clock += 17), 17)

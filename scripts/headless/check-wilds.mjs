@@ -26,13 +26,13 @@ try {
     // 1. Showdown: a restart after time away starts a fresh match.
     {
       all.forEach(k => g.scene.stop(k))
-      g.scene.start('GameScene', { builds, playerClass: 'beast' })
+      g.scene.start('GameScene', { builds, playerClass: 'ronke' })
       let s = g.scene.getScene('GameScene')
       for (let i = 0; i < 120; i++) stepScene(s)
       s.scene.pause()
       clock += 30000   // thirty seconds on the result screen
       all.forEach(k => g.scene.stop(k))
-      g.scene.start('GameScene', { builds, playerClass: 'beast' })
+      g.scene.start('GameScene', { builds, playerClass: 'ronke' })
       s = g.scene.getScene('GameScene')
       stepScene(s)
       check('a restarted Showdown starts its clock fresh', s.time.now - s.field.startedAt < 20 && !s.field.active && s.field.progress === 0,
@@ -41,7 +41,7 @@ try {
 
     const enterWilds = (room = grove) => {
       all.forEach(k => g.scene.stop(k))
-      g.scene.start('GameScene', { builds, playerClass: 'beast', mode: 'wilds', room, snapshot: { hunters: 5, topBounty: 3 } })
+      g.scene.start('GameScene', { builds, playerClass: 'ronke', mode: 'wilds', room, snapshot: { hunters: 5, topBounty: 3 } })
       g.scene.stop('UIScene')
       const s = g.scene.getScene('GameScene')
       const step = () => stepScene(s)

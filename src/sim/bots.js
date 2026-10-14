@@ -1,7 +1,7 @@
-import { PARRY, TELEGRAPH_MS } from '../axie/classKits.js'
+import { PARRY, TELEGRAPH_MS } from '../game/classKits.js'
 import { CONNECT_MS } from './constants.js'
 import { distance, wrapAngle } from './math.js'
-import { LANCE } from '../axie/combatConfig.js'
+import { LANCE } from '../game/combatConfig.js'
 import { fireLance } from './abilities.js'
 
 /** Specials a parry can stop. Projectiles and lobbed zones cannot be parried. */

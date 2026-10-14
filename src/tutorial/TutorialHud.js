@@ -123,7 +123,7 @@ export default class TutorialHud {
     })
   }
 
-  /** An arrow around your Axie toward the objective, when it is off screen. */
+  /** An arrow around Ronke toward the objective, when it is off screen. */
   drawArrow(player) {
     const g = this.arrow
     g.clear()

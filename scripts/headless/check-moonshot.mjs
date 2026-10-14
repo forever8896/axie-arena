@@ -23,7 +23,7 @@ const check = (name, ok, detail = '') => {
 
 const b = await launch({ width: 900, height: 600 })
 try {
-  await b.goto(`${PAGE}/?net=glade&cls=bird&name=Moon`)
+  await b.goto(`${PAGE}/?net=glade&cls=ronke&name=Moon`)
   await b.waitFor("!!window.__game?.scene.getScene('NetScene')?.scene.isActive()", 90000)
   await b.eval('window.__game.loop.wake(); true')
   await b.waitFor("window.__game.scene.getScene('NetScene').client?.status === 'playing'", 60000)
@@ -107,9 +107,9 @@ try {
   check('the line stays while held', r.lineWhileHeld > 0, `${r.lineWhileHeld} commands`)
   check('letting go ends the aim', r.aimEnded === true)
   // -1 means there is no longer an actor to ask: this runs in a live room and
-  // the hunters in it do not pause for a test. No Axie is also no line.
+  // the hunters in it do not pause for a test. No Ronke is also no line.
   check('and clears the line', r.quietAfterShot <= 0,
-    r.quietAfterShot < 0 ? 'the Axie went down first' : `${r.quietAfterShot} commands`)
+    r.quietAfterShot < 0 ? 'Ronke went down first' : `${r.quietAfterShot} commands`)
 
   check('the bolt is drawn travelling, not flickered', r.sawBolt === true)
 

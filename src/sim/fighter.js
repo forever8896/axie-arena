@@ -1,10 +1,10 @@
-import { CLASS_KITS, CHARGE_PER_SECOND, PARRY } from '../axie/classKits.js'
+import { CLASS_KITS, CHARGE_PER_SECOND, PARRY } from '../game/classKits.js'
 import { Vec2, clamp, distance, wrapAngle, degToRad } from './math.js'
 import { FLAGS } from './constants.js'
-import { SWING, GUARD, STAMINA, PACE, LANCE, phasesFor } from '../axie/combatConfig.js'
+import { SWING, GUARD, STAMINA, PACE, LANCE, phasesFor } from '../game/combatConfig.js'
 
 /**
- * One Axie, as the simulation sees it: position, health, timers and the rules
+ * One Ronke, as the simulation sees it: position, health, timers and the rules
  * for acting. Nothing here knows about sprites, sounds or the screen — it
  * reports what happened through `room.event(...)`, and the client turns those
  * into animation and noise.
@@ -13,14 +13,14 @@ import { SWING, GUARD, STAMINA, PACE, LANCE, phasesFor } from '../axie/combatCon
  * the balance simulation measured is the feel the server serves.
  */
 export default class SimFighter {
-  constructor(room, { id, axieClass = 'beast', isPlayer = false, name = 'axie', x = 0, y = 0 }) {
+  constructor(room, { id, cls = 'ronke', isPlayer = false, name = 'ronke', x = 0, y = 0 }) {
     this.room = room
     this.id = id
-    this.axieClass = axieClass
+    this.cls = cls
     this.isPlayer = isPlayer
     this.name = name
 
-    const kit = CLASS_KITS[axieClass]
+    const kit = CLASS_KITS[cls]
     this.kit = kit
     this.maxHp = kit?.hp ?? 3000
     this.hp = this.maxHp
@@ -633,7 +633,7 @@ export default class SimFighter {
   snapshot() {
     return {
       id: this.id,
-      cls: this.axieClass,
+      cls: this.cls,
       name: this.name,
       x: Math.round(this.pos.x * 10) / 10,
       y: Math.round(this.pos.y * 10) / 10,
@@ -661,7 +661,7 @@ export default class SimFighter {
       buffs: Object.entries(this.buffs)
         .filter(([, b]) => b && this.now < b.until)
         .map(([type, b]) => ({ type, left: Math.round(b.until - this.now), of: b.durationMs })),
-      // How far dash and parry have come back, 0 to 1. The icons above an Axie
+      // How far dash and parry have come back, 0 to 1. The icons above a Ronke
       // fill as they return, and a client cannot work that out for itself: only
       // the room knows when you last used them.
       ready: {

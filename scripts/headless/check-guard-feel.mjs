@@ -29,7 +29,7 @@ const check = (name, ok, detail = '') => {
 
 const b = await launch({ width: 900, height: 600 })
 try {
-  await b.goto(`${PAGE}/?net=glade&cls=beast&name=Guard`)
+  await b.goto(`${PAGE}/?net=glade&cls=ronke&name=Guard`)
   await b.waitFor("!!window.__game?.scene.getScene('NetScene')?.scene.isActive()", 90000)
   await b.eval('window.__game.loop.wake(); true')
   await b.waitFor("window.__game.scene.getScene('NetScene').client?.status === 'playing'", 60000)

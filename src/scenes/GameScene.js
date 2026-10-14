@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import Fighter from '../entities/Fighter.js'
 import BotBrain from '../ai/BotBrain.js'
-import { ARENA_PALETTE } from '../axie/palette.js'
+import { ARENA_PALETTE } from '../game/palette.js'
 import Arena, { WORLD } from '../arena/Arena.js'
 import ClosingField from '../arena/ClosingField.js'
 import PowerUps, { POWERUPS } from '../arena/PowerUps.js'
@@ -10,7 +10,7 @@ import { createFxTextures, ambientMotes } from '../fx/Juice.js'
 import { playPlate, playImpactPlate, playStatusPlate } from '../fx/SkillVfx.js'
 import { play as playSfx } from '../fx/Sfx.js'
 import { play as playMusic } from '../fx/Music.js'
-import { PARRY } from '../axie/classKits.js'
+import { PARRY } from '../game/classKits.js'
 import WildsDirector from '../wilds/WildsDirector.js'
 import TutorialDirector from '../tutorial/TutorialDirector.js'
 
@@ -66,13 +66,13 @@ export default class GameScene extends Phaser.Scene {
       this.tutorial.begin(playerClass)
     } else {
       this.player = new Fighter(this, WORLD.width / 2, WORLD.height / 2, {
-        axieClass: playerClass, build: this.builds[playerClass], isPlayer: true, name: 'you',
+        cls: playerClass, build: this.builds[playerClass], isPlayer: true, name: 'you',
       })
 
-      this.bots = available.filter(c => c !== playerClass).map((axieClass, i) => {
+      this.bots = available.filter(c => c !== playerClass).map((cls, i) => {
         const spot = this.findSpawn()
         const bot = new Fighter(this, spot.x, spot.y, {
-          axieClass, build: this.builds[axieClass], name: `${axieClass}-${i + 1}`,
+          cls, build: this.builds[cls], name: `${cls}-${i + 1}`,
         })
         bot.brain = new BotBrain(bot)
         return bot
@@ -291,7 +291,7 @@ export default class GameScene extends Phaser.Scene {
     const p = this.player
     // A rival powering up nearby is information you can act on.
     if (def && p?.alive && Phaser.Math.Distance.Between(fighter.x, fighter.y, p.x, p.y) < 650) {
-      this.announce(`${fighter.axieClass.toUpperCase()} TOOK ${def.name}`, `#${def.color.toString(16).padStart(6, '0')}`)
+      this.announce(`${fighter.cls.toUpperCase()} TOOK ${def.name}`, `#${def.color.toString(16).padStart(6, '0')}`)
     }
   }
 

@@ -17,7 +17,7 @@ try {
     // Stepped by hand at 60fps with the live loop paused, as check-parry does.
     g.loop.sleep()
     let clock = 2e8
-    const setup = (playerClass = 'beast', { natural = false } = {}) => {
+    const setup = (playerClass = 'ronke', { natural = false } = {}) => {
       ;['UIScene','GameScene','HomeScene','MenuScene'].forEach(k => g.scene.stop(k))
       g.scene.start('GameScene', { builds, playerClass })
       g.scene.stop('UIScene')
@@ -44,7 +44,7 @@ try {
 
     // 1. The natural schedule: an orb forms at 8s, can't be taken while forming.
     {
-      const { s, p, wait } = setup('beast', { natural: true })
+      const { s, p, wait } = setup('ronke', { natural: true })
       p.pos.set(1200, 900)
       wait(7600)
       const early = s.powerUps.orbs.length
@@ -63,7 +63,7 @@ try {
 
     // 2. Fury: +30% damage, then it wears off.
     {
-      const { s, p, wait } = setup('beast')
+      const { s, p, wait } = setup('ronke')
       const bot = s.bots[0]
       p.pos.set(1200, 900); bot.pos.set(1500, 900)
       const orb = orbOf(s, 'fury', 1200, 900)
@@ -77,7 +77,7 @@ try {
 
     // 3. Bulwark: soaks 25% max health, then damage lands.
     {
-      const { s, p, wait } = setup('beast')
+      const { s, p, wait } = setup('ronke')
       const bot = s.bots[0]
       p.pos.set(1200, 900); bot.pos.set(1500, 900)
       orbOf(s, 'bulwark', 1200, 900)
@@ -91,7 +91,7 @@ try {
 
     // 4. Tailwind: faster, dashes twice as often.
     {
-      const { s, p, wait } = setup('beast')
+      const { s, p, wait } = setup('ronke')
       p.pos.set(1200, 900)
       const base = p.speed
       orbOf(s, 'tailwind', 1200, 900)
@@ -102,7 +102,7 @@ try {
 
     // 5. Moonrise: special charged.
     {
-      const { s, p, wait } = setup('beast')
+      const { s, p, wait } = setup('ronke')
       p.pos.set(1200, 900); p.charge = 0.1
       orbOf(s, 'moonrise', 1200, 900)
       wait(1700)
@@ -111,7 +111,7 @@ try {
 
     // 6. Never the same power-up twice until all have appeared.
     {
-      const { s } = setup('beast')
+      const { s } = setup('ronke')
       s.powerUps.bag = []
       const seen = [0, 1, 2, 3].map(() => s.powerUps.nextType())
       check('power-ups cycle without repeats', new Set(seen).size === 4, seen.join(','))
@@ -119,7 +119,7 @@ try {
 
     // 7. Moonwell: nothing while blooming, 8%/s once open, cut by a rival's hit.
     {
-      const { s, p, wait } = setup('beast')
+      const { s, p, wait } = setup('ronke')
       const bot = s.bots[0]
       p.pos.set(1200, 900); bot.pos.set(1600, 900)
       p.hp = p.maxHp * 0.3
@@ -148,7 +148,7 @@ try {
 
     // 8. Spawns stay inside where the closing field will be.
     {
-      const { s } = setup('beast')
+      const { s } = setup('ronke')
       s.field.startedAt = s.time.now - 20000 - 50000
       let worst = 0
       for (let i = 0; i < 20; i++) {
@@ -163,7 +163,7 @@ try {
 
     // 9. Bots go for what they can reach, and heal when hurt.
     {
-      const { s, wait } = setup('beast')
+      const { s, wait } = setup('ronke')
       const bot = s.bots[1]
       bot.brain = bot.realBrain
       s.bots.forEach(o => { if (o !== bot) o.pos.set(200, 200) })

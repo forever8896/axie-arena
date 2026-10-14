@@ -64,7 +64,7 @@ const LOCAL_START = `(() => {
   const g = window.__game
   g.scene.start('GameScene', {
     builds: g.scene.getScene('HomeScene').builds,
-    playerClass: 'beast', mode: 'wilds',
+    playerClass: 'ronke', mode: 'wilds',
     room: { id: 'glade', name: 'Dewdrop Glade', stake: 0.1, currency: 'AXS', blurb: '', hunters: [4, 6] },
     snapshot: { hunters: 5, topBounty: 0.4 },
   })
@@ -103,7 +103,7 @@ try {
   })
 
   const net = await measure('networked', {
-    url: `${PAGE}/?net=glade&cls=beast&name=Parity`, boot: 'NetScene', scene: 'NetScene',
+    url: `${PAGE}/?net=glade&cls=ronke&name=Parity`, boot: 'NetScene', scene: 'NetScene',
     ready: "window.__game.scene.getScene('NetScene').client?.status === 'playing'",
     // Through the same door a player uses, so the echo and the room's own
     // answer are both included.

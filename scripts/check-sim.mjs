@@ -8,11 +8,11 @@
  * Usage: node scripts/check-sim.mjs
  */
 import SimRoom from '../src/sim/room.js'
-import { CLASS_KITS, PARRY } from '../src/axie/classKits.js'
+import { CLASS_KITS, PARRY } from '../src/game/classKits.js'
 import { WILDS, ROOMS } from '../src/wilds/config.js'
 import { MOONWELL, POWERUPS } from '../src/arena/boonConfig.js'
 import { CONNECT_MS } from '../src/sim/constants.js'
-import { SWING, GUARD, STAMINA, PACE, LANCE, phasesFor, damageFor } from '../src/axie/combatConfig.js'
+import { SWING, GUARD, STAMINA, PACE, LANCE, phasesFor, damageFor } from '../src/game/combatConfig.js'
 
 /** A swing winds up before it lands; wait out the longest of them. */
 const CONTACT = Math.max(...Object.values(CLASS_KITS).map(k => phasesFor(k).windupMs)) + 60
@@ -32,11 +32,11 @@ const check = (name, ok, detail = '') => {
 const near = (a, b, tol = 1e-6) => Math.abs(a - b) <= tol
 
 /** A room with two fighters at a set distance, past their opening cooldowns. */
-function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = null } = {}) {
+function duel({ a = 'ronke', b = 'ronke', gap = 60, mode = 'showdown', room = null } = {}) {
   const r = new SimRoom({ mode, room, seed: 42 })
   if (r.field) r.field.startedAt = 1e9
-  const A = r.addFighter({ axieClass: a, name: 'A', x: 1200, y: 900 })
-  const B = r.addFighter({ axieClass: b, name: 'B', x: 1200 + gap, y: 900 })
+  const A = r.addFighter({ cls: a, name: 'A', x: 1200, y: 900 })
+  const B = r.addFighter({ cls: b, name: 'B', x: 1200 + gap, y: 900 })
   A.aim = 0
   B.aim = Math.PI
   const step = (ms = DT) => { r.step(ms); A.aim = A.aim; }
@@ -63,13 +63,13 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
 
 // --- A blow only lands inside the cone -------------------------------------
 {
-  const { r, A, B, wait } = duel({ a: 'beast', gap: 60 })
+  const { r, A, B, wait } = duel({ a: 'ronke', gap: 60 })
   A.aim = Math.PI     // aimed away
   r.useBasic(A)
   wait(CONTACT)
   check('a blow aimed away misses', B.hp === B.maxHp, `hp ${B.hp}`)
 
-  const far = duel({ a: 'beast', gap: 400 })
+  const far = duel({ a: 'ronke', gap: 400 })
   far.A.aim = 0
   far.r.useBasic(far.A)
   far.wait(CONTACT)
@@ -82,7 +82,7 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
 // with a cost rather than a reaction inside a gate nobody on a real connection
 // can hit. See docs/COMBAT.md.
 {
-  const { r, A, B, wait } = duel({ a: 'beast', b: 'reptile', gap: 60 })
+  const { r, A, B, wait } = duel({ a: 'ronke', b: 'ronke', gap: 60 })
   B.aim = Math.PI
   const full = B.maxHp
   // Raise the guard and hold it, the way a player holds the key.
@@ -94,7 +94,7 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
   r.useBasic(A)
   holdFor(CONTACT)
   const taken = full - B.hp
-  const unguarded = paced(blow('beast'))
+  const unguarded = paced(blow('ronke'))
   check('a guard takes most of a blow', taken > 0 && taken < unguarded * 0.5, `${taken} of ${unguarded}`)
   check('and blocking earns a riposte', B.riposting, `${Math.round(B.riposteUntil - r.now)}ms left`)
   check('and costs stamina', B.stamina < STAMINA.max, Math.round(B.stamina))
@@ -105,11 +105,11 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
   r.useBasic(B)
   wait(SWING.windupMs * GUARD.riposteWindup + 60)
   const answered = before - A.hp
-  check('a riposte answers harder', answered > paced(blow('reptile')), `${answered} dealt`)
+  check('a riposte answers harder', answered > paced(blow('ronke')), `${answered} dealt`)
 }
 {
   // A guard is not a wall: hold it long enough and it breaks.
-  const { r, B, wait } = duel({ a: 'beast', b: 'plant', gap: 60 })
+  const { r, B, wait } = duel({ a: 'ronke', b: 'ronke', gap: 60 })
   B.stamina = 8
   B.hold(r.now)
   const end = r.now + GUARD.raiseMs + 400
@@ -119,18 +119,18 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
 }
 {
   // Facing still matters: a guard covers the front, not the back.
-  const { r, A, B, wait } = duel({ a: 'beast', b: 'reptile', gap: 60 })
+  const { r, A, B, wait } = duel({ a: 'ronke', b: 'ronke', gap: 60 })
   B.aim = 0          // facing away from A
   const holdFor = ms => { const end = r.now + ms; while (r.now < end) { B.hold(r.now); r.step(DT) } }
   holdFor(GUARD.raiseMs + 20)
   const full = B.hp
   r.useBasic(A)
   holdFor(CONTACT)
-  check('a guard does not cover your back', full - B.hp === paced(blow('beast')), `${full - B.hp} taken`)
+  check('a guard does not cover your back', full - B.hp === paced(blow('ronke')), `${full - B.hp} taken`)
 }
 {
   // Stamina is the clock the fight is played against.
-  const { r, A, wait } = duel({ a: 'beast', gap: 60 })
+  const { r, A, wait } = duel({ a: 'ronke', gap: 60 })
   A.stamina = STAMINA.floor - 1
   check('a winded fighter cannot swing', !A.canAttack(r.now), `stamina ${Math.round(A.stamina)}`)
   wait(STAMINA.idleMs + 1200)
@@ -139,17 +139,20 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
 
 // --- Poison, stun, slow, shields ------------------------------------------
 {
-  const { r, A, B, wait } = duel({ a: 'bug', gap: 60 })
-  r.useBasic(A)
-  wait(CONTACT)
-  const afterHit = B.hp
-  wait(CLASS_KITS.bug.basic.poison.interval * 3 + 100)
-  const poisonDealt = afterHit - B.hp
-  const expected = paced(CLASS_KITS.bug.basic.poison.damage) * CLASS_KITS.bug.basic.poison.ticks
+  // Poison used to arrive on bug's basic. No class carries it now, so it is
+  // applied directly — the effect is still the room's, and still has to tick
+  // for exactly its course.
+  const { r, A, B, wait } = duel({ a: 'ronke', gap: 60 })
+  const spec = { damage: 60, ticks: 3, interval: 500 }
+  const before = B.hp
+  B.applyPoison(spec, A)
+  wait(spec.interval * spec.ticks + 100)
+  const poisonDealt = before - B.hp
+  const expected = paced(spec.damage) * spec.ticks
   check('poison ticks for its full course', poisonDealt === expected, `${poisonDealt} of ${expected}`)
 }
 {
-  const { r, A, B, wait } = duel({ a: 'beast', gap: 60 })
+  const { r, A, B, wait } = duel({ a: 'ronke', gap: 60 })
   B.applyPowerUp('bulwark', POWERUPS.bulwark)
   const shield = B.shieldHp
   B.takeDamage(200, A, 0)
@@ -160,7 +163,7 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
   check('damage past the shield lands', B.hp < B.maxHp, `hp ${B.hp}`)
 }
 {
-  const { r, A, B } = duel({ a: 'beast', gap: 60 })
+  const { r, A, B } = duel({ a: 'ronke', gap: 60 })
   A.applyPowerUp('fury', POWERUPS.fury)
   B.takeDamage(100, A, 0)
   check('fury adds 30%', B.maxHp - B.hp === paced(130), `${B.maxHp - B.hp}`)
@@ -205,7 +208,7 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
   // Held too briefly it is called off, and the meter survives: a Moonshot
   // cannot be flicked out, and being interrupted must not cost it either.
   {
-    const { r, A, wait } = duel({ a: 'bird', gap: 200 })
+    const { r, A, wait } = duel({ a: 'ronke', gap: 200 })
     A.moon = 1
     r.applyInput(A, { move: { x: 0, y: 0 }, aim: 0, aiming: true })
     wait(LANCE.minAimMs * 0.4)
@@ -215,7 +218,7 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
 
   // A stun takes the aim, not the shot.
   {
-    const { r, A, wait } = duel({ a: 'bird', gap: 200 })
+    const { r, A, wait } = duel({ a: 'ronke', gap: 200 })
     A.moon = 1
     r.applyInput(A, { move: { x: 0, y: 0 }, aim: 0, aiming: true })
     wait(100)
@@ -226,12 +229,12 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
   // It pierces: that is what makes pointing it worth the standing still.
   {
     const r = new SimRoom({ mode: 'showdown', seed: 5 })
-    const A = r.addFighter({ axieClass: 'bird', name: 'A' })
+    const A = r.addFighter({ cls: 'ronke', name: 'A' })
     A.brain = null
     A.pos.set(300, 300)
     A.aim = 0
     const marks = [0, 1, 2].map(i => {
-      const m = r.addFighter({ axieClass: 'plant', name: `m${i}` })
+      const m = r.addFighter({ cls: 'ronke', name: `m${i}` })
       m.brain = null
       m.pos.set(420 + i * 140, 300)
       return m
@@ -243,7 +246,7 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
     A.aim = 0
     marks.forEach((m, i) => m.pos.set(420 + i * 140, 300))
     r.applyInput(A, { move: { x: 0, y: 0 }, aim: 0, aiming: false })
-    for (let t = 0; t < (CLASS_KITS.bird.ultimate.range / LANCE.speed) * 1000 + 160; t += DT) { r.step(DT); r.drainEvents() }
+    for (let t = 0; t < (CLASS_KITS.ronke.ultimate.range / LANCE.speed) * 1000 + 160; t += DT) { r.step(DT); r.drainEvents() }
     check('a Moonshot pierces everyone on its line', marks.every(m => m.hp < m.maxHp),
       marks.map(m => Math.round(m.maxHp - m.hp)).join('/'))
     // Spent, then already refilling: the room has been stepped to let the bolt
@@ -253,7 +256,7 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
 
   // Pointed elsewhere it hits nobody — the whole reason it is aimed.
   {
-    const { r, A, B, wait } = duel({ a: 'bird', gap: 200 })
+    const { r, A, B, wait } = duel({ a: 'ronke', gap: 200 })
     B.brain = null
     const before = B.hp
     A.moon = 1
@@ -267,7 +270,7 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
 
   // The meter fills at half the special's rate, which is the "twice as long".
   {
-    const { r, A, wait } = duel({ a: 'bird', gap: 400 })
+    const { r, A, wait } = duel({ a: 'ronke', gap: 400 })
     A.charge = 0
     A.moon = 0
     wait(4000)
@@ -280,7 +283,7 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
 {
   const r = new SimRoom({ mode: 'showdown', seed: 7 })
   r.field.startedAt = 1e9
-  const f = r.addFighter({ axieClass: 'beast', name: 'A', x: 1200, y: 900 })
+  const f = r.addFighter({ cls: 'ronke', name: 'A', x: 1200, y: 900 })
   f.hp = f.maxHp * 0.4
   const well = r.spawnWell({ x: 1200, y: 900 })
   const before = f.hp
@@ -300,7 +303,7 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
 {
   const r = new SimRoom({ mode: 'showdown', seed: 9 })
   r.field.startedAt = 1e9
-  const f = r.addFighter({ axieClass: 'beast', name: 'A', x: 1200, y: 900 })
+  const f = r.addFighter({ cls: 'ronke', name: 'A', x: 1200, y: 900 })
   r.orbBag = ['fury']
   const orb = r.spawnOrb({ x: 1200, y: 900 })
   while (r.now < orb.liveAt - 100) r.step(DT)
@@ -314,7 +317,7 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
   const room = ROOMS.find(x => x.id === 'grove')
   const r = new SimRoom({ mode: 'wilds', room, seed: 11 })
   r.openWilds({ hunters: 4 })
-  const you = r.joinPlayer({ axieClass: 'beast' })
+  const you = r.joinPlayer({ cls: 'ronke' })
   check('your stake buys a 90% bounty', near(you.wilds.bounty, room.stake * (1 - WILDS.feeRate)), you.wilds.bounty)
   check('the room opens with gates', r.gates.filter(g => g.open).length === WILDS.gatesOpen, r.gates.filter(g => g.open).length)
   check('the room opens with hunters', r.fighters.length === 5, r.fighters.length)
@@ -376,9 +379,9 @@ function duel({ a = 'beast', b = 'plant', gap = 60, mode = 'showdown', room = nu
 {
   const run = seed => {
     const r = new SimRoom({ mode: 'showdown', seed })
-    for (const cls of Object.keys(CLASS_KITS)) r.addFighter({ axieClass: cls, bot: true, name: cls })
+    for (const cls of Object.keys(CLASS_KITS)) r.addFighter({ cls: cls, bot: true, name: cls })
     while (r.now < 30000) { r.step(DT); r.drainEvents() }
-    return r.fighters.map(f => `${f.axieClass}:${Math.round(f.x)},${Math.round(f.y)},${Math.round(f.hp)}`).join('|')
+    return r.fighters.map(f => `${f.cls}:${Math.round(f.x)},${Math.round(f.y)},${Math.round(f.hp)}`).join('|')
   }
   check('the same seed gives the same fight', run(99) === run(99))
   check('a different seed gives a different fight', run(99) !== run(100))

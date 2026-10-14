@@ -1,5 +1,5 @@
 /**
- * What is drawn above an Axie: health, the shield, and the row of icons for
+ * What is drawn above a Ronke: health, the shield, and the row of icons for
  * dash, parry, special and any power-up, each filling as it comes back.
  *
  * It used to live in a panel in the top-left corner, which is nowhere near

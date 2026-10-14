@@ -1,5 +1,5 @@
 /**
- * Your own Axie, moved now rather than in a round trip's time.
+ * Your own Ronke, moved now rather than in a round trip's time.
  *
  * The room is the authority and stays the authority: this never decides a hit,
  * a bounty or a death. It decides one thing — where your own body is between
@@ -9,7 +9,7 @@
  * That last part matters. This does not reimplement movement; it instantiates
  * the server's SimFighter against a stub room, feeds it the same inputs, and so
  * produces the same motion. A reimplementation would drift, and drift shows up
- * as your Axie snapping back under your hands.
+ * as Ronke snapping back under your hands.
  *
  * On every snapshot it rewinds to what the room said, replays the inputs the
  * room has not seen yet, and eases away whatever difference is left, so a
@@ -19,7 +19,7 @@ import SimFighter from '../sim/fighter.js'
 import SimArena from '../sim/arena.js'
 import { Vec2 } from '../sim/math.js'
 import { FLAGS, has } from '../sim/constants.js'
-import { STAMINA } from '../axie/combatConfig.js'
+import { STAMINA } from '../game/combatConfig.js'
 import { TICK_MS } from './protocol.js'
 
 /** Corrections smaller than this are eased away; larger ones are obeyed at once. */
@@ -83,7 +83,7 @@ export default class Prediction {
   begin(snap, now) {
     this.room.now = now
     this.fighter = new SimFighter(this.room, {
-      id: snap.id, axieClass: snap.cls, isPlayer: true, name: snap.name, x: snap.x, y: snap.y,
+      id: snap.id, cls: snap.cls, isPlayer: true, name: snap.name, x: snap.x, y: snap.y,
     })
     this.pending = []
     this.offset.set(0, 0)
@@ -201,7 +201,7 @@ export default class Prediction {
     this.offset.scale(keep)
   }
 
-  /** Where to draw your own Axie this frame. */
+  /** Where to draw your own Ronke this frame. */
   get x() { return (this.fighter?.pos.x ?? 0) + this.offset.x }
   get y() { return (this.fighter?.pos.y ?? 0) + this.offset.y }
 

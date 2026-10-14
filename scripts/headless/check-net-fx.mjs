@@ -49,7 +49,7 @@ check('every event the room emits is drawn', unhandled.length === 0,
 
 const b = await launch({ width: 1100, height: 700 })
 try {
-  await b.goto(`${PAGE}/?net=glade&cls=beast&name=Fx`)
+  await b.goto(`${PAGE}/?net=glade&cls=ronke&name=Fx`)
   await b.waitFor("!!window.__game?.scene.getScene('NetScene')?.scene.isActive()", 90000)
   await b.eval('window.__game.loop.wake(); true')
   await b.waitFor("window.__game.scene.getScene('NetScene').client?.status === 'playing'", 60000)
@@ -90,7 +90,7 @@ try {
     scene.add.circle = (...a) => { made.shapes++; return realCircle(...a) }
 
     // Whoever is on their feet right now. Standing still in a room of hunters
-    // gets the test's own Axie killed partway through, and an event about a
+    // gets the test's own Ronke killed partway through, and an event about a
     // fighter who is gone draws nothing — which reads as a missing effect.
     const living = () => {
       const v = scene.client.view()
@@ -147,7 +147,7 @@ try {
   // The wind-up a parry is read from: it must actually appear on the ground.
   check('a special telegraphs before it lands', out.telegraph.shapes > 0, `${out.telegraph.shapes} shapes`)
   check('a whiff shows where the blow went', out.miss.sprites > 0, `${out.miss.sprites} plates`)
-  check('a full charge is announced on your Axie', out.charged.sprites > 0, `${out.charged.sprites} plates`)
+  check('a full charge is announced on Ronke', out.charged.sprites > 0, `${out.charged.sprites} plates`)
   check('taking a power-up plays its own plate', out.orbtaken.sprites > 0, `${out.orbtaken.sprites} plates`)
   check('a parry rings, labels and shakes',
     out.parried.shapes > 0 && out.parried.texts > 0, `${out.parried.shapes} shapes, ${out.parried.texts} labels`)

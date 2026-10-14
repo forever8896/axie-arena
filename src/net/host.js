@@ -26,7 +26,7 @@ let nextClientId = 0
  * Everyone was called "You" before this: the name in the greeting was read and
  * dropped, so a room full of people looked like a room full of one person. It
  * is trimmed, stripped of anything that would break a name plate, and capped,
- * because it is drawn over an Axie in somebody else's game.
+ * because it is drawn over a Ronke in somebody else's game.
  */
 function playerName(raw) {
   const clean = String(raw ?? '')
@@ -132,7 +132,7 @@ export default class RoomHost {
       return null
     }
 
-    // Coming back to an Axie still standing where the connection dropped.
+    // Coming back to a Ronke still standing where the connection dropped.
     if (msg.resume) {
       const back = this.resume(client, live, msg.resume)
       if (back) return back
@@ -151,7 +151,7 @@ export default class RoomHost {
     }
 
     client.name = playerName(msg.name)
-    const f = live.sim.joinPlayer({ axieClass: msg.cls, name: client.name })
+    const f = live.sim.joinPlayer({ cls: msg.cls, name: client.name })
     client.roomId = live.def.id
     client.fighterId = f.id
     client.token = `${f.id}.${Math.random().toString(36).slice(2, 10)}`
@@ -167,7 +167,7 @@ export default class RoomHost {
     return f
   }
 
-  /** Reattach to the Axie a dropped client left behind, if it is still up. */
+  /** Reattach to Ronke a dropped client left behind, if it is still up. */
   resume(client, live, token) {
     const held = (live.abandoned ??= new Map())
     for (const [fighterId, entry] of held) {
@@ -226,7 +226,7 @@ export default class RoomHost {
   }
 
   /**
-   * The connection died. The Axie stays standing and defends itself for a few
+   * The connection died. The Ronke stays standing and defends itself for a few
    * seconds, so closing the tab is not an escape from a fight you are losing,
    * and so a flaky connection is survivable.
    */

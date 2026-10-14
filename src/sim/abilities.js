@@ -1,5 +1,5 @@
-import { CHARGE_PER_HIT, TELEGRAPH_MS } from '../axie/classKits.js'
-import { GUARD, LANCE, SPECIAL_TELEGRAPH_MS, damageFor } from '../axie/combatConfig.js'
+import { CHARGE_PER_HIT, TELEGRAPH_MS } from '../game/classKits.js'
+import { GUARD, LANCE, SPECIAL_TELEGRAPH_MS, damageFor } from '../game/combatConfig.js'
 import { CONNECT_MS } from './constants.js'
 import { Vec2, clamp, distance, wrapAngle, degToRad } from './math.js'
 
@@ -107,7 +107,7 @@ export function fireLance(fighter, now = fighter.now) {
   const damage = ult.damage ?? damageFor(fighter.kit) * LANCE.damageFactor
   const travelMs = (ult.range / LANCE.speed) * 1000
   fighter.room.event({
-    t: 'lance', id: fighter.id, kind: fighter.axieClass, aim,
+    t: 'lance', id: fighter.id, kind: fighter.cls, aim,
     range: ult.range, width: ult.width, speed: LANCE.speed, hits: hit.length,
     travelMs: Math.round(travelMs),
   })
@@ -337,7 +337,7 @@ export class SimProjectile {
   snapshot() {
     return {
       id: this.id, x: Math.round(this.pos.x), y: Math.round(this.pos.y),
-      a: Math.round(this.angle * 100) / 100, cls: this.owner.axieClass, seeking: this.seeking,
+      a: Math.round(this.angle * 100) / 100, cls: this.owner.cls, seeking: this.seeking,
     }
   }
 }
@@ -356,7 +356,7 @@ export class SimZone {
     this.expiresAt = room.now + duration
     this.nextTick = room.now + 200
     this.dead = false
-    room.event({ t: 'zone-start', id: this.id, x, y, radius, cls: owner.axieClass, duration })
+    room.event({ t: 'zone-start', id: this.id, x, y, radius, cls: owner.cls, duration })
   }
 
   update(_dt, targets) {
@@ -378,6 +378,6 @@ export class SimZone {
   }
 
   snapshot() {
-    return { id: this.id, x: this.x, y: this.y, r: this.radius, cls: this.owner.axieClass }
+    return { id: this.id, x: this.x, y: this.y, r: this.radius, cls: this.owner.cls }
   }
 }

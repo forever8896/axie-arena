@@ -13,7 +13,7 @@ import BotBrain from '../ai/BotBrain.js'
  * numbers, so treat them as a check for gross imbalance, not as final truth.
  */
 
-const CLASSES = ['beast', 'aquatic', 'plant', 'bird', 'bug', 'reptile']
+const CLASSES = ['ronke']
 const DT = 16.7
 
 // Game time must only ever move forward across matches. Restarting it from
@@ -78,7 +78,7 @@ function simulate(game, builds, seat) {
     f.parry = now => { const ok = parry(now); if (ok) parryStats.attempts++; return ok }
     const tryParry = f.tryParry.bind(f)
     f.tryParry = attacker => { const ok = tryParry(attacker); if (ok) parryStats.successes++; return ok }
-    const row = boonStats.byClass[f.axieClass] ??= { powerUps: 0, healed: 0 }
+    const row = boonStats.byClass[f.cls] ??= { powerUps: 0, healed: 0 }
     const apply = f.applyPowerUp.bind(f)
     f.applyPowerUp = (...a) => { row.powerUps++; return apply(...a) }
     const heal = f.heal.bind(f)
@@ -98,11 +98,11 @@ function simulate(game, builds, seat) {
 
     const fell = before.filter(b => !b.f.alive)
     // Fewest-HP falls first, so simultaneous deaths still order cleanly.
-    fell.sort((a, b) => a.hp - b.hp).forEach(b => deaths.push(b.f.axieClass))
+    fell.sort((a, b) => a.hp - b.hp).forEach(b => deaths.push(b.f.cls))
 
     // Everyone left died on the same tick: the healthiest going in wins.
     if (fell.length && everyone.every(f => !f.alive)) {
-      tieWinner = fell[fell.length - 1].f.axieClass
+      tieWinner = fell[fell.length - 1].f.cls
       deaths.pop()
     }
   }
@@ -123,9 +123,9 @@ function simulate(game, builds, seat) {
     return { winner: tieWinner, placements: [tieWinner, ...deaths.reverse()], seconds: sim / 1000 }
   }
   // Placement: last to die places second, and so on. Survivors share first.
-  const order = [...alive.map(f => f.axieClass), ...deaths.reverse()]
+  const order = [...alive.map(f => f.cls), ...deaths.reverse()]
   return {
-    winner: alive.length === 1 ? alive[0].axieClass : null,
+    winner: alive.length === 1 ? alive[0].cls : null,
     placements: order,
     seconds: sim / 1000,
   }
@@ -158,7 +158,7 @@ function summarise(results) {
 function format(report, matches) {
   const fair = 1 / 6
   const lines = [
-    `LUNACY BALANCE SIMULATION — ${matches} bot-only matches`,
+    `RONKACY BALANCE SIMULATION — ${matches} bot-only matches`,
     '',
     `Fair win rate in a six-way free-for-all: ${(fair * 100).toFixed(1)}%`,
     `Average match length: ${report.avgSeconds.toFixed(1)}s     Draws: ${report.draws}`,

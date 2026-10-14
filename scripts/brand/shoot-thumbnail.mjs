@@ -25,7 +25,7 @@ try {
 
     g.scene.getScene('HomeScene').start()
     await until(() => g.scene.getScene('MenuScene').scene.isActive())
-    g.scene.getScene('MenuScene').choose('beast')
+    g.scene.getScene('MenuScene').choose('ronke')
     await until(() => g.scene.getScene('LobbyScene').scene.isActive() && g.scene.getScene('LobbyScene').roomViews)
     g.scene.getScene('LobbyScene').enter(1)
     await until(() => g.scene.getScene('GameScene').player?.alive)
@@ -56,7 +56,7 @@ try {
       .sort((a, c) => Phaser.Math.Distance.Between(me.x, me.y, a.x, a.y) - Phaser.Math.Distance.Between(me.x, me.y, c.x, c.y))
       .slice(0, 4)
     // A fan in front of the player, spread far enough apart that the name and
-    // bounty over each Axie stays readable.
+    // bounty over each Ronke stays readable.
     const fan = [{ a: -0.72, r: 250 }, { a: -0.24, r: 185 }, { a: 0.26, r: 200 }, { a: 0.74, r: 265 }]
     others.forEach((o, i) => {
       const { a, r } = fan[i % fan.length]
@@ -73,7 +73,7 @@ try {
     const target = others[1] ?? others[0]
     me.aim = Math.atan2(target.y - me.y, target.x - me.x)
     me.special(s.bots.filter(x => x.alive), s.time.now, { x: target.x, y: target.y })
-    out.push('special fired at ' + target.axieClass)
+    out.push('special fired at ' + target.cls)
     await sleep(220)
     out.push('hunters in frame: ' + s.bots.filter(x => x.alive).length)
     return out.join(' | ')

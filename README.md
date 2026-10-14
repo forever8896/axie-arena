@@ -1,19 +1,19 @@
-<p align="center"><img src="public/brand/lunacy-logo.png" alt="Lunacy" width="520"></p>
+<p align="center"><img src="public/brand/ronkacy-logo.png" alt="Ronkacy" width="520"></p>
 
-# Lunacy
+# Ronkacy
 
 **Six Axies. One field. Last one standing.**
 
 A browser arena brawler for **Axie Vibeathon 2026** (theme: Axie Core).
 
 Six Axie classes, each with its own basic attack and special, fighting over a
-Lunacia meadow. Named for Lunacia, minus a letter.
+the Ronkeverse meadow. Named for the Ronkeverse, minus a letter.
 
 Where it goes next (an always-on arena, and how stakes could work without
 repeating play-to-earn's mistakes): **[docs/VISION.md](docs/VISION.md)**.
 How the combat numbers were chosen: [docs/DESIGN.md](docs/DESIGN.md).
 
-**Play it: https://lunacy.up.railway.app**
+**Play it: https://ronkacy.up.railway.app**
 
 ## Run it
 
@@ -228,7 +228,7 @@ Skill effects are the real Origins plates, processed by
 
 **The core loop is complete**: choose an Axie, fight, win or lose, play again.
 
-Working: home page and class select, a Lunacia field with cover, foliage and a
+Working: home page and class select, a the Ronkeverse field with cover, foliage and a
 minimap, real Axie bodies playing their authored clips, six distinct kits,
 Origins skill effects and battle audio, parry, power-ups, Moonwells, a closing
 field, bots that use all of it, hit-stop, HUD, win and lose, restart. Balance is

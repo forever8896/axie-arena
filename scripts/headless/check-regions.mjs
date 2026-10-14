@@ -46,7 +46,7 @@ for (const region of REGIONS) {
     const names = await new Promise(resolve => {
       const done = setTimeout(() => resolve(null), 12000)
       ws.addEventListener('open', () => {
-        ws.send(JSON.stringify(P.hello({ room: 'glade', cls: 'beast', name: 'Scout' })))
+        ws.send(JSON.stringify(P.hello({ room: 'glade', cls: 'ronke', name: 'Scout' })))
       })
       ws.addEventListener('message', e => {
         const m = P.parse(e.data)
@@ -84,7 +84,7 @@ try {
   // --- Into the lobby, where the choice lives ------------------------------
   await b.eval(`window.__game.scene.getScene('HomeScene').playNet(); true`)
   await b.waitFor("window.__game.scene.getScene('MenuScene')?.scene.isActive()", 20000)
-  await b.eval(`window.__game.scene.getScene('MenuScene').choose('beast'); true`)
+  await b.eval(`window.__game.scene.getScene('MenuScene').choose('ronke'); true`)
   await b.waitFor("!!window.__game.scene.getScene('LobbyScene')?.regionRows", 30000)
 
   await b.waitFor(`(() => {

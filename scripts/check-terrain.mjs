@@ -4,9 +4,9 @@
  *
  * 1. Every pair of walls either overlaps (one solid piece) or is at least
  *    MIN_GAP apart, and every wall is either against the border or MIN_GAP
- *    from it. Anything in between looks like a passage and traps an Axie.
- * 2. A flood fill over the floor, at an Axie's body radius, reaches every
- *    open cell from the centre: no pocket an Axie can be spawned into or
+ *    from it. Anything in between looks like a passage and traps a Ronke.
+ * 2. A flood fill over the floor, at a Ronke's body radius, reaches every
+ *    open cell from the centre: no pocket a Ronke can be spawned into or
  *    knocked into and never leave.
  *
  * Usage: node scripts/check-terrain.mjs
@@ -43,7 +43,7 @@ for (const [i, w] of walls.entries()) {
   }
 }
 
-// Flood fill. A cell is open if an Axie centred there overlaps no wall.
+// Flood fill. A cell is open if a Ronke centred there overlaps no wall.
 const CELL = 10
 const cols = Math.floor((BOUNDS.right - BOUNDS.left) / CELL) + 1
 const rows = Math.floor((BOUNDS.bottom - BOUNDS.top) / CELL) + 1

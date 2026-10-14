@@ -1,6 +1,6 @@
 import { WILDS } from './config.js'
 
-const KEY = 'lunacy.wilds.wallet.v1'
+const KEY = 'ronkacy.wilds.wallet.v1'
 
 /**
  * The simulated wallet: a practice balance and season points, kept in this
