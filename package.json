@@ -10,7 +10,6 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "@axieinfinity/mixer": "^1.4.9",
     "phaser": "^3.90.0",
     "ws": "^8.21.3"
   },
