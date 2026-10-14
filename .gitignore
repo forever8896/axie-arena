@@ -4,3 +4,6 @@ dist/
 *.log
 .env
 .env.local
+
+# Intermediate frames from the sprite pipeline; the clips and sheets are kept.
+art/work/
