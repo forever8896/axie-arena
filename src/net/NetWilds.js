@@ -156,4 +156,4 @@ export default class NetWilds {
 const cap = s => (s ? s[0].toUpperCase() + s.slice(1) : 'a hunter')
 
 /** The class kit, for a hunter described only by a snapshot. */
-export const kitOf = cls => CLASS_KITS[cls] ?? CLASS_KITS.beast
+export const kitOf = cls => CLASS_KITS[cls] ?? CLASS_KITS.ronke

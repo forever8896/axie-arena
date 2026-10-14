@@ -21,9 +21,9 @@ export default class Fighter {
     this.isPlayer = isPlayer
     this.name = name
     this.cls = cls
-    this.colors = CLASS_COLORS[cls] ?? CLASS_COLORS.beast
+    this.colors = CLASS_COLORS[cls] ?? CLASS_COLORS.ronke
 
-    const kit = CLASS_KITS[cls]
+    const kit = CLASS_KITS[cls] ?? CLASS_KITS.ronke
     this.kit = kit
     this.maxHp = kit?.hp ?? 5
     this.hp = this.maxHp

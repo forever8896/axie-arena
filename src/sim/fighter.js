@@ -20,7 +20,7 @@ export default class SimFighter {
     this.isPlayer = isPlayer
     this.name = name
 
-    const kit = CLASS_KITS[cls]
+    const kit = CLASS_KITS[cls] ?? CLASS_KITS.ronke
     this.kit = kit
     this.maxHp = kit?.hp ?? 3000
     this.hp = this.maxHp

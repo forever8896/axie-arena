@@ -14,8 +14,8 @@ try {
     const builds = g.scene.getScene('HomeScene').builds
     const results = []
     const check = (name, pass, detail) => results.push({ name, pass: !!pass, detail })
-    const { CONNECT_MS } = await import('/src/game/RonkeSprite.js')
-    try { localStorage.removeItem('lunacy.tutorial.done.v1') } catch {}
+    const { CONNECT_MS } = await import('/src/sim/constants.js')
+    try { localStorage.removeItem('ronkacy.tutorial.done.v1') } catch {}
 
     g.loop.sleep()
     let clock = 5e8
@@ -136,7 +136,7 @@ try {
     check('the gate channel fills while you stand in it', mid > 0.35 && mid < 0.7, mid.toFixed(2))
     until(() => t.finished, 3000)
     check('cashing out at the gate finishes the tutorial', t.finished, 'finished ' + t.finished)
-    check('finishing is remembered', localStorage.getItem('lunacy.tutorial.done.v1') === '1', '')
+    check('finishing is remembered', localStorage.getItem('ronkacy.tutorial.done.v1') === '1', '')
 
     // The finish panel, with the overlay actually running. The checks above
     // stop UIScene, so a crash while building that panel went unseen: it threw

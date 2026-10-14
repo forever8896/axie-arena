@@ -75,7 +75,7 @@ export default class TutorialDirector {
       },
       {
         id: 'attack', title: 'ATTACK', keys: ['MOUSE', 'LEFT CLICK'],
-        text: 'Aim at the dummy with the mouse and left-click to hit it 3 times.\nThe flash on the ground is exactly where your hit lands.',
+        text: 'Aim at the dummy with the mouse and left-click to swing at it 3 times.\nThe flash on the ground is exactly where your fist lands.',
         hint: 'Get close: the curved line in front of you is your reach.',
         enter: () => {
           this.dummy = this.spawnDummy(at(40, -60))
@@ -88,14 +88,14 @@ export default class TutorialDirector {
       },
       {
         id: 'dash', title: 'DASH', keys: ['SPACE'],
-        text: 'Move toward the ring and press Space to dash into it.\nA dash is quick and briefly untouchable; the feather above you shows it.',
+        text: 'Move toward the ring and press Space to dash into it.\nA dash is quick and briefly untouchable; the chevrons above you show it.',
         hint: 'Hold a direction with WASD, then tap Space.',
         enter: () => { this.goal = { ...at(-150, 150), r: 50 }; this.dashFrom = P().lastDash },
         done: () => P().lastDash !== this.dashFrom && this.inGoal(P()),
       },
       {
-        id: 'special', title: 'SPECIAL', keys: ['LEFT CLICK', 'E'],
-        text: 'Landing hits charges your special: the bolt icon above Ronke.\nHit the dummy until its ring fills, then press E or right-click.',
+        id: 'special', title: 'BAD RICE', keys: ['LEFT CLICK', 'E'],
+        text: 'Landing punches fills the rice bowl above Ronke.\nHit the dummy until the bowl fills, then press E or right-click to be\nsick on the ground. Anything standing in the rice takes damage.',
         hint: 'Specials only charge from hits that land. Stay close to the dummy.',
         enter: () => {
           P().charge = 0.5
@@ -107,7 +107,7 @@ export default class TutorialDirector {
       },
       {
         id: 'parry', title: 'PARRY', keys: ['Q'],
-        text: 'Your sparring partner will swing at you.\nPress Q as the white ring closes to parry and stagger it.\nThe shield icon above you shows when a parry is ready.',
+        text: 'Your sparring partner will swing at you.\nPress Q as the white ring closes to parry and stagger it.\nThe shield above you shows when a parry is ready.',
         hint: 'Face your partner. Press Q when the ring touches it, not before.',
         enter: () => {
           this.retire(this.dummy)
@@ -161,7 +161,7 @@ export default class TutorialDirector {
       },
       {
         id: 'fight', title: 'YOUR FIRST FIGHT', keys: ['ALL OF IT'],
-        text: 'A real rival has arrived, and it fights back.\nUse everything: attack, dash, parry, special. Knock it out.',
+        text: 'A real Ronke has arrived, and it fights back.\nUse everything: fists, dash, parry, rice. Knock it out.',
         hint: 'Hit, then step back. Parry when it lines up a swing.',
         enter: () => {
           const scene = this.scene

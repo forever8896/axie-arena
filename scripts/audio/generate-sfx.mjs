@@ -76,9 +76,23 @@ for (const id of ids) {
     writeFileSync(raw, Buffer.from(await (await fetch(url)).arrayBuffer()))
     // Trimmed of leading silence, levelled, and cut to Ogg the way the menu
     // sounds were, so everything in public/sfx behaves the same at playback.
-    execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', raw,
-      '-af', 'silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.02,loudnorm=I=-18:TP=-1.5:LRA=11',
+    const encode = trim => execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', raw,
+      '-af', [
+        trim && 'silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.02',
+        'loudnorm=I=-18:TP=-1.5:LRA=11',
+      ].filter(Boolean).join(','),
       '-c:a', 'libvorbis', '-q:a', '4', '-ac', '1', `${OUT}/${id}.ogg`])
+    encode(true)
+    // A quiet generation can be silent enough that the trim takes all of it,
+    // leaving an Ogg the browser refuses to decode. Checked rather than
+    // assumed, because a sound that fails to decode is only noticed at runtime.
+    const seconds = Number(execFileSync('ffprobe',
+      ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', `${OUT}/${id}.ogg`],
+      { encoding: 'utf8' }).trim())
+    if (!(seconds > 0.12)) {
+      console.log(`  ${id}: trimmed to nothing, keeping it untrimmed`)
+      encode(false)
+    }
     console.log(`  ${id}.ogg`)
   } catch (err) {
     console.log(`  ${id}: FAILED ${err.message.slice(0, 160)}`)
