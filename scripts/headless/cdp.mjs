@@ -28,7 +28,11 @@ export async function launch({ width = 1480, height = 812 } = {}) {
   const proc = spawn('/usr/bin/chromium', [
     '--headless=new', `--remote-debugging-port=${PORT}`, '--no-first-run', '--no-default-browser-check',
     '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
-    '--autoplay-policy=no-user-gesture-required', `--window-size=${width},${height}`,
+    // Autoplay stays on because the game's audio path is part of what these
+    // checks exercise, but nothing reaches the speakers: a suite that plays
+    // battle music through someone's laptop is a suite nobody wants to run.
+    '--autoplay-policy=no-user-gesture-required', '--mute-audio',
+    `--window-size=${width},${height}`,
     `--user-data-dir=${profile}`,
     'about:blank',
   ], { stdio: 'ignore' })
