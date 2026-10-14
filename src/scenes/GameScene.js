@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import TouchControls, { touchLikely } from '../ui/TouchControls.js'
 import Fighter from '../entities/Fighter.js'
 import BotBrain from '../ai/BotBrain.js'
 import { ARENA_PALETTE } from '../game/palette.js'
@@ -89,9 +90,22 @@ export default class GameScene extends Phaser.Scene {
 
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,SHIFT')
     this.input.on('pointerdown', p => {
+      // A touch reports as a left button, so without this every tap — on the
+      // dash button, on the aim stick, anywhere — also threw a punch.
+      if (p.wasTouch) return
       if (p.leftButtonDown()) this.playerSwing()
       else if (p.rightButtonDown()) this.playerSpecial()
     })
+    // The same intents the keyboard produces, from two thumbs.
+    if (touchLikely(this)) {
+      this.touch = new TouchControls(this, {
+        onSwing: () => this.playerSwing(),
+        onSpecial: () => this.playerSpecial(),
+        onDash: () => this.playerDash(),
+        onParry: () => this.playerParry(),
+      })
+      this.scale.on('resize', () => this.touch?.layout())
+    }
     this.input.keyboard.on('keydown-SPACE', () => this.playerDash())
     this.input.keyboard.on('keydown-SHIFT', () => this.playerDash())
     this.input.keyboard.on('keydown-E', () => this.playerSpecial())
@@ -134,7 +148,16 @@ export default class GameScene extends Phaser.Scene {
     const cam = this.cameras.main
     cam.setBounds(0, 0, WORLD.width, WORLD.height)
     if (this.mode === 'showdown') cam.startFollow(this.player.sprite.root, true, 0.11, 0.11)
-    cam.setZoom(1.15)
+    // A phone screen is a fraction of a laptop's, so a fixed zoom shows a
+    // fraction of the field and the fight arrives from off screen. Zoom with
+    // the viewport instead, floored so it never gets so wide that Ronke is a
+    // smudge, and re-applied whenever the window changes.
+    this.fitZoom = () => {
+      const w = this.scale.width
+      cam.setZoom(Phaser.Math.Clamp(w / 1200, 0.72, 1.15))
+    }
+    this.fitZoom()
+    this.scale.on('resize', this.fitZoom)
     // Small dead zone so tiny movements do not drag the whole view.
     cam.setDeadzone(140, 110)
 
@@ -205,6 +228,12 @@ export default class GameScene extends Phaser.Scene {
   }
 
   updateAim() {
+    // A thumb gives an angle directly; a mouse gives a place to point at.
+    if (this.touch?.enabled && this.touch.aim != null) {
+      this.player.aim = this.touch.aim
+      return
+    }
+    if (this.touch?.enabled) return
     const pointer = this.input.activePointer
     const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y)
     this.player.aim = Math.atan2(world.y - this.player.y, world.x - this.player.x)
@@ -326,9 +355,11 @@ export default class GameScene extends Phaser.Scene {
     // Hit-stop is per fighter now (Fighter.freeze), so the loop always runs.
     {
       const k = this.keys
+      this.touch?.update()
+      const touchMove = this.touch?.enabled ? this.touch.move : null
       this.player.intent.set(
-        this.matchOver ? 0 : (k.D.isDown ? 1 : 0) - (k.A.isDown ? 1 : 0),
-        this.matchOver ? 0 : (k.S.isDown ? 1 : 0) - (k.W.isDown ? 1 : 0),
+        this.matchOver ? 0 : (touchMove?.x || 0) + (k.D.isDown ? 1 : 0) - (k.A.isDown ? 1 : 0),
+        this.matchOver ? 0 : (touchMove?.y || 0) + (k.S.isDown ? 1 : 0) - (k.W.isDown ? 1 : 0),
       )
       if (!this.matchOver) this.updateAim()
 

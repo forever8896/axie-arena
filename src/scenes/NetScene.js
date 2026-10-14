@@ -11,6 +11,7 @@
  * tutorial, where there is nobody else to agree with.
  */
 import Phaser from 'phaser'
+import TouchControls, { touchLikely } from '../ui/TouchControls.js'
 import { registerEffects } from '../fx/SkillVfx.js'
 import Arena, { WORLD } from '../arena/Arena.js'
 import RoomClient from '../net/client.js'
@@ -72,7 +73,16 @@ export default class NetScene extends Phaser.Scene {
 
     const cam = this.cameras.main
     cam.setBounds(0, 0, WORLD.width, WORLD.height)
-    cam.setZoom(1.15)
+    // A phone screen is a fraction of a laptop's, so a fixed zoom shows a
+    // fraction of the field and the fight arrives from off screen. Zoom with
+    // the viewport instead, floored so it never gets so wide that Ronke is a
+    // smudge, and re-applied whenever the window changes.
+    this.fitZoom = () => {
+      const w = this.scale.width
+      cam.setZoom(Phaser.Math.Clamp(w / 1200, 0.72, 1.15))
+    }
+    this.fitZoom()
+    this.scale.on('resize', this.fitZoom)
     cam.setDeadzone(140, 110)
     if (cam.postFX) {
       cam.postFX.addVignette(0.5, 0.5, 0.95, 0.2)
@@ -157,9 +167,20 @@ export default class NetScene extends Phaser.Scene {
   bindInput() {
     this.keys = this.input.keyboard.addKeys('W,A,S,D,Q,F,R,SPACE,SHIFT')
     this.input.on('pointerdown', p => {
+      if (p.wasTouch) return
       if (p.leftButtonDown()) this.want('attack')
       else if (p.rightButtonDown()) this.want('special')
     })
+    // Thumbs. The guard is held here rather than tapped, so the button reports
+    // while it is down and the input loop reads it like the key.
+    if (touchLikely(this)) {
+      this.touch = new TouchControls(this, {
+        onSwing: () => this.want('attack'),
+        onSpecial: () => this.want('special'),
+        onDash: () => this.want('dash'),
+      })
+      this.scale.on('resize', () => this.touch?.layout())
+    }
     this.input.keyboard.on('keydown-SPACE', () => this.want('dash'))
     this.input.keyboard.on('keydown-SHIFT', () => this.want('dash'))
     this.input.keyboard.on('keydown-E', () => this.want('special'))
@@ -274,12 +295,17 @@ export default class NetScene extends Phaser.Scene {
    */
   sendInput(me, delta) {
     const k = this.keys
+    this.touch?.update()
+    const touching = Boolean(this.touch?.enabled)
     const pointer = this.input.activePointer
     const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y)
-    this.aim = Math.atan2(world.y - me.y, world.x - me.x)
+    // A thumb hands over an angle; a mouse hands over a place to point at.
+    this.aim = touching && this.touch.aim != null
+      ? this.touch.aim
+      : touching ? (this.aim ?? 0) : Math.atan2(world.y - me.y, world.x - me.x)
     // Remembered for the renderer, so the guard appears under the hand that
     // raised it rather than after a round trip.
-    const guard = k.Q.isDown || k.F.isDown
+    const guard = k.Q.isDown || k.F.isDown || Boolean(this.touch?.guarding)
     this.holdingGuard = guard && this.predict.allows('guard')
     // A Moonshot is aimed, not fired: the key is held while you point it, and
     // it goes off when you let go. Both edges are read off this one level.
@@ -296,8 +322,8 @@ export default class NetScene extends Phaser.Scene {
     this.aimingNow = this.holdingAim
     const sent = this.client.pump({
       move: {
-        x: (k.D.isDown ? 1 : 0) - (k.A.isDown ? 1 : 0),
-        y: (k.S.isDown ? 1 : 0) - (k.W.isDown ? 1 : 0),
+        x: (this.touch?.move.x || 0) + (k.D.isDown ? 1 : 0) - (k.A.isDown ? 1 : 0),
+        y: (this.touch?.move.y || 0) + (k.S.isDown ? 1 : 0) - (k.W.isDown ? 1 : 0),
       },
       aim: this.aim,
       point: { x: world.x, y: world.y },

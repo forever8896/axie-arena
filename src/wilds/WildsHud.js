@@ -127,6 +127,18 @@ export default class WildsHud {
     const ui = this.ui
     const w = this.wilds
     const x = width - 34
+    // A phone in landscape is about 390px tall. The minimap, the leaderboard,
+    // the feed and three thumb buttons do not all fit down one edge, and the
+    // two that matter while you are being chased are the map and the buttons.
+    // So the standings go, rather than being squeezed into the same pixels.
+    const short = ui.scale.height < 520
+    if (short) {
+      this.sidePlate.clear()
+      this.topTitle.setText('')
+      this.topRows.forEach(r => r.setText(''))
+      this.feedRows.forEach(r => r.setText(''))
+      return
+    }
     let y = 290
     this.topTitle.setPosition(x, y)
     y += 18
@@ -151,7 +163,8 @@ export default class WildsHud {
     })
     const widest = Math.max(this.topTitle.width, ...this.topRows.map(r => r.width), ...this.feedRows.map(r => r.width))
     this.sidePlate.clear()
-    this.sidePlate.fillStyle(INK, 0.55).fillRoundedRect(x - widest - 16, 280, widest + 32, y + 6 * 16 - 270, 10)
+    this.sidePlate.fillStyle(INK, 0.55)
+      .fillRoundedRect(x - widest - 16, 280, widest + 32, y + 6 * 16 - 270, 10)
     ui.status?.setText(String(this.game.fighters.filter(f => f.alive).length).padStart(2, '0'))
   }
 

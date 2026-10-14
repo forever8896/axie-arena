@@ -34,20 +34,26 @@ export default class UIScene extends Phaser.Scene {
 
     this.hintPlate = this.add.graphics().setDepth(-1)
 
+    // The count sits under the minimap, which on a phone in landscape is
+    // exactly where the thumb buttons are. The map already shows who is here.
+    const roomy = this.scale.height >= 520
     this.status = this.add.text(this.scale.width - 34, MINIMAP.size + 34, '', {
       fontFamily: MONO, fontSize: '15px', color: '#f4f8e8',
-    }).setOrigin(1, 0).setDepth(500)
+    }).setOrigin(1, 0).setDepth(500).setVisible(roomy)
 
     this.statusSub = this.add.text(this.scale.width - 34, MINIMAP.size + 56, 'RIVALS REMAIN', {
       fontFamily: MONO, fontSize: '11px', color: '#b9c4a6',
-    }).setOrigin(1, 0).setDepth(500)
+    }).setOrigin(1, 0).setDepth(500).setVisible(roomy)
 
+    // A phone has no WASD, and the on-screen buttons say what they do. The
+    // strip would also sit under the left thumb stick.
+    const touch = Boolean(this.sys.game.device.input.touch || navigator.maxTouchPoints > 0)
     this.hint = this.add.text(34, this.scale.height - 40,
       this.game_?.scene.key === 'NetScene'
         ? 'WASD  MOVE     MOUSE  AIM     LEFT  PUNCH     RIGHT / E  RICE     HOLD Q  GUARD     HOLD R  RICE STORM     SPACE  DASH'
         : 'WASD  MOVE     MOUSE  AIM     LEFT  PUNCH     RIGHT / E  RICE     Q  PARRY     SPACE  DASH     M  MUTE', {
         fontFamily: MONO, fontSize: '12px', color: '#b9c4a6',
-      })
+      }).setVisible(!touch)
 
     this.buildMinimap()
 

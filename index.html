@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- A game, not a document: no pinch-zoom, and draw under the notch. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Ronkacy — One Ronke, One Field</title>
     <link rel="icon" type="image/svg+xml" href="/brand/ronkacy-mark.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -12,10 +15,33 @@
       html, body { margin: 0; height: 100%; background: #12121a; overflow: hidden; }
       #game { width: 100vw; height: 100vh; }
       canvas { display: block; }
+    
+      html, body { overscroll-behavior: none; }
+      #game, #game canvas {
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+    
+      /* A twin-stick brawler wants two thumbs and a wide field. Portrait is
+         not a layout worth fighting for, so ask for the turn instead. */
+      #rotate-note { display: none; }
+      @media (orientation: portrait) and (pointer: coarse) {
+        #rotate-note {
+          display: flex;
+          position: fixed; inset: 0; z-index: 50;
+          align-items: center; justify-content: center; text-align: center;
+          background: #12121a; color: #f2f7e4;
+          font-family: ui-monospace, monospace; font-size: 15px;
+          padding: 2rem; line-height: 1.7;
+        }
+      }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div id="rotate-note">TURN YOUR PHONE SIDEWAYS<br />Ronkacy is played with two thumbs.</div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
