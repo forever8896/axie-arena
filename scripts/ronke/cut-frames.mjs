@@ -47,6 +47,15 @@ const boxArg = (() => {
 })()
 /** Measure and print the box, then stop — the first pass of cut-all.mjs. */
 const measureOnly = process.argv.includes('--measure')
+/**
+ * Where his feet sit inside the shared box, as a fraction of its height.
+ *
+ * The box has to hold the widest moment of every animation — the rice lands
+ * well below where he stands — so its bottom edge is not the ground. Anchoring
+ * a sprite to the bottom of the frame would float him above his own shadow, so
+ * the ground line is measured once from the idle and carried into every sheet.
+ */
+const originY = arg('--originy', 1)
 
 const src = `art/clips/${name}.mp4`
 const work = `art/work/${name}`
@@ -115,5 +124,6 @@ sh('ffmpeg', ['-v', 'error', '-y', '-framerate', String(fps), '-i', `${work}/f_%
 
 writeFileSync(`public/sprites/${name}.json`, JSON.stringify({
   frameWidth: fw, frameHeight: height, frames: frames.length, columns: cols, rows, fps,
+  originY: Math.round(originY * 1000) / 1000,
 }, null, 2) + '\n')
 console.log(`  public/sprites/${name}.png  (${cols}x${rows} grid, ${fps}fps)`)

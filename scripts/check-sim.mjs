@@ -236,7 +236,7 @@ function duel({ a = 'ronke', b = 'ronke', gap = 60, mode = 'showdown', room = nu
     const marks = [0, 1, 2].map(i => {
       const m = r.addFighter({ cls: 'ronke', name: `m${i}` })
       m.brain = null
-      m.pos.set(420 + i * 140, 300)
+      m.pos.set(300 + (i + 1) * (CLASS_KITS.ronke.ultimate.range / 3.6), 300)
       return m
     })
     A.moon = 1
@@ -244,7 +244,7 @@ function duel({ a = 'ronke', b = 'ronke', gap = 60, mode = 'showdown', room = nu
     for (let t = 0; t < LANCE.minAimMs + 40; t += DT) { r.step(DT); r.drainEvents() }
     A.pos.set(300, 300)
     A.aim = 0
-    marks.forEach((m, i) => m.pos.set(420 + i * 140, 300))
+    marks.forEach((m, i) => m.pos.set(300 + (i + 1) * (CLASS_KITS.ronke.ultimate.range / 3.6), 300))
     r.applyInput(A, { move: { x: 0, y: 0 }, aim: 0, aiming: false })
     for (let t = 0; t < (CLASS_KITS.ronke.ultimate.range / LANCE.speed) * 1000 + 160; t += DT) { r.step(DT); r.drainEvents() }
     check('a Moonshot pierces everyone on its line', marks.every(m => m.hp < m.maxHp),

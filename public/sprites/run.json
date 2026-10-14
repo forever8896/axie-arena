@@ -1,8 +1,9 @@
 {
-  "frameWidth": 212,
+  "frameWidth": 199,
   "frameHeight": 220,
   "frames": 22,
   "columns": 10,
   "rows": 3,
-  "fps": 18
+  "fps": 18,
+  "originY": 0.901
 }

@@ -34,7 +34,7 @@ const CLIPS = {
   idle: `He stands still and breathes, his big belly rising and settling, arms hanging loose and swaying a little, head bobbing slightly. A small, calm, looping idle. He does not walk or turn. ${HOLD}`,
   run: `He runs in place facing right, his thin legs cycling in a full run, little arms pumping, belly bouncing heavily with each step. A clean looping run cycle, staying in the same spot. ${HOLD}`,
   punch: `He throws one punch with his right fist: he leans back slightly, then drives his thin arm straight forward until the fist is fully extended in front of him, then pulls it back. One clear single punch. ${HOLD}`,
-  lick: `He opens his mouth and shoots his long pink tongue straight out forwards like a whip, far across the frame to the right, holds it extended, then reels it back into his mouth. One long-range tongue lash. ${HOLD}`,
+  vomit: `He lurches forward, hunches over, and vomits a thick spray of white rice out of his mouth onto the ground in front of him to the right, the rice piling in a heap just in front of his feet. Then he straightens back up. The rice stays close to him — it lands on the ground near his feet, it does not fly far away. ${HOLD}`,
   hurt: `He is hit and recoils backwards, head snapping back, arms flailing up, belly wobbling, then settles back upright. One short hit reaction. ${HOLD}`,
   guard: `He raises both thin arms up in front of his face and belly to block, hunching down behind them, braced and holding. ${HOLD}`,
 }

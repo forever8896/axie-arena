@@ -67,15 +67,18 @@ export const CLASS_KITS = {
       anim: 'attack',
     },
     special: {
-      name: 'Lash', desc: 'Whips his tongue out across the field',
-      kind: 'spread', count: 1, spread: 0,
-      damage: 520, projectileSpeed: 620, projectileRange: 540,
+      // Thrown short and low: he is being sick on the ground in front of him,
+      // not lobbing it over anyone. The patch is the point — it denies the
+      // ground he is standing on the other side of.
+      name: 'Bad Rice', desc: 'Brings up a patch of rice that sickens anyone standing in it',
+      kind: 'lob', maxRange: 190, radius: 112,
+      zoneDuration: 3600, tickDamage: 155, tickRate: 560,
       sfx: 'ronke_lick',
       anim: 'special',
     },
     ultimate: {
-      name: 'Long Lick', desc: 'A tongue driven straight through everyone in its path',
-      damage: 760, range: 520, width: 92, knockback: 240,
+      name: 'Rice Storm', desc: 'A wide spray of rice driven through everyone in front of him',
+      damage: 760, range: 360, width: 170, knockback: 240,
       sfx: 'ronke_lick_hit',
       anim: 'special',
     },

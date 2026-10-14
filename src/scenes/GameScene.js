@@ -7,7 +7,7 @@ import ClosingField from '../arena/ClosingField.js'
 import PowerUps, { POWERUPS } from '../arena/PowerUps.js'
 import Moonwells from '../arena/Moonwell.js'
 import { createFxTextures, ambientMotes } from '../fx/Juice.js'
-import { playPlate, playImpactPlate, playStatusPlate } from '../fx/SkillVfx.js'
+import { playPlate, playImpactPlate, playStatusPlate, registerEffects } from '../fx/SkillVfx.js'
 import { play as playSfx } from '../fx/Sfx.js'
 import { play as playMusic } from '../fx/Music.js'
 import { PARRY } from '../game/classKits.js'
@@ -32,6 +32,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    registerEffects(this)
     // Reached only if the scene is started without data (a stale link, a
     // reload mid-match). Rebuild from scratch rather than throwing.
     if (!this.builds) {

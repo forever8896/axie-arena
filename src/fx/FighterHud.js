@@ -70,14 +70,35 @@ export function drawFighterStatus(scene, g, icons, status, now) {
   }
 }
 
+/** The four abilities, as shapes: a chevron, a shield, a bowl, a crescent. */
+function drawGlyph(g, kind, x, y, colour) {
+  g.fillStyle(colour, 1)
+  g.lineStyle(2, colour, 1)
+  if (kind === 'dash') {
+    g.beginPath(); g.moveTo(x - 5, y - 5); g.lineTo(x + 2, y); g.lineTo(x - 5, y + 5); g.strokePath()
+    g.beginPath(); g.moveTo(x + 1, y - 5); g.lineTo(x + 8, y); g.lineTo(x + 1, y + 5); g.strokePath()
+  } else if (kind === 'guard') {
+    g.beginPath()
+    g.moveTo(x, y - 7); g.lineTo(x + 6, y - 4); g.lineTo(x + 6, y + 2)
+    g.lineTo(x, y + 7); g.lineTo(x - 6, y + 2); g.lineTo(x - 6, y - 4)
+    g.closePath(); g.strokePath()
+  } else if (kind === 'rice') {
+    // A bowl with a heap in it.
+    g.beginPath(); g.arc(x, y - 1, 7, 0, Math.PI); g.strokePath()
+    g.fillCircle(x - 3, y - 3, 1.6); g.fillCircle(x, y - 5, 1.6); g.fillCircle(x + 3, y - 3, 1.6)
+  } else if (kind === 'moon') {
+    g.beginPath(); g.arc(x, y, 7, Math.PI * 0.35, Math.PI * 1.65); g.strokePath()
+  }
+}
+
 function drawReadyIcons(scene, g, icons, status, now, y) {
   const slots = [
-    { key: 'buff_feather', ready: status.dash.ready, fill: status.dash.fill, tint: 0x7ce8ff },
-    { key: 'power_advance_shielding', ready: status.parry.ready, fill: status.parry.fill, tint: 0xffffff },
-    { key: 'buff_rage', ready: status.specialReady, fill: clamp01(status.charge), tint: status.colors.body },
+    { key: 'dash', glyph: 'dash', ready: status.dash.ready, fill: status.dash.fill, tint: 0x7ce8ff },
+    { key: 'guard', glyph: 'guard', ready: status.parry.ready, fill: status.parry.fill, tint: 0xffffff },
+    { key: 'special', glyph: 'rice', ready: status.specialReady, fill: clamp01(status.charge), tint: status.colors.body },
     // The Moonshot's own meter, beside the special rather than sharing it: it
     // fills at half the rate and is spent separately, so it needs its own dial.
-    { key: 'power_energy_master', ready: status.moonReady, fill: clamp01(status.moon ?? 0), tint: 0xffd964 },
+    { key: 'moon', glyph: 'moon', ready: status.moonReady, fill: clamp01(status.moon ?? 0), tint: 0xffd964 },
     ...status.buffs.map(b => ({ key: b.icon, ready: true, fill: b.fill, tint: b.color, timed: true })),
   ]
 
@@ -102,6 +123,12 @@ function drawReadyIcons(scene, g, icons, status, now, y) {
       g.strokeCircle(x, iy, 12)
     }
 
+    // The kit's icons went with the kit. These are drawn rather than loaded:
+    // four shapes small enough that a picture would have been mush anyway.
+    if (slot.glyph) {
+      drawGlyph(g, slot.glyph, x, iy, slot.ready ? slot.tint : 0x7f8a72)
+      return
+    }
     let icon = icons[slot.key]
     const key = `icon-${slot.key}`
     if (!icon) {

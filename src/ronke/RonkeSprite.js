@@ -12,11 +12,11 @@ import { CONNECT_MS } from '../sim/constants.js'
  *
  * Six animations have to cover what forty-six did, so CLIP_FOR maps the old
  * vocabulary onto them rather than every call site being rewritten: a parry and
- * a block are both the guard, a punch answers anything in reach and the tongue
+ * a block are both the guard, a punch answers anything in reach and the rice
  * answers anything at range.
  */
 
-export const SHEETS = ['idle', 'run', 'punch', 'lick', 'hurt', 'guard']
+export const SHEETS = ['idle', 'run', 'punch', 'vomit', 'hurt', 'guard']
 
 /** What each sheet means, and whether it holds or returns to idle. */
 const LOOPS = new Set(['idle', 'run', 'guard'])
@@ -28,7 +28,7 @@ const LOOPS = new Set(['idle', 'run', 'guard'])
  */
 const CLIP_FOR = {
   idle: 'idle', run: 'run', dash: 'run',
-  attack: 'punch', special: 'lick', heavy: 'lick', lick: 'lick',
+  attack: 'punch', special: 'vomit', heavy: 'vomit', vomit: 'vomit',
   hit: 'hurt', stun: 'hurt', stagger: 'hurt',
   parry: 'guard', guard: 'guard', block: 'guard',
   ready: 'idle', prepare: 'idle', appear: 'idle', victory: 'idle', flourish: 'idle',
@@ -36,7 +36,7 @@ const CLIP_FOR = {
 
 /** Higher wins: a clip only interrupts one of equal or lower priority. */
 const PRIORITY = {
-  idle: 0, run: 0, guard: 1, hurt: 2, punch: 3, lick: 3,
+  idle: 0, run: 0, guard: 1, hurt: 2, punch: 3, vomit: 3,
 }
 
 /** Read a clip or state name of any vintage and say which sheet plays it. */
@@ -45,8 +45,8 @@ export function clipFor(name) {
   const key = String(name).toLowerCase()
   if (CLIP_FOR[key]) return CLIP_FOR[key]
   // Ronke clip paths look like 'attack/melee/horn-gore' or 'defense/hit-by-…'.
-  // Ranged attacks are the tongue; everything else in reach is the fist.
-  if (key.includes('attack')) return key.includes('ranged') || key.includes('cast') ? 'lick' : 'punch'
+  // Ranged attacks are the rice; everything else in reach is the fist.
+  if (key.includes('attack')) return key.includes('ranged') || key.includes('cast') ? 'vomit' : 'punch'
   if (key.includes('defense') || key.includes('hit')) return 'hurt'
   if (key.includes('shield') || key.includes('block')) return 'guard'
   if (key.includes('run') || key.includes('move')) return 'run'
@@ -87,7 +87,11 @@ export default class RonkeSprite {
     this.sprite = scene.add.sprite(0, 0, 'ronke-idle')
     // Drawn standing on the container's origin rather than centred on it, so a
     // fighter's position is its feet — which is what the simulation means by it.
-    this.sprite.setOrigin(0.5, 1)
+    // The ground line comes from the sheets: the shared crop box has to hold
+    // the rice landing well below him, so the bottom of the frame is not where
+    // he stands.
+    this.ground = scene.cache.json.get('sprites-idle')?.originY ?? 1
+    this.sprite.setOrigin(0.5, this.ground)
     this.sprite.setScale(scale)
     this.root.add([this.shadow, this.sprite])
 
@@ -122,6 +126,8 @@ export default class RonkeSprite {
     const key = `ronke-${name}`
     if (!this.scene.anims.exists(key)) return false
     this.sprite.play(key, true)
+    const meta = this.scene.cache.json.get(`sprites-${name}`)
+    if (meta?.originY) this.sprite.setOrigin(0.5, meta.originY)
     if (this.sprite.anims) this.sprite.anims.timeScale = speed
     return true
   }

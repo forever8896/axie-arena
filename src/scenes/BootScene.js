@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { ARENA_PALETTE } from '../game/palette.js'
 import { CLASS_KITS } from '../game/classKits.js'
 import { SHEETS } from '../ronke/RonkeSprite.js'
+import { FX_SHEETS } from '../fx/SkillVfx.js'
 import { POWERUPS, POWERUP_ICONS } from '../arena/PowerUps.js'
 import { makeMiniPortraits } from '../fx/MiniPortrait.js'
 import { makeGrassTexture } from '../arena/Arena.js'
@@ -94,8 +95,9 @@ export default class BootScene extends Phaser.Scene {
    */
   async loadRonke() {
     const base = `${import.meta.env.BASE_URL}sprites/`
+    const all = [...SHEETS, ...FX_SHEETS]
     let done = 0
-    for (const name of SHEETS) {
+    for (const name of all) {
       try {
         const meta = await (await fetch(`${base}${name}.json`)).json()
         const img = await new Promise((resolve, reject) => {
@@ -105,13 +107,15 @@ export default class BootScene extends Phaser.Scene {
           i.src = `${base}${name}.png`
         })
         this.cache.json.add(`sprites-${name}`, meta)
-        this.textures.addSpriteSheet(`ronke-${name}`, img, {
+        // The fighter's sheets are prefixed; the effects stand under their own
+        // names, because that is what SkillVfx registers its animations as.
+        this.textures.addSpriteSheet(name.startsWith('fx_') ? name : `ronke-${name}`, img, {
           frameWidth: meta.frameWidth, frameHeight: meta.frameHeight, endFrame: meta.frames - 1,
         })
       } catch (err) {
         console.warn(`sheet ${name} failed:`, err.message)
       }
-      this.setBar(++done / SHEETS.length)
+      this.setBar(++done / all.length)
     }
     if (!this.textures.exists('ronke-idle')) return null
     return Object.fromEntries(Object.keys(CLASS_KITS).map(c => [c, { ronke: true }]))
@@ -139,8 +143,9 @@ export default class BootScene extends Phaser.Scene {
    */
   async loadRonke() {
     const base = `${import.meta.env.BASE_URL}sprites/`
+    const all = [...SHEETS, ...FX_SHEETS]
     let done = 0
-    for (const name of SHEETS) {
+    for (const name of all) {
       try {
         const meta = await (await fetch(`${base}${name}.json`)).json()
         const img = await new Promise((resolve, reject) => {
@@ -150,13 +155,15 @@ export default class BootScene extends Phaser.Scene {
           i.src = `${base}${name}.png`
         })
         this.cache.json.add(`sprites-${name}`, meta)
-        this.textures.addSpriteSheet(`ronke-${name}`, img, {
+        // The fighter's sheets are prefixed; the effects stand under their own
+        // names, because that is what SkillVfx registers its animations as.
+        this.textures.addSpriteSheet(name.startsWith('fx_') ? name : `ronke-${name}`, img, {
           frameWidth: meta.frameWidth, frameHeight: meta.frameHeight, endFrame: meta.frames - 1,
         })
       } catch (err) {
         console.warn(`sheet ${name} failed:`, err.message)
       }
-      this.setBar(++done / SHEETS.length)
+      this.setBar(++done / all.length)
     }
     if (!this.textures.exists('ronke-idle')) return null
     return Object.fromEntries(Object.keys(CLASS_KITS).map(c => [c, { ronke: true }]))

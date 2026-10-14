@@ -1,0 +1,9 @@
+{
+  "frameWidth": 256,
+  "frameHeight": 150,
+  "frames": 24,
+  "columns": 10,
+  "rows": 3,
+  "fps": 20,
+  "originY": 1
+}

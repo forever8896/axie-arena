@@ -1,222 +1,137 @@
 import Phaser from 'phaser'
 
 /**
- * Origins skill effects.
+ * What a blow looks like when it lands.
  *
- * Each plate is an additive sprite sheet recorded from the Origins Unity
- * prefabs, with a clip.json carrying Origins' own frame timing and anchors. No
- * Spine runtime is involved — these are plain PNG frames.
+ * This file used to play the Origins Battle Kit's plates — twenty-two authored
+ * effect animations, one per ability, anchored by their own capture rig. The kit
+ * left with the licence, and for a while every punch landed with a sound, a
+ * number and nothing to look at.
  *
- * Vendored from the kit revision licensed by Official Rules section 5. See
- * public/vfx/LICENSE.md and THIRD_PARTY_NOTICES.md.
+ * What replaces it is four generated sheets rather than twenty-two authored
+ * ones, so the mapping is coarse on purpose: a hit is a hit, rice is rice, and
+ * the good news and the bad news have a colour each. The exported names and
+ * signatures are unchanged, because a dozen call sites across the fighter, the
+ * room view and the arena already speak this language and none of them should
+ * have to care which pipeline drew the picture.
  */
 
-const BASE = `${import.meta.env.BASE_URL}vfx/`
-const plates = {}
+export const FX_SHEETS = ['fx_impact', 'fx_rice', 'fx_heal', 'fx_power']
 
-export async function loadSkillPlates(ids, scene, onOne) {
-  await Promise.all(ids.map(async id => {
-    try {
-      const clip = await fetch(`${BASE}${id}/clip.json`).then(r => r.json())
-      const img = await loadImage(`${BASE}${id}/atlas.png`)
-      const key = `vfx-${id}`
-
-      if (!scene.textures.exists(key)) {
-        scene.textures.addSpriteSheet(key, img, {
-          frameWidth: clip.atlas.frameW,
-          frameHeight: clip.atlas.frameH,
-        })
-      }
-      if (!scene.anims.exists(key)) {
-        scene.anims.create({
-          key,
-          frames: scene.anims.generateFrameNumbers(key, { start: 0, end: clip.frames - 1 }),
-          frameRate: clip.fps,
-          hideOnComplete: true,
-        })
-      }
-      // A trimmed, faster cut around the plate's own peak frame, for basics
-      // that fire far more often than a full 1s plate could play.
-      if (!scene.anims.exists(`${key}-quick`)) {
-        const peak = clip.peakFrame ?? Math.floor(clip.frames * 0.4)
-        scene.anims.create({
-          key: `${key}-quick`,
-          frames: scene.anims.generateFrameNumbers(key, {
-            start: Math.max(0, peak - 4),
-            end: Math.min(clip.frames - 1, peak + 8),
-          }),
-          frameRate: clip.fps * 1.6,
-          hideOnComplete: true,
-        })
-      }
-      // The impact cut: from just before the plate's peak, so the burst is at
-      // full size on the frame the damage lands.
-      if (!scene.anims.exists(`${key}-impact`)) {
-        const peak = clip.peakFrame ?? Math.floor(clip.frames * 0.4)
-        scene.anims.create({
-          key: `${key}-impact`,
-          frames: scene.anims.generateFrameNumbers(key, {
-            start: Math.max(0, peak - 1),
-            end: Math.min(clip.frames - 1, peak + 10),
-          }),
-          frameRate: clip.fps * 1.5,
-          hideOnComplete: true,
-        })
-      }
-      plates[id] = clip
-    } catch (err) {
-      console.warn(`skill plate failed: ${id}`, err)
-    }
-    onOne?.()
-  }))
+/** Which sheet answers which name the game already uses. */
+const SHEET_FOR = {
+  heal: 'fx_heal',
+  shield: 'fx_power',
+  power_gain: 'fx_power',
+  power_awaken: 'fx_power',
+  buff_apply: 'fx_heal',
+  dmg_boost: 'fx_power',
+  shield_boost: 'fx_power',
+  stunned: 'fx_impact',
+  poison_apply: 'fx_rice',
+  debuff_apply: 'fx_rice',
 }
 
-/** Origins status icons, as plain textures keyed `icon-<id>`. */
-export async function loadIcons(ids, scene) {
-  await Promise.all(ids.map(async id => {
-    const key = `icon-${id}`
-    if (scene.textures.exists(key)) return
-    try {
-      scene.textures.addImage(key, await loadImage(`${BASE}icons/${id}.png`))
-    } catch (err) {
-      console.warn(`icon failed: ${id}`, err)
-    }
-  }))
+/** A tint per name, so one burst can carry several meanings. */
+const TINT_FOR = {
+  poison_apply: 0x9ff0bb,
+  debuff_apply: 0xd7b0ff,
+  stunned: 0xffe08a,
+  shield: 0x7ce8ff,
+  shield_boost: 0x7ce8ff,
 }
 
-export function hasPlate(id) {
-  return Boolean(plates[id])
+const sheetFor = id => SHEET_FOR[id] ?? (String(id).includes('rice') ? 'fx_rice' : 'fx_impact')
+
+/** Registered once per scene, the same way the fighter's own animations are. */
+export function registerEffects(scene) {
+  for (const name of FX_SHEETS) {
+    if (scene.anims.exists(name)) continue
+    const meta = scene.cache.json.get(`sprites-${name}`)
+    if (!meta) continue
+    scene.anims.create({
+      key: name,
+      frames: scene.anims.generateFrameNumbers(name, { start: 0, end: meta.frames - 1 }),
+      frameRate: meta.fps,
+      repeat: 0,
+    })
+  }
 }
 
 /**
- * Plays a plate anchored to the attacker.
+ * One burst, played once and thrown away.
  *
- * The capture rig places the attacker off to the right and the defender to the
- * left, a fixed distance apart in crop space. Scaling that distance to the
- * ability's own reach makes the effect land where the damage does.
+ * The generated clips hold their shape rather than shrinking away, so the fade
+ * is done here: the sheet gives the shape and the tween gives the ending.
  */
-export function playPlate(scene, fighter, spec) {
-  const clip = plates[spec.vfx]
-  if (!clip) return null
-
-  const reach = Phaser.Math.Clamp(
-    spec.range ?? spec.projectileRange ?? spec.maxRange ?? spec.radius ?? 170,
-    130, 340,
-  )
-  const span = Math.abs(clip.attackerInCrop.x - clip.anchor.x) || 393
-  const scale = reach / span
-
-  const key = `vfx-${spec.vfx}`
-  const ax = clip.attackerInCrop.x / clip.atlas.frameW
-  const ay = clip.attackerInCrop.y / clip.atlas.frameH
-  const flip = fighter.sprite.facing > 0
-
-  const sprite = scene.add.sprite(fighter.x, fighter.y - 10, key)
-    // Flipping mirrors the artwork but not the origin, so mirror the origin too.
-    .setOrigin(flip ? 1 - ax : ax, ay)
-    .setFlipX(flip)
-    .setScale(scale)
-    .setBlendMode(Phaser.BlendModes.ADD)
-    .setDepth(fighter.y + 6)
-
-  sprite.play(key)
-  sprite.once('animationcomplete', () => sprite.destroy())
-  return sprite
+function burst(scene, sheet, x, y, { size = 1, depth, tint, flip = false } = {}) {
+  if (!scene?.anims?.exists(sheet)) return null
+  const s = scene.add.sprite(x, y, sheet, 0)
+  s.setDepth(depth ?? y + 8).setScale(size).setFlipX(flip)
+  if (tint) s.setTint(tint)
+  s.play(sheet)
+  scene.tweens.add({
+    targets: s, alpha: 0, duration: 180, delay: 120, ease: 'Quad.easeIn',
+    onComplete: () => s.destroy(),
+  })
+  s.once('animationcomplete', () => { if (s.active) s.destroy() })
+  return s
 }
 
-function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error(`could not load ${src}`))
-    img.src = src
+/** Nothing is pre-loaded per ability any more; the sheets come up with the boot. */
+export async function loadSkillPlates(ids, scene, onOne) {
+  ids?.forEach(() => onOne?.())
+}
+
+export async function loadIcons() {}
+
+export function hasPlate(id) {
+  return Boolean(SHEET_FOR[id]) || id === 'rice'
+}
+
+/**
+ * An ability's effect, thrown out in front of the attacker.
+ *
+ * The kit's plates were anchored by a capture rig that knew where the attacker
+ * and defender stood. There is no rig now, so the burst is simply placed along
+ * the aim at the ability's own reach.
+ */
+export function playPlate(scene, fighter, spec) {
+  if (!fighter?.sprite?.root?.active) return null
+  const reach = Phaser.Math.Clamp(spec?.range ?? spec?.radius ?? spec?.projectileRange ?? 150, 90, 300)
+  const aim = fighter.aim ?? 0
+  const rice = spec?.kind === 'lob' || spec?.zoneDuration
+  return burst(scene, rice ? 'fx_rice' : 'fx_impact',
+    fighter.x + Math.cos(aim) * reach * 0.6,
+    fighter.y - 10 + Math.sin(aim) * reach * 0.6,
+    { size: rice ? 1.1 : 0.9, flip: Math.cos(aim) < 0 })
+}
+
+/** The basic's own swing effect, close in. */
+export function playBasicPlate(scene, fighter, spec) {
+  return playPlate(scene, fighter, spec)
+}
+
+/** Where a blow actually landed. */
+export function playImpactPlate(scene, id, x, y, aim, { size = 118, whiff = false } = {}) {
+  const s = burst(scene, sheetFor(id), x, y, {
+    size: (size / 150) * (whiff ? 0.6 : 1),
+    tint: TINT_FOR[id],
+    flip: Math.cos(aim ?? 0) < 0,
+  })
+  if (s && whiff) s.setAlpha(0.5)
+  return s
+}
+
+/** Something that happened to a fighter rather than between two. */
+export function playStatusPlate(scene, fighter, id, { durationMs, size = 1.5 } = {}) {
+  if (!fighter?.sprite?.root?.active) return null
+  return burst(scene, sheetFor(id), fighter.x, fighter.y - 34, {
+    size: size * 0.55,
+    tint: TINT_FOR[id],
+    depth: (fighter.y ?? 0) + 40,
   })
 }
 
-/**
- * A basic attack's Origins plate, played as what it is: an impact.
- *
- * The basic plates are hit bursts recorded around the defender (their anchor
- * maps to the defender), so they belong on the fighter that was hit, not
- * stretched out from the attacker. The art's blow travels from the attacker on
- * the right to the defender on the left; it is mirrored and turned so that
- * direction runs along the swing's aim, and flipped vertically on the left half
- * so it is never drawn upside down.
- */
-export function playImpactPlate(scene, id, x, y, aim, { size = 118, whiff = false } = {}) {
-  const clip = plates[id]
-  if (!clip) return null
-  const key = `vfx-${id}`
-  const ax = (clip.anchor?.x ?? clip.crop.w / 2) / clip.atlas.frameW
-  const ay = (clip.anchor?.y ?? clip.crop.h / 2) / clip.atlas.frameH
-  const left = Math.cos(aim) < 0
-  const scale = (size * (whiff ? 0.7 : 1)) / Math.max(90, Math.min(clip.crop.h, clip.crop.w))
-  const sprite = scene.add.sprite(x, y, key)
-    .setOrigin(1 - ax, left ? 1 - ay : ay)
-    .setFlip(true, left)
-    .setRotation(aim)
-    .setScale(scale)
-    .setAlpha(whiff ? 0.7 : 1)
-    .setBlendMode(Phaser.BlendModes.ADD)
-    .setDepth(y + 40)
-  sprite.play(`${key}-impact`)
-  sprite.once('animationcomplete', () => sprite.destroy())
-  return sprite
-}
-
-/** Basic attack plate: the quick cut, sized to the basic's reach. */
-export function playBasicPlate(scene, fighter, spec) {
-  const clip = plates[spec.vfx]
-  if (!clip) return null
-  // Sized well past the reach: at 1.15x the plates read as a small flash.
-  const reach = Phaser.Math.Clamp(spec.range * 1.7, 140, 260)
-  return placeOnAttacker(scene, fighter, spec.vfx, clip, reach, `vfx-${spec.vfx}-quick`)
-}
-
-/**
- * Status plate drawn over a fighter, riding along with it. Loops until
- * `durationMs` when given, otherwise plays once.
- */
-export function playStatusPlate(scene, fighter, id, { durationMs, size = 1.5 } = {}) {
-  const clip = plates[id]
-  if (!clip || !fighter?.sprite?.root?.active) return null
-
-  // Anchor the effect's own target point onto the fighter's body.
-  const ax = (clip.anchor?.x ?? clip.crop.w / 2) / clip.atlas.frameW
-  const ay = (clip.anchor?.y ?? clip.crop.h / 2) / clip.atlas.frameH
-  const scale = (fighter.sprite.width * size) / clip.crop.w
-  const key = `vfx-${id}`
-
-  const sprite = scene.add.sprite(0, -fighter.sprite.height * 0.45, key)
-    .setOrigin(ax, ay)
-    .setScale(scale)
-    .setBlendMode(Phaser.BlendModes.ADD)
-  fighter.sprite.root.add(sprite)
-
-  if (durationMs) {
-    sprite.play({ key, repeat: -1 })
-    scene.time.delayedCall(durationMs, () => sprite.active && sprite.destroy())
-  } else {
-    sprite.play(key)
-    sprite.once('animationcomplete', () => sprite.destroy())
-  }
-  return sprite
-}
-
+/** Kept so the boot can still name what it wants; they all resolve to a sheet. */
 export const STATUS_PLATES = ['stunned', 'poison_apply', 'debuff_apply', 'power_gain', 'shield']
-
-function placeOnAttacker(scene, fighter, id, clip, reach, animKey) {
-  const span = Math.abs(clip.attackerInCrop.x - clip.anchor.x) || clip.crop.w * 0.6
-  const ax = clip.attackerInCrop.x / clip.atlas.frameW
-  const ay = clip.attackerInCrop.y / clip.atlas.frameH
-  const flip = fighter.sprite.facing > 0
-  const sprite = scene.add.sprite(fighter.x, fighter.y - 10, `vfx-${id}`)
-    .setOrigin(flip ? 1 - ax : ax, ay)
-    .setFlipX(flip)
-    .setScale(reach / span)
-    .setBlendMode(Phaser.BlendModes.ADD)
-    .setDepth(fighter.y + 6)
-  sprite.play(animKey)
-  sprite.once('animationcomplete', () => sprite.destroy())
-  return sprite
-}

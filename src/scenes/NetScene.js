@@ -11,6 +11,7 @@
  * tutorial, where there is nobody else to agree with.
  */
 import Phaser from 'phaser'
+import { registerEffects } from '../fx/SkillVfx.js'
 import Arena, { WORLD } from '../arena/Arena.js'
 import RoomClient from '../net/client.js'
 import RoomView from '../net/RoomView.js'
@@ -36,6 +37,7 @@ export default class NetScene extends Phaser.Scene {
   }
 
   create() {
+    registerEffects(this)
     if (!this.builds) {
       this.scene.start('BootScene')
       return
