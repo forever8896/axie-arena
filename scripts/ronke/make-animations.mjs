@@ -36,7 +36,7 @@ const CLIPS = {
   punch: `He throws one punch with his right fist: he leans back slightly, then drives his thin arm straight forward until the fist is fully extended in front of him, then pulls it back. One clear single punch. ${HOLD}`,
   vomit: `He lurches forward, hunches over, and vomits a thick spray of white rice out of his mouth onto the ground in front of him to the right, the rice piling in a heap just in front of his feet. Then he straightens back up. The rice stays close to him — it lands on the ground near his feet, it does not fly far away. ${HOLD}`,
   hurt: `He is hit and recoils backwards, head snapping back, arms flailing up, belly wobbling, then settles back upright. One short hit reaction. ${HOLD}`,
-  guard: `He raises both thin arms up in front of his face and belly to block, hunching down behind them, braced and holding. ${HOLD}`,
+  guard: `He quickly brings both arms up and crosses them in an X directly in front of his face and chest, like a boxer covering up, and holds that crossed-arm block, bracing and flinching behind it. His arms must be clearly raised and crossed in front of him — this is a blocking pose, not standing still. ${HOLD}`,
 }
 
 const wanted = process.argv.slice(2).filter(a => CLIPS[a])

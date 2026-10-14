@@ -71,7 +71,10 @@ export const CLASS_KITS = {
       // not lobbing it over anyone. The patch is the point — it denies the
       // ground he is standing on the other side of.
       name: 'Bad Rice', desc: 'Brings up a patch of rice that sickens anyone standing in it',
-      kind: 'lob', maxRange: 190, radius: 112,
+      // Thrown no further than he is actually sick: the animation puts the rice
+      // at his feet, and a patch that lands anywhere else is a hitbox the
+      // player cannot see. Short and wide beats long and invisible.
+      kind: 'lob', maxRange: 95, radius: 120,
       zoneDuration: 3600, tickDamage: 155, tickRate: 560,
       sfx: 'ronke_lick',
       anim: 'special',

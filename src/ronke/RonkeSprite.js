@@ -137,7 +137,7 @@ export default class RonkeSprite {
    * Ronke rig: the clip is slowed or hurried so its most committed frame lands
    * when the game says the blow lands.
    */
-  play(clip, { kind, fit, peakAt, peakFraction = 0.4, holdMs, minSpeed = 0.25 } = {}) {
+  play(clip, { kind, fit, peakAt, peakFraction = 0.3, holdMs, minSpeed = 0.25 } = {}) {
     const name = clipFor(kind ?? clip)
     const rank = PRIORITY[name] ?? 0
     if (this.action && rank < (PRIORITY[this.action.name] ?? 0) && !this.actionDone()) return false

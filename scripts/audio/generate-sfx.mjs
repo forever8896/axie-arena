@@ -34,13 +34,13 @@ const TMP = 'art/work/sfx'
  * seven fighters they always overlap.
  */
 export const SOUNDS = {
-  ronke_punch: { s: 0.9, text: 'A heavy cartoon fist swing through the air, short whoosh, no impact. Dry, punchy, no music, no reverb tail.' },
-  ronke_punch_hit: { s: 0.8, text: 'A heavy comedic punch landing on a soft fat belly. Deep thud with a slight boing. Dry, no music.' },
-  ronke_lick: { s: 1.0, text: 'A long wet tongue whipping out fast through the air. Slimy stretchy whoosh. Cartoon, dry, no music.' },
-  ronke_lick_hit: { s: 0.8, text: 'A wet sloppy tongue slap landing on a face. Comedic splat, short. Dry, no music.' },
-  ronke_hurt: { s: 0.8, text: 'A short, dumb, surprised grunt from a big cartoon ape taking a hit. Low oof. Dry, no music.' },
-  ronke_guard: { s: 0.7, text: 'A blocked blow landing on raised forearms. Dull muffled thud, no ring. Dry, no music.' },
-  ronke_dash: { s: 0.6, text: 'A short quick comedic whoosh of a heavy body lunging sideways. Dry, no music.' },
+  ronke_punch: { s: 0.7, text: 'A fast heavy whoosh of a thick arm swinging hard through the air. Sharp attack, immediate, no tail, no impact. Dry close-mic, no music, no reverb.' },
+  ronke_punch_hit: { s: 0.7, text: 'A thick meaty punch landing hard on a fat belly. Deep low THUD with a short wet slap on top. Loud, immediate, dry. No music, no reverb, no ringing.' },
+  ronke_lick: { s: 1.0, text: 'A big cartoon ape retching and vomiting a wet splattering gush onto the ground. Gross, wet, comedic. Dry, no music.' },
+  ronke_lick_hit: { s: 0.7, text: 'A wet sloppy splat of sick hitting the ground and spreading. Short, gross, dry. No music.' },
+  ronke_hurt: { s: 0.7, text: 'A short winded OOF grunt from a big dumb cartoon ape taking a punch to the gut. Dry, close, no music.' },
+  ronke_guard: { s: 0.6, text: 'A punch blocked on crossed forearms. Dull muffled slap with no ring and no metal. Dry, immediate, no music.' },
+  ronke_dash: { s: 0.5, text: 'A short sharp whoosh of a heavy body lunging suddenly sideways. Fast, dry, no music.' },
   ronke_die: { s: 1.4, text: 'A big cartoon ape flopping to the ground, deflating with a sad descending wheeze. Dry, no music.' },
   poison: { s: 1.0, text: 'Thick green slime bubbling and hissing, sickly. Short, dry, no music.' },
   stunned: { s: 1.0, text: 'Cartoon dizzy stars twinkling after a knock on the head, woozy wobble. Dry, no music.' },
