@@ -4,7 +4,7 @@ import Zone from './Zone.js'
 import { impact } from '../fx/Juice.js'
 import { CHARGE_PER_HIT, TELEGRAPH_MS } from '../axie/classKits.js'
 import { playVaried, play } from '../fx/Sfx.js'
-import { CONNECT_MS } from '../axie/AxieSprite.js'
+import { CONNECT_MS } from '../sim/constants.js'
 
 /**
  * Every ability is a function of (fighter, spec, targets). They are keyed by

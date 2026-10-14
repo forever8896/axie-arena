@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import AxieSprite from '../axie/AxieSprite.js'
+import RonkeSprite from '../ronke/RonkeSprite.js'
 import { makeGrassTexture } from '../arena/Arena.js'
 import { FIELD } from '../axie/palette.js'
 import { ambientMotes } from '../fx/Juice.js'
@@ -64,7 +64,7 @@ export default class HomeScene extends Phaser.Scene {
     // A few Axies milling about on the grass behind the card.
     const classes = Object.keys(this.builds ?? {})
     for (const cls of classes) {
-      const sprite = new AxieSprite(this, 0, 0, { build: this.builds[cls], axieClass: cls })
+      const sprite = new RonkeSprite(this, 0, 0, { build: this.builds[cls], axieClass: cls })
       sprite.root.setScale(1.05)
       this.wanderers.push({
         sprite,

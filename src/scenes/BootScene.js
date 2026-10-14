@@ -1,8 +1,7 @@
 import Phaser from 'phaser'
-import { initMixer, buildAxie, AXIE_CDN, CLASS_PART_SETS } from '../axie/AxieFactory.js'
 import { ARENA_PALETTE } from '../axie/palette.js'
 import { CLASS_KITS } from '../axie/classKits.js'
-import { loadSkillPlates, loadIcons, STATUS_PLATES } from '../fx/SkillVfx.js'
+import { SHEETS } from '../ronke/RonkeSprite.js'
 import { POWERUPS, POWERUP_ICONS } from '../arena/PowerUps.js'
 import { makeMiniPortraits } from '../fx/MiniPortrait.js'
 import { makeGrassTexture } from '../arena/Arena.js'
@@ -11,7 +10,7 @@ import { FIELD } from '../axie/palette.js'
 
 const HEAD = 'Rowdies, ui-sans-serif, system-ui, sans-serif'
 const MONO = 'ui-monospace, monospace'
-const PHASES = 5
+const PHASES = 4
 
 /** Shown while the Axie parts come down from the CDN. */
 const TIPS = [
@@ -46,63 +45,20 @@ export default class BootScene extends Phaser.Scene {
     await this.loadBrand()
     this.brandReady()
 
-    try {
-      await initMixer()
-    } catch (err) {
-      return this.fail('Could not load mixer data', err)
-    }
+    this.setPhase('WAKING RONKE', 1)
+    const builds = await this.loadRonke()
+    if (!builds) return this.fail('Could not load Ronke', new Error('no sprite sheets'))
 
-    const builds = {}
-    for (const [axieClass, partSet] of Object.entries(CLASS_PART_SETS)) {
-      try {
-        builds[axieClass] = buildAxie(axieClass, partSet)
-      } catch (err) {
-        console.warn(`skipping ${axieClass}:`, err.message)
-      }
-    }
-
-    // Every attachment an Axie can show, not only its resting pose: attack
-    // clips swap in angry eyes, open mouths and the like.
-    const paths = new Set()
-    for (const build of Object.values(builds)) {
-      Object.values(build.textures).forEach(p => paths.add(p))
-    }
-
-    this.setPhase('LOADING AXIE PARTS', 1)
-    await this.loadTextures([...paths])
-
-    this.setPhase('LOADING ORIGINS EFFECTS', 2)
-    const vfxIds = [...new Set([
-      ...Object.values(CLASS_KITS).flatMap(k => [k.basic.vfx, k.special.vfx]),
-      ...STATUS_PLATES,
-      ...Object.values(POWERUPS).map(p => p.plate),
-      'heal',
-    ].filter(Boolean))]
-    let vfxDone = 0
-    await loadSkillPlates(vfxIds, this, () => this.setBar(++vfxDone / vfxIds.length))
-
-    this.setPhase('PAINTING THE MAP', 3)
-    await loadIcons([...POWERUP_ICONS, 'buff_feather', 'power_advance_shielding', 'buff_rage', 'power_energy_master'], this)
-    // Little portraits of each class, for the map.
+    this.setPhase('PAINTING THE MAP', 2)
     makeMiniPortraits(this, builds)
     this.setBar(1)
 
-    this.setPhase('LOADING BATTLE AUDIO', 4)
+    this.setPhase('LOADING BATTLE AUDIO', 3)
     attachMusic(this.game)
     let sfxDone = 0
     const audioSteps = SFX.length + TRACKS.length
     await loadSfx(this, () => this.setBar(++sfxDone / audioSteps))
     await loadMusic(() => this.setBar(++sfxDone / audioSteps))
-
-    const missing = []
-    for (const [axieClass, build] of Object.entries(builds)) {
-      const rest = ['body', 'eyes', 'mouth'].map(slot => build.textures[`${slot}/${slot}`]).filter(Boolean)
-      if (rest.some(p => !this.textures.exists(p))) missing.push(axieClass)
-    }
-    if (missing.length === Object.keys(builds).length) {
-      return this.fail('Could not reach the Axie CDN', new Error('no textures loaded'))
-    }
-    missing.forEach(c => delete builds[c])
 
     // Dev-only balance tool: /?sim=60 runs bot-only matches and reports.
     const sim = import.meta.env.DEV && new URLSearchParams(location.search).get('sim')
@@ -129,17 +85,36 @@ export default class BootScene extends Phaser.Scene {
   }
 
   /**
-   * Textures are fetched directly rather than through Phaser's loader.
-   * The loader is built to run during a scene's preload phase; queueing into it
-   * afterwards stalls at its parallel-download cap and never resumes.
+  /**
+   * The six sprite sheets, and one entry per class pointing at the same Ronke.
+   *
+   * The classes still exist above this — the lobby, the menu and the kits all
+   * speak in them — so rather than tear that out, every one of them resolves to
+   * the same fighter. Collapsing the roster itself is a separate job.
    */
-  async loadTextures(paths) {
+  async loadRonke() {
+    const base = `${import.meta.env.BASE_URL}sprites/`
     let done = 0
-    await Promise.all(paths.map(async path => {
-      if (!this.textures.exists(path)) await this.loadTexture(path)
-      done++
-      this.setBar(done / paths.length)
-    }))
+    for (const name of SHEETS) {
+      try {
+        const meta = await (await fetch(`${base}${name}.json`)).json()
+        const img = await new Promise((resolve, reject) => {
+          const i = new Image()
+          i.onload = () => resolve(i)
+          i.onerror = () => reject(new Error(`${name}.png failed`))
+          i.src = `${base}${name}.png`
+        })
+        this.cache.json.add(`sprites-${name}`, meta)
+        this.textures.addSpriteSheet(`ronke-${name}`, img, {
+          frameWidth: meta.frameWidth, frameHeight: meta.frameHeight, endFrame: meta.frames - 1,
+        })
+      } catch (err) {
+        console.warn(`sheet ${name} failed:`, err.message)
+      }
+      this.setBar(++done / SHEETS.length)
+    }
+    if (!this.textures.exists('ronke-idle')) return null
+    return Object.fromEntries(Object.keys(CLASS_KITS).map(c => [c, { ronke: true }]))
   }
 
   /** The logo, as SVG rasterised at its authored size so it stays crisp. */

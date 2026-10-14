@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { CONNECT_MS } from '../sim/constants.js'
 
 /**
  * One Ronke on screen.
@@ -69,6 +70,12 @@ export function registerAnimations(scene) {
 }
 
 export default class RonkeSprite {
+  /**
+   * `build` and `axieClass` are accepted and ignored. Every caller still passes
+   * them because every caller used to assemble an Axie from parts; there is one
+   * Ronke now and he needs neither, and swallowing them here kept the swap to a
+   * change of import at ten call sites instead of a rewrite of all ten.
+   */
   constructor(scene, x, y, { scale = 1 } = {}) {
     this.scene = scene
     this.facing = 1
@@ -90,6 +97,8 @@ export default class RonkeSprite {
 
   get x() { return this.root.x }
   get y() { return this.root.y }
+  get width() { return this.sprite.displayWidth }
+  get height() { return this.sprite.displayHeight }
 
   setPosition(x, y) {
     this.root.setPosition(x, y)
@@ -167,6 +176,42 @@ export default class RonkeSprite {
     // The run cadence follows real speed, so a slowed Ronke visibly trudges.
     if (moving && this.sprite.anims) {
       this.sprite.anims.timeScale = Phaser.Math.Clamp(speed / 200, 0.55, 1.6)
+    }
+  }
+
+  /**
+   * Swing, and tell the caller when the blow lands.
+   *
+   * CONNECT_MS is the contract the simulation holds the renderer to: the punch
+   * is sped up or slowed so its most committed frame falls exactly there, which
+   * is what keeps what you see and what hurts you the same event.
+   */
+  playAttack(onConnect, clip) {
+    const midSwing = this.action?.name === 'punch' && !this.actionDone()
+    if (!midSwing) this.play(clip ?? 'attack', { kind: 'attack', peakAt: CONNECT_MS })
+    this.scene.time.delayedCall(CONNECT_MS, () => onConnect?.())
+  }
+
+  /**
+   * Afterimages along the dash direction.
+   *
+   * The rig version ghosted every body part separately because there were
+   * twenty of them; one sheet means one ghost per step, which is both simpler
+   * and cheaper.
+   */
+  dashTrail(dir) {
+    for (let i = 0; i < 4; i++) {
+      this.scene.time.delayedCall(i * 34, () => {
+        if (!this.root.active) return
+        const ghost = this.scene.add.image(this.root.x, this.root.y, this.sprite.texture.key, this.sprite.frame.name)
+        ghost.setOrigin(0.5, 1).setFlipX(this.facing < 0).setScale(this.sprite.scaleX, this.sprite.scaleY)
+          .setDepth(this.root.y - 2).setTintFill(0x7ce8ff).setAlpha(0.35)
+        this.scene.tweens.add({
+          targets: ghost, alpha: 0,
+          x: ghost.x - dir.x * 16, y: ghost.y - dir.y * 16,
+          duration: 260, onComplete: () => ghost.destroy(),
+        })
+      })
     }
   }
 

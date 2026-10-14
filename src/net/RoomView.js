@@ -11,7 +11,7 @@
  * on a server a hundred milliseconds away.
  */
 import Phaser from 'phaser'
-import AxieSprite from '../axie/AxieSprite.js'
+import RonkeSprite from '../ronke/RonkeSprite.js'
 import { CLASS_KITS, PARRY, TELEGRAPH_MS } from '../axie/classKits.js'
 import { CLASS_COLORS } from '../axie/palette.js'
 import { FLAGS, has } from '../sim/constants.js'
@@ -50,7 +50,7 @@ export default class RoomView {
     let actor = this.actors.get(f.id)
     if (actor) return actor
     const build = this.builds[f.cls] ?? this.builds[Object.keys(this.builds)[0]]
-    const sprite = new AxieSprite(this.scene, f.x, f.y, { build, axieClass: f.cls })
+    const sprite = new RonkeSprite(this.scene, f.x, f.y, { build, axieClass: f.cls })
     // The effect helpers, the HUD and the minimap were all written against
     // Fighter, and want an object with a sprite, a position and some state. An
     // actor is exactly that much of a fighter — the part with no rules in it —

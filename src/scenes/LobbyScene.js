@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import AxieSprite from '../axie/AxieSprite.js'
+import RonkeSprite from '../ronke/RonkeSprite.js'
 import { makeGrassTexture } from '../arena/Arena.js'
 import { CLASS_KITS } from '../axie/classKits.js'
 import { ambientMotes } from '../fx/Juice.js'
@@ -110,7 +110,7 @@ export default class LobbyScene extends Phaser.Scene {
     bindButton(this, change, () => this.changeAxie())
 
     if (this.builds?.[this.playerClass]) {
-      this.hero = new AxieSprite(this, x + w / 2, y + 150, { build: this.builds[this.playerClass], axieClass: this.playerClass })
+      this.hero = new RonkeSprite(this, x + w / 2, y + 150, { build: this.builds[this.playerClass], axieClass: this.playerClass })
       this.hero.root.setScale(1.25)
       this.hero.setFacing(1)
     }

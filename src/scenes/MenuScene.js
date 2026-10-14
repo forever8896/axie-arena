@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import AxieSprite from '../axie/AxieSprite.js'
+import RonkeSprite from '../ronke/RonkeSprite.js'
 import { CLASS_KITS } from '../axie/classKits.js'
 import { CLASS_COLORS, ARENA_PALETTE } from '../axie/palette.js'
 import { ambientMotes } from '../fx/Juice.js'
@@ -102,7 +102,7 @@ export default class MenuScene extends Phaser.Scene {
     const pedestal = this.add.ellipse(0, -108, 124, 27, colors.body, 0.16)
     card.add(pedestal)
 
-    const sprite = new AxieSprite(this, 0, 0, { build: this.builds[cls], axieClass: cls })
+    const sprite = new RonkeSprite(this, 0, 0, { build: this.builds[cls], axieClass: cls })
     sprite.root.setScale(1.15)
     sprite.root.setPosition(0, -106)
     card.add(sprite.root)

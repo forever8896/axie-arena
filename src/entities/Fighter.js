@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import AxieSprite from '../axie/AxieSprite.js'
+import RonkeSprite from '../ronke/RonkeSprite.js'
 import { CLASS_COLORS } from '../axie/palette.js'
 import { CLASS_KITS, CHARGE_PER_SECOND, PARRY } from '../axie/classKits.js'
 import { impact, damageNumber, hitStopFor, dustEmitter } from '../fx/Juice.js'
@@ -76,7 +76,7 @@ export default class Fighter {
     this.dashUntil = 0
     this.invulnerableUntil = 0
 
-    this.sprite = new AxieSprite(scene, x, y, { axieClass, build })
+    this.sprite = new RonkeSprite(scene, x, y, { axieClass, build })
     this.pos = new Phaser.Math.Vector2(x, y)
     this.vel = new Phaser.Math.Vector2(0, 0)
     this.intent = new Phaser.Math.Vector2(0, 0)

@@ -1,31 +1,24 @@
 import Phaser from 'phaser'
-import AxieSprite from '../axie/AxieSprite.js'
-
 /**
- * A small round portrait of each Axie class, for the minimap.
+ * A small round portrait of Ronke, for the minimap.
  *
- * Drawn from the real Axie: the class is posed once off-screen, rendered into
- * a texture inside a coloured disc, and thrown away. The map then shows the
- * actual creatures rather than coloured dots.
+ * It used to pose a real Axie off-screen and render it into a texture, which
+ * was the only way to show the actual creature when the creature was assembled
+ * from parts at runtime. There is one Ronke now and he already exists as a
+ * sheet, so the portrait is simply his first idle frame inside a coloured disc.
  */
 export function makeMiniPortrait(scene, axieClass, build, size = 44) {
   const key = `mini-${axieClass}`
   if (scene.textures.exists(key)) return key
+  if (!scene.textures.exists('ronke-idle')) return null
 
   const rt = scene.add.renderTexture(0, 0, size, size).setVisible(false)
-  const sprite = new AxieSprite(scene, 0, 0, { build, axieClass })
-  sprite.root.setVisible(false)
-  sprite.update(0, 0)
-  sprite.setFacing(1)
-
-  // Fit the Axie inside the disc, sitting a touch low so the face reads.
-  const scale = (size * 0.78) / Math.max(sprite.width, sprite.height)
-  sprite.root.setScale(scale)
-  sprite.root.setVisible(true)
-  sprite.shadow.setVisible(false)
-  sprite.glow.setVisible(false)
-  rt.draw(sprite.root, size / 2, size * 0.62)
-  sprite.destroy()
+  const face = scene.add.image(0, 0, 'ronke-idle', 0).setVisible(false)
+  // Fit him inside the disc, sitting a touch low so the face reads.
+  const scale = (size * 0.78) / Math.max(face.width, face.height)
+  face.setScale(scale).setVisible(true)
+  rt.draw(face, size / 2, size * 0.58)
+  face.destroy()
 
   rt.saveTexture(key)
   rt.setVisible(false)

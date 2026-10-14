@@ -14,7 +14,7 @@ try {
     const builds = g.scene.getScene('HomeScene').builds
     const results = []
     const check = (name, pass, detail) => results.push({ name, pass: !!pass, detail })
-    const { CONNECT_MS } = await import('/src/axie/AxieSprite.js')
+    const { CONNECT_MS } = await import('/src/axie/RonkeSprite.js')
     try { localStorage.removeItem('lunacy.tutorial.done.v1') } catch {}
 
     g.loop.sleep()
