@@ -24,7 +24,12 @@ async function start() {
     backgroundColor: '#12121a',
     scale: {
       mode: Phaser.Scale.RESIZE,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
+      // No centring with RESIZE: the canvas is already exactly the parent's
+      // size, and centring it on top of that offsets it by the margins it
+      // computes — which is invisible on a desktop and half a screen on a phone.
+      autoCenter: Phaser.Scale.NO_CENTER,
+      width: '100%',
+      height: '100%',
     },
     render: { pixelArt: false, antialias: true },
     // One clock for gameplay. Combat mixes deadlines on scene.time.now (parry

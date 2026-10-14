@@ -34,9 +34,26 @@ try {
   await b.waitFor("!!window.__game?.scene.getScene('HomeScene')?.scene.isActive()", 90000)
   await b.eval('window.__game.loop.wake(); true')
 
-  const size = JSON.parse(await b.eval(
-    'JSON.stringify({ w: window.__game.scale.width, h: window.__game.scale.height })'))
+  // Measured against the window rather than against what Phaser believes.
+  // The canvas was sized in vh, which on a phone is the viewport with the
+  // address bar hidden — so it hung below the fold, taking the thumb buttons
+  // with it, while scale.width/height reported exactly what was asked for.
+  const size = JSON.parse(await b.eval(`JSON.stringify((() => {
+    const c = document.querySelector('#game canvas')
+    const r = c.getBoundingClientRect()
+    return {
+      w: window.__game.scale.width, h: window.__game.scale.height,
+      rectW: Math.round(r.width), rectH: Math.round(r.height),
+      left: Math.round(r.left), top: Math.round(r.top),
+      viewW: window.innerWidth, viewH: window.innerHeight,
+    }
+  })())`))
   check('the canvas fills a phone', size.w >= 800 && size.h <= 420, `${size.w}x${size.h}`)
+  check('and sits flush in the window',
+    size.left === 0 && size.top === 0, `at ${size.left},${size.top}`)
+  check('and is no taller than the visible viewport',
+    size.rectH <= size.viewH + 1 && size.rectW <= size.viewW + 1,
+    `canvas ${size.rectW}x${size.rectH}, window ${size.viewW}x${size.viewH}`)
 
   // Into a game the way a thumb would: tap Play, pick Ronke, enter the room.
   await b.eval("window.__game.scene.getScene('HomeScene').start('wilds'); true")

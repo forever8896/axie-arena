@@ -22,6 +22,24 @@ const DEAD_ZONE = 0.16
 /** Below this the release is a tap, not an aimed throw. */
 const AIM_MIN = 14
 
+/**
+ * How much of each edge the phone's own furniture covers.
+ *
+ * The page draws under the notch and the home indicator, so the bottom-right
+ * corner — where these buttons want to live — is exactly where a thumb cannot
+ * reach reliably. Read from CSS, which is the only thing that knows.
+ */
+export function safeArea() {
+  const css = getComputedStyle(document.documentElement)
+  const px = name => parseFloat(css.getPropertyValue(name)) || 0
+  return {
+    top: px('--safe-top'),
+    right: px('--safe-right'),
+    bottom: px('--safe-bottom'),
+    left: px('--safe-left'),
+  }
+}
+
 /** Touch is offered when the device has it, or when a touch actually happens. */
 export function touchLikely(scene) {
   const d = scene.sys.game.device.input
@@ -83,8 +101,9 @@ export default class TouchControls {
     // is 390px tall, and buttons measured down from a desktop's height ended up
     // under the minimap.
     const r = Phaser.Math.Clamp(Math.min(width, height) * 0.1, 28, 40)
-    const x = width - (r + 24)
-    const y = height - (r + 26)
+    const safe = safeArea()
+    const x = width - (r + 24) - safe.right
+    const y = height - (r + 26) - safe.bottom
     // An arc under the right thumb: the one held most often is nearest.
     this.buttons[2].x = x; this.buttons[2].y = y                           // guard
     this.buttons[0].x = x - r * 2.0; this.buttons[0].y = y - r * 0.85      // rice
