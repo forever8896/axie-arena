@@ -15,20 +15,28 @@ import { run, download, dataUri } from './fal.mjs'
 
 const MODEL = 'fal-ai/minimax/hailuo-2.3-fast/standard/image-to-video'
 
-/** Held still in every prompt, so the clips differ only in what the body does. */
-const HOLD = `The camera is locked off and completely static — no pan, no zoom, no shake.
-The background stays a flat, even, pure chroma key green at all times, unchanged and unlit.
-The character stays fully inside the frame, feet never leaving the bottom edge, nothing cropped.
-Keep the character's design exactly as it is: deep blue gorilla, red scarf, blue overalls with the RON label.
-Bold flat cartoon game art, crisp dark outline, even lighting, no new scenery, no text.`
+/**
+ * Held still in every prompt, so the clips differ only in what the body does.
+ *
+ * Most of this is style lock rather than direction. Handed a crude drawing,
+ * the model's instinct is to improve it — to round the belly into 3D, light it,
+ * smooth the wobbly outline — and an improved Ronke is not Ronke. So the art is
+ * described as deliberate and the model is told, repeatedly, to leave it alone.
+ */
+const HOLD = `Keep the art style EXACTLY as the source image: crude, flat, hand-drawn MS-Paint cartoon with wobbly black outlines and flat solid colours. Do NOT make it 3D, do NOT render it, do NOT smooth or polish or beautify it, do NOT add shading, gradients, lighting, texture, fur detail or depth. It is meant to look rough and badly drawn — keep it that way.
+Keep the character identical: fat round light-blue belly, dark blue arms and head, long grey muzzle, heavy brow, big staring eyes, thin spindly arms and legs, small blue hands and feet, the tiny RON tag on his waist.
+The camera is locked off and completely static — no pan, no zoom, no shake.
+The background stays flat, even, pure chroma key green at all times, unchanged and unlit, with no shadow cast onto it.
+He stays fully inside the frame, nothing cropped, feet on the same ground line.
+No text, no logo, no watermark, no new scenery, no other characters.`
 
 const CLIPS = {
-  idle: `The gorilla holds its fighting stance and breathes, shoulders rising and settling, fists bobbing slightly, weight shifting a little from foot to foot. A small, calm, looping idle. ${HOLD}`,
-  run: `The gorilla runs in place towards the right, legs cycling in a full run, arms pumping, body leaning into the run. A clean looping run cycle. ${HOLD}`,
-  punch: `The gorilla throws one heavy straight punch with its right fist: it winds up, drives the fist forward fully extended, then pulls back to the fighting stance. One clear single punch. ${HOLD}`,
-  slam: `The gorilla raises both arms high overhead, then slams both fists down hard onto the ground in front of it, then rises back to its stance. One heavy ground slam. ${HOLD}`,
-  hurt: `The gorilla is struck and recoils backwards, head snapping back, arms flinching up, then recovers to its fighting stance. One short hit reaction. ${HOLD}`,
-  guard: `The gorilla raises both forearms in front of its face and body into a tight blocking guard, braced and holding, shifting its weight slightly. ${HOLD}`,
+  idle: `He stands still and breathes, his big belly rising and settling, arms hanging loose and swaying a little, head bobbing slightly. A small, calm, looping idle. He does not walk or turn. ${HOLD}`,
+  run: `He runs in place facing right, his thin legs cycling in a full run, little arms pumping, belly bouncing heavily with each step. A clean looping run cycle, staying in the same spot. ${HOLD}`,
+  punch: `He throws one punch with his right fist: he leans back slightly, then drives his thin arm straight forward until the fist is fully extended in front of him, then pulls it back. One clear single punch. ${HOLD}`,
+  lick: `He opens his mouth and shoots his long pink tongue straight out forwards like a whip, far across the frame to the right, holds it extended, then reels it back into his mouth. One long-range tongue lash. ${HOLD}`,
+  hurt: `He is hit and recoils backwards, head snapping back, arms flailing up, belly wobbling, then settles back upright. One short hit reaction. ${HOLD}`,
+  guard: `He raises both thin arms up in front of his face and belly to block, hunching down behind them, braced and holding. ${HOLD}`,
 }
 
 const wanted = process.argv.slice(2).filter(a => CLIPS[a])
@@ -37,7 +45,7 @@ if (!wanted.length) {
   process.exit(1)
 }
 
-const image = await dataUri(new URL('../../art/base/ronke-stance.png', import.meta.url).pathname)
+const image = await dataUri(new URL('../../art/base/ronke-plate.png', import.meta.url).pathname)
 console.log(`${wanted.length} clip(s), about $${(wanted.length * 0.19).toFixed(2)}\n`)
 
 const results = await Promise.all(wanted.map(async name => {

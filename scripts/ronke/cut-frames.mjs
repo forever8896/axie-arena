@@ -32,6 +32,21 @@ const fps = arg('--fps', 20)
 const height = arg('--height', 220)
 const from = arg('--from', null)
 const to = arg('--to', null)
+/**
+ * A crop box shared with the other clips, as x0,y0,x1,y1.
+ *
+ * Without one each animation is trimmed to its own content, so the fighter
+ * changes size and jumps sideways the moment he stops punching. cut-all.mjs
+ * measures every clip first and passes the union here.
+ */
+const boxArg = (() => {
+  const i = process.argv.indexOf('--box')
+  if (i < 0) return null
+  const [x0, y0, x1, y1] = process.argv[i + 1].split(',').map(Number)
+  return { x0, y0, x1, y1 }
+})()
+/** Measure and print the box, then stop — the first pass of cut-all.mjs. */
+const measureOnly = process.argv.includes('--measure')
 
 const src = `art/clips/${name}.mp4`
 const work = `art/work/${name}`
@@ -63,8 +78,8 @@ if (!frames.length) throw new Error('no frames came out')
 
 // One box that holds the character in every frame, so he does not jitter or
 // change size between frames once they are packed.
-let box = null
-for (const f of frames) {
+let box = boxArg
+for (const f of boxArg ? [] : frames) {
   const t = sh('magick', [`${work}/${f}`, '-alpha', 'extract', '-format', '%@', 'info:']).trim()
   const m = t.match(/(\d+)x(\d+)\+(\d+)\+(\d+)/)
   if (!m) continue
@@ -73,10 +88,16 @@ for (const f of frames) {
     ? { x0: Math.min(box.x0, x), y0: Math.min(box.y0, y), x1: Math.max(box.x1, x + w), y1: Math.max(box.y1, y + h) }
     : { x0: x, y0: y, x1: x + w, y1: y + h }
 }
-const pad = 6
-box = {
-  x0: Math.max(0, box.x0 - pad), y0: Math.max(0, box.y0 - pad),
-  x1: Math.min(st.width, box.x1 + pad), y1: Math.min(st.height, box.y1 + pad),
+if (!boxArg) {
+  const pad = 6
+  box = {
+    x0: Math.max(0, box.x0 - pad), y0: Math.max(0, box.y0 - pad),
+    x1: Math.min(st.width, box.x1 + pad), y1: Math.min(st.height, box.y1 + pad),
+  }
+}
+if (measureOnly) {
+  console.log(`BOX ${box.x0},${box.y0},${box.x1},${box.y1}`)
+  process.exit(0)
 }
 const cw = box.x1 - box.x0
 const ch = box.y1 - box.y0

@@ -11,10 +11,11 @@ import Phaser from 'phaser'
  *
  * Six animations have to cover what forty-six did, so CLIP_FOR maps the old
  * vocabulary onto them rather than every call site being rewritten: a parry and
- * a block are both the guard, every attack is the punch unless it is heavy.
+ * a block are both the guard, a punch answers anything in reach and the tongue
+ * answers anything at range.
  */
 
-export const SHEETS = ['idle', 'run', 'punch', 'slam', 'hurt', 'guard']
+export const SHEETS = ['idle', 'run', 'punch', 'lick', 'hurt', 'guard']
 
 /** What each sheet means, and whether it holds or returns to idle. */
 const LOOPS = new Set(['idle', 'run', 'guard'])
@@ -26,7 +27,7 @@ const LOOPS = new Set(['idle', 'run', 'guard'])
  */
 const CLIP_FOR = {
   idle: 'idle', run: 'run', dash: 'run',
-  attack: 'punch', special: 'slam', heavy: 'slam',
+  attack: 'punch', special: 'lick', heavy: 'lick', lick: 'lick',
   hit: 'hurt', stun: 'hurt', stagger: 'hurt',
   parry: 'guard', guard: 'guard', block: 'guard',
   ready: 'idle', prepare: 'idle', appear: 'idle', victory: 'idle', flourish: 'idle',
@@ -34,7 +35,7 @@ const CLIP_FOR = {
 
 /** Higher wins: a clip only interrupts one of equal or lower priority. */
 const PRIORITY = {
-  idle: 0, run: 0, guard: 1, hurt: 2, punch: 3, slam: 3,
+  idle: 0, run: 0, guard: 1, hurt: 2, punch: 3, lick: 3,
 }
 
 /** Read a clip or state name of any vintage and say which sheet plays it. */
@@ -43,7 +44,8 @@ export function clipFor(name) {
   const key = String(name).toLowerCase()
   if (CLIP_FOR[key]) return CLIP_FOR[key]
   // Axie clip paths look like 'attack/melee/horn-gore' or 'defense/hit-by-…'.
-  if (key.includes('attack')) return key.includes('ranged') || key.includes('cast') ? 'slam' : 'punch'
+  // Ranged attacks are the tongue; everything else in reach is the fist.
+  if (key.includes('attack')) return key.includes('ranged') || key.includes('cast') ? 'lick' : 'punch'
   if (key.includes('defense') || key.includes('hit')) return 'hurt'
   if (key.includes('shield') || key.includes('block')) return 'guard'
   if (key.includes('run') || key.includes('move')) return 'run'
