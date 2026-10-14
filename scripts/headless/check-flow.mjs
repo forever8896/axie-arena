@@ -23,7 +23,7 @@ try {
     const builds = menu.builds
     log.push('menu mode: ' + menu.mode)
     await sleep(4000)   // let the cards cycle through basic and special previews
-    log.push('menu cards playing: ' + menu.cards.map(c => c.sprite.rig.playing?.split('/').pop()).join(','))
+    log.push('menu cards playing: ' + menu.cards.map(c => c.sprite.sprite.anims?.currentAnim?.key).join(','))
 
     menu.choose('ronke')
     log.push('class select -> lobby: ' + (await until(() => g.scene.getScene('LobbyScene').scene.isActive() && g.scene.getScene('LobbyScene').roomViews) && active()))
@@ -53,7 +53,7 @@ try {
     s.player.lastAttack = -1e9
     s.player.swing(s.fighters, s.time.now)
     await until(() => s.player.sprite.action?.clip === s.player.kit.basic.anim)
-    log.push('basic clip: ' + s.player.sprite.rig.playing)
+    log.push('basic clip: ' + s.player.sprite.sprite.anims?.currentAnim?.key)
 
     s.wilds.requestLeave(); s.wilds.forfeit(); s.wilds.toLobby()
     log.push('back to lobby: ' + (await until(() => g.scene.getScene('LobbyScene').scene.isActive()) && active()))
