@@ -52,10 +52,22 @@ Nothing of Axie's remains in `src/`, `public/` or the dependency tree.
 
 ## The character
 
-**Ronke** is the author's own IP. The fighter is driven from `ronkebase.png`,
-the collection's own base art, composited onto a green field by
-`scripts/ronke/build-plate.mjs` — the character is the asset itself, not a
-likeness of it generated from a description.
+All three fighters are the author's own IP.
+
+**Ronke** is driven from `ronkebase.png`, the collection's own base art,
+composited onto a green field by `scripts/ronke/build-plate.mjs` — the
+character is the asset itself, not a likeness generated from a description.
+
+**Horske** is the jockey sprite from the author's own Horske racing game
+(`public/horske/ronke-idle.png`). His run is not generated at all: it is that
+game's own eight-frame gallop sheet, re-packed to the geometry the other sheets
+use by `scripts/ronke/cut-gallop.mjs`.
+
+**Ronka** is the one exception, because no full-body art of her exists
+anywhere. She is Ronke's real body edited into her, with her own token art
+(`images/tokens/ronka.webp`) given to the model as the reference for who she
+is, rather than described in words. The edit is in `build-plate.mjs` and the
+result is kept as `art/base/ronka-raw.png`.
 
 ## Generated assets
 
@@ -64,14 +76,15 @@ confirm, back, start, denied — generated with the Venice AI audio API
 (ElevenLabs Sound Effects v2), trimmed, levelled and transcoded to Ogg Vorbis.
 Prompts are in `scripts/audio/generate-music.mjs`.
 
-**Animation** (`public/sprites/`, `art/`). Six sprite sheets — idle, run,
-punch, lick, hurt, guard — generated with **MiniMax Hailuo 2.3** image-to-video
-through fal.ai, each driven from the same green-screen plate of the real Ronke
-art. The green is keyed out with ffmpeg and the frames packed into strips by
+**Animation** (`public/sprites/`, `art/`). Six sprite sheets per fighter —
+idle, run, an attack, a special, hurt and guard — generated with **MiniMax
+Hailuo 2.3** image-to-video through fal.ai, each driven from that fighter's own
+green-screen plate. Horske's run is the exception noted above: hand-drawn, from
+the racing game. The green is keyed out with ffmpeg and the frames packed into strips by
 `scripts/ronke/cut-frames.mjs`. The source clips are kept in `art/clips/`.
 
-**Combat sounds** (`public/sfx/ronke_*.ogg` and the status sounds). Sixteen
-effects — punch, impact, the tongue and its landing, hurt, guard, dash, death,
+**Combat sounds** (`public/sfx/ronke_*.ogg`, `ronka_*`, `horske_*` and the
+status sounds). Twenty-two effects — punch, impact, the tongue and its landing, hurt, guard, dash, death,
 plus poison, stun, shield, heal, power, bubble, damage boost and buff —
 generated with **ElevenLabs Sound Effects v2** through fal.ai, trimmed,
 loudness-normalised and transcoded to Ogg Vorbis. Prompts are in

@@ -3,8 +3,11 @@
  * arena reads as Ronke before a single piece of official art is loaded.
  */
 export const CLASS_COLORS = {
-  // Ronke's own blues, read off the asset: the dark body, the belly, the hands.
-  ronke: { body: 0x3b45c8, shade: 0x2a2f8f, rim: 0x4ea8f5 },
+  // Read off each fighter's own art: the body, a darker shade, and the bright
+  // edge the game uses for their projectiles and trails.
+  ronke:  { body: 0x3b45c8, shade: 0x2a2f8f, rim: 0x4ea8f5 },
+  ronka:  { body: 0xf05aa8, shade: 0xb63579, rim: 0xffa8d4 },
+  horske: { body: 0x1f6fe0, shade: 0x14489a, rim: 0xe03b3b },
 }
 
 export const CLASS_NAMES = Object.keys(CLASS_COLORS)

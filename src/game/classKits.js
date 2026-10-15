@@ -58,11 +58,11 @@ export const CLASS_KITS = {
   ronke: {
     title: 'Ronke',
     tagline: 'Punches what is close, licks what is not',
-    hp: 3200, speed: 232,
+    hp: 3100, speed: 232,
     hitSfx: 'ronke_punch_hit',
     basic: {
       name: 'Haymaker', desc: 'A wide, heavy swing',
-      kind: 'cone', range: 108, arc: 120, damage: 350, cooldown: 700, knockback: 250,
+      kind: 'cone', range: 104, arc: 120, damage: 325, cooldown: 700, knockback: 250,
       sfx: 'ronke_punch',
       anim: 'attack',
     },
@@ -83,6 +83,70 @@ export const CLASS_KITS = {
       name: 'Rice Storm', desc: 'A wide spray of rice driven through everyone in front of him',
       damage: 760, range: 360, width: 170, knockback: 240,
       sfx: 'ronke_lick_hit',
+      anim: 'special',
+    },
+  },
+
+  /**
+   * Ronka bites what is close and spits a heart at what is not.
+   *
+   * Less health than Ronke and a shorter reach, paid back by a special that
+   * crosses the field: she wants the fight at arm's length, not in it.
+   */
+  ronka: {
+    title: 'Ronka',
+    tagline: 'Bites up close, throws her heart across the field',
+    hp: 3050, speed: 244,
+    hitSfx: 'ronka_bite_hit',
+    basic: {
+      name: 'Chomp', desc: 'A quick snapping bite',
+      kind: 'cone', range: 100, arc: 100, damage: 345, cooldown: 580, knockback: 190,
+      sfx: 'ronka_bite',
+      anim: 'attack',
+    },
+    special: {
+      name: 'Heartbreaker', desc: 'Spits an enormous heart that hurts whatever it reaches',
+      kind: 'spread', count: 1, spread: 0,
+      damage: 700, projectileSpeed: 470, projectileRange: 580,
+      sfx: 'ronka_heart',
+      anim: 'special',
+    },
+    ultimate: {
+      name: 'Heartstopper', desc: 'A wall of hearts driven through everyone in front of her',
+      damage: 820, range: 420, width: 150, knockback: 260,
+      sfx: 'ronka_heart',
+      anim: 'special',
+    },
+  },
+
+  /**
+   * Horske is the fastest thing on the field and cannot stop quickly.
+   *
+   * The charge is both its special and its character: committed, unturnable
+   * once begun, and worth it because whoever it catches loses a moment.
+   */
+  horske: {
+    title: 'Horske',
+    tagline: 'Fast, and hard to get out of the way of',
+    hp: 2850, speed: 290,
+    hitSfx: 'horske_hit',
+    basic: {
+      name: 'Stomp', desc: 'Front hooves down, hard and close',
+      kind: 'cone', range: 106, arc: 115, damage: 330, cooldown: 600, knockback: 240,
+      sfx: 'horske_stomp',
+      anim: 'attack',
+    },
+    special: {
+      name: 'Trample', desc: 'Charges straight ahead, hurting and stunning whoever it catches',
+      kind: 'charge', damage: 520, speed: 860, duration: 360,
+      knockback: 380, stun: 650,
+      sfx: 'horske_charge',
+      anim: 'special',
+    },
+    ultimate: {
+      name: 'Stampede', desc: 'A full gallop driven through everyone in its path',
+      damage: 780, range: 440, width: 130, knockback: 420,
+      sfx: 'horske_charge',
       anim: 'special',
     },
   },

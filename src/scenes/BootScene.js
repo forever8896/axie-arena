@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { ARENA_PALETTE } from '../game/palette.js'
 import { CLASS_KITS } from '../game/classKits.js'
-import { SHEETS } from '../ronke/RonkeSprite.js'
+import { ALL_SHEETS, FIGHTERS } from '../ronke/RonkeSprite.js'
 import { FX_SHEETS } from '../fx/SkillVfx.js'
 import { POWERUPS, POWERUP_ICONS } from '../arena/PowerUps.js'
 import { makeMiniPortraits } from '../fx/MiniPortrait.js'
@@ -95,30 +95,37 @@ export default class BootScene extends Phaser.Scene {
    */
   async loadRonke() {
     const base = `${import.meta.env.BASE_URL}sprites/`
-    const all = [...SHEETS, ...FX_SHEETS]
+    // Every fighter's sheets live under their own name; the effects stand at
+    // the top because SkillVfx registers its animations under bare keys.
+    const all = [
+      ...ALL_SHEETS.map(({ who, name }) => ({ key: `${who}-${name}`, path: `${who}/${name}` })),
+      ...FX_SHEETS.map(name => ({ key: name, path: name })),
+    ]
     let done = 0
-    for (const name of all) {
+    for (const { key, path } of all) {
       try {
-        const meta = await (await fetch(`${base}${name}.json`)).json()
+        const meta = await (await fetch(`${base}${path}.json`)).json()
         const img = await new Promise((resolve, reject) => {
           const i = new Image()
           i.onload = () => resolve(i)
-          i.onerror = () => reject(new Error(`${name}.png failed`))
-          i.src = `${base}${name}.png`
+          i.onerror = () => reject(new Error(`${path}.png failed`))
+          i.src = `${base}${path}.png`
         })
-        this.cache.json.add(`sprites-${name}`, meta)
-        // The fighter's sheets are prefixed; the effects stand under their own
-        // names, because that is what SkillVfx registers its animations as.
-        this.textures.addSpriteSheet(name.startsWith('fx_') ? name : `ronke-${name}`, img, {
+        this.cache.json.add(`sprites-${key}`, meta)
+        this.textures.addSpriteSheet(key, img, {
           frameWidth: meta.frameWidth, frameHeight: meta.frameHeight, endFrame: meta.frames - 1,
         })
       } catch (err) {
-        console.warn(`sheet ${name} failed:`, err.message)
+        console.warn(`sheet ${path} failed:`, err.message)
       }
       this.setBar(++done / all.length)
     }
-    if (!this.textures.exists('ronke-idle')) return null
-    return Object.fromEntries(Object.keys(CLASS_KITS).map(c => [c, { ronke: true }]))
+    // A fighter whose sheets did not arrive cannot be chosen; the roster is
+    // whatever actually loaded, so a missing download costs one card rather
+    // than the game.
+    const ready = Object.keys(FIGHTERS).filter(w => this.textures.exists(`${w}-idle`))
+    if (!ready.length) return null
+    return Object.fromEntries(ready.filter(w => CLASS_KITS[w]).map(w => [w, { ronke: true }]))
   }
 
   /** The logo, as SVG rasterised at its authored size so it stays crisp. */
@@ -143,30 +150,37 @@ export default class BootScene extends Phaser.Scene {
    */
   async loadRonke() {
     const base = `${import.meta.env.BASE_URL}sprites/`
-    const all = [...SHEETS, ...FX_SHEETS]
+    // Every fighter's sheets live under their own name; the effects stand at
+    // the top because SkillVfx registers its animations under bare keys.
+    const all = [
+      ...ALL_SHEETS.map(({ who, name }) => ({ key: `${who}-${name}`, path: `${who}/${name}` })),
+      ...FX_SHEETS.map(name => ({ key: name, path: name })),
+    ]
     let done = 0
-    for (const name of all) {
+    for (const { key, path } of all) {
       try {
-        const meta = await (await fetch(`${base}${name}.json`)).json()
+        const meta = await (await fetch(`${base}${path}.json`)).json()
         const img = await new Promise((resolve, reject) => {
           const i = new Image()
           i.onload = () => resolve(i)
-          i.onerror = () => reject(new Error(`${name}.png failed`))
-          i.src = `${base}${name}.png`
+          i.onerror = () => reject(new Error(`${path}.png failed`))
+          i.src = `${base}${path}.png`
         })
-        this.cache.json.add(`sprites-${name}`, meta)
-        // The fighter's sheets are prefixed; the effects stand under their own
-        // names, because that is what SkillVfx registers its animations as.
-        this.textures.addSpriteSheet(name.startsWith('fx_') ? name : `ronke-${name}`, img, {
+        this.cache.json.add(`sprites-${key}`, meta)
+        this.textures.addSpriteSheet(key, img, {
           frameWidth: meta.frameWidth, frameHeight: meta.frameHeight, endFrame: meta.frames - 1,
         })
       } catch (err) {
-        console.warn(`sheet ${name} failed:`, err.message)
+        console.warn(`sheet ${path} failed:`, err.message)
       }
       this.setBar(++done / all.length)
     }
-    if (!this.textures.exists('ronke-idle')) return null
-    return Object.fromEntries(Object.keys(CLASS_KITS).map(c => [c, { ronke: true }]))
+    // A fighter whose sheets did not arrive cannot be chosen; the roster is
+    // whatever actually loaded, so a missing download costs one card rather
+    // than the game.
+    const ready = Object.keys(FIGHTERS).filter(w => this.textures.exists(`${w}-idle`))
+    if (!ready.length) return null
+    return Object.fromEntries(ready.filter(w => CLASS_KITS[w]).map(w => [w, { ronke: true }]))
   }
 
   /** The logo, as SVG rasterised at its authored size so it stays crisp. */

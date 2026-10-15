@@ -19,9 +19,10 @@ import { mkdirSync, rmSync, readdirSync, writeFileSync } from 'node:fs'
 
 const sh = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8', maxBuffer: 1 << 28 })
 
-const name = process.argv[2]
-if (!name) {
-  console.error('Usage: node scripts/ronke/cut-frames.mjs <clip> [--fps 20] [--from s] [--to s] [--height 220]')
+const who = process.argv[2]
+const name = process.argv[3]
+if (!who || !name) {
+  console.error('Usage: node scripts/ronke/cut-frames.mjs <fighter> <clip> [--fps 20] [--from s] [--to s] [--height 220]')
   process.exit(1)
 }
 const arg = (flag, fallback) => {
@@ -57,8 +58,8 @@ const measureOnly = process.argv.includes('--measure')
  */
 const originY = arg('--originy', 1)
 
-const src = `art/clips/${name}.mp4`
-const work = `art/work/${name}`
+const src = `art/clips/${who}/${name}.mp4`
+const work = `art/work/${who}-${name}`
 rmSync(work, { recursive: true, force: true })
 mkdirSync(work, { recursive: true })
 
@@ -67,7 +68,7 @@ const probe = JSON.parse(sh('ffprobe', ['-v', 'error', '-select_streams', 'v:0',
   '-show_entries', 'stream=width,height,r_frame_rate,nb_frames', '-show_entries', 'format=duration',
   '-of', 'json', src]))
 const st = probe.streams[0]
-console.log(`${name}: ${st.width}x${st.height} ${st.r_frame_rate} ${Number(probe.format.duration).toFixed(1)}s`)
+console.log(`${who}/${name}: ${st.width}x${st.height} ${st.r_frame_rate} ${Number(probe.format.duration).toFixed(1)}s`)
 
 // The key colour, read out of the top-left corner of the first frame.
 sh('ffmpeg', ['-v', 'error', '-y', '-i', src, '-frames:v', '1', `${work}/probe.png`])
@@ -117,13 +118,13 @@ console.log(`  ${frames.length} frames, trimmed to ${cw}x${ch} → ${fw}x${heigh
 // Packed into one strip: a single texture the game loads once.
 const cols = Math.min(frames.length, 10)
 const rows = Math.ceil(frames.length / cols)
-mkdirSync('public/sprites', { recursive: true })
+mkdirSync(`public/sprites/${who}`, { recursive: true })
 sh('ffmpeg', ['-v', 'error', '-y', '-framerate', String(fps), '-i', `${work}/f_%04d.png`,
   '-vf', `crop=${cw}:${ch}:${box.x0}:${box.y0},scale=${fw}:${height}:flags=lanczos,tile=${cols}x${rows}`,
-  '-frames:v', '1', `public/sprites/${name}.png`])
+  '-frames:v', '1', `public/sprites/${who}/${name}.png`])
 
-writeFileSync(`public/sprites/${name}.json`, JSON.stringify({
+writeFileSync(`public/sprites/${who}/${name}.json`, JSON.stringify({
   frameWidth: fw, frameHeight: height, frames: frames.length, columns: cols, rows, fps,
   originY: Math.round(originY * 1000) / 1000,
 }, null, 2) + '\n')
-console.log(`  public/sprites/${name}.png  (${cols}x${rows} grid, ${fps}fps)`)
+console.log(`  public/sprites/${who}/${name}.png  (${cols}x${rows} grid, ${fps}fps)`)

@@ -10,8 +10,11 @@
  * Usage: node scripts/sim-balance.mjs [matches]
  */
 import SimRoom from '../src/sim/room.js'
+import { CLASS_KITS } from '../src/game/classKits.js'
 
-const CLASSES = ['ronke']
+// The roster, read from the kits rather than written down here: a fighter
+// added to the game should appear in its balance without being added twice.
+const CLASSES = Object.keys(CLASS_KITS)
 const DT = 1000 / 60
 const matches = Number(process.argv[2]) || 120
 
@@ -54,7 +57,8 @@ for (const r of results) {
   })
 }
 
-const fair = 1 / 6
+// One seat per fighter in a match, so a fair share is one over the roster.
+const fair = 1 / CLASSES.length
 const sigma = Math.sqrt((fair * (1 - fair)) / matches) * 100
 console.log(`LUNACY BALANCE — ${matches} bot-only matches on the headless simulation\n`)
 console.log(`Fair win rate: ${(fair * 100).toFixed(1)}%   average match ${(seconds / matches).toFixed(1)}s   draws ${draws}`)

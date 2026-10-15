@@ -103,8 +103,12 @@ export default class MenuScene extends Phaser.Scene {
     card.add(pedestal)
 
     const sprite = new RonkeSprite(this, 0, 0, { build: this.builds[cls], cls: cls })
-    sprite.root.setScale(1.15)
-    sprite.root.setPosition(0, -106)
+    // The fighters are cut to different frame sizes — Horske on his horse is
+    // half as wide again as Ronke — so the card scales each to one portrait
+    // height instead of trusting the sheets to agree.
+    const PORTRAIT = 150
+    sprite.root.setScale(PORTRAIT / (sprite.height || PORTRAIT))
+    sprite.root.setPosition(0, -100)
     card.add(sprite.root)
     card.sprite = sprite
 

@@ -12,14 +12,15 @@
 import { execFileSync } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 
-const name = process.argv[2]
-const cols = Number(process.argv[3]) || 12
-if (!name) {
-  console.error('Usage: node scripts/ronke/peek.mjs <clip> [columns]')
+const who = process.argv[2]
+const name = process.argv[3]
+const cols = Number(process.argv[4]) || 12
+if (!who || !name) {
+  console.error('Usage: node scripts/ronke/peek.mjs <fighter> <clip> [columns]')
   process.exit(1)
 }
-const src = `art/clips/${name}.mp4`
-const out = `art/work/peek/${name}-sheet.png`
+const src = `art/clips/${who}/${name}.mp4`
+const out = `art/work/peek/${who}-${name}-sheet.png`
 mkdirSync('art/work/peek', { recursive: true })
 
 const duration = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration',

@@ -9,15 +9,23 @@
  * The key never lives in the repo. Put it in the environment:
  *   set -a; . ~/.config/ronkacy/env; set +a
  */
-const KEY = process.env.FAL_KEY
-if (!KEY) {
-  console.error('Set FAL_KEY (see ~/.config/ronkacy/env).')
-  process.exit(1)
+/**
+ * Checked where it is used rather than on import: several scripts import this
+ * file for one helper and never call the API, and exiting at import time made
+ * those fail for want of a key they did not need.
+ */
+function key() {
+  const k = process.env.FAL_KEY
+  if (!k) {
+    console.error('Set FAL_KEY (see ~/.config/ronkacy/env).')
+    process.exit(1)
+  }
+  return k
 }
 
 const QUEUE = 'https://queue.fal.run'
 const sleep = ms => new Promise(r => setTimeout(r, ms))
-const auth = { Authorization: `Key ${KEY}` }
+const auth = () => ({ Authorization: `Key ${key()}` })
 
 /** A local image as a data URI, which every fal model takes in place of a URL. */
 export async function dataUri(path) {
@@ -39,7 +47,7 @@ export async function run(model, input, { timeoutMs = 600000, label = model } = 
   const started = Date.now()
   const res = await fetch(`${QUEUE}/${model}`, {
     method: 'POST',
-    headers: { ...auth, 'Content-Type': 'application/json' },
+    headers: { ...auth(), 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })
   if (!res.ok) throw new Error(`${label}: submit failed ${res.status} ${(await res.text()).slice(0, 300)}`)
@@ -48,7 +56,7 @@ export async function run(model, input, { timeoutMs = 600000, label = model } = 
   let last = null
   for (;;) {
     if (Date.now() - started > timeoutMs) throw new Error(`${label}: still running after ${timeoutMs}ms (${id})`)
-    const s = await (await fetch(statusUrl ?? `${QUEUE}/${model}/requests/${id}/status`, { headers: auth })).json()
+    const s = await (await fetch(statusUrl ?? `${QUEUE}/${model}/requests/${id}/status`, { headers: auth() })).json()
     if (s.status !== last) {
       last = s.status
       console.log(`  ${label}: ${s.status} (${Math.round((Date.now() - started) / 1000)}s)`)
@@ -58,7 +66,7 @@ export async function run(model, input, { timeoutMs = 600000, label = model } = 
     await sleep(3000)
   }
 
-  const out = await (await fetch(responseUrl ?? `${QUEUE}/${model}/requests/${id}`, { headers: auth })).json()
+  const out = await (await fetch(responseUrl ?? `${QUEUE}/${model}/requests/${id}`, { headers: auth() })).json()
   return out
 }
 

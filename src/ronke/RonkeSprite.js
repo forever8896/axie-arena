@@ -16,7 +16,35 @@ import { CONNECT_MS } from '../sim/constants.js'
  * answers anything at range.
  */
 
-export const SHEETS = ['idle', 'run', 'punch', 'vomit', 'hurt', 'guard']
+/**
+ * Every fighter's sheets, and what each one answers for.
+ *
+ * They do not share a vocabulary: Ronke punches, Ronka bites, and Horske has
+ * no arms to do either with, so it tramples. `moves` maps the game's words
+ * onto whichever sheet that fighter uses for them, which is what lets one
+ * sprite class draw all three without the scenes knowing the difference.
+ */
+export const FIGHTERS = {
+  ronke: {
+    sheets: ['idle', 'run', 'punch', 'vomit', 'hurt', 'guard'],
+    moves: { attack: 'punch', special: 'vomit' },
+  },
+  ronka: {
+    sheets: ['idle', 'run', 'bite', 'heart', 'hurt', 'guard'],
+    moves: { attack: 'bite', special: 'heart' },
+  },
+  horske: {
+    // Its run is the gallop cycle from the racing game, used as it ships.
+    sheets: ['idle', 'run', 'trample', 'charge', 'hurt', 'guard'],
+    moves: { attack: 'trample', special: 'charge' },
+  },
+}
+
+export const ALL_SHEETS = Object.entries(FIGHTERS)
+  .flatMap(([who, f]) => f.sheets.map(name => ({ who, name })))
+
+/** Kept for the boot's sake: the names Ronke himself uses. */
+export const SHEETS = FIGHTERS.ronke.sheets
 
 /** What each sheet means, and whether it holds or returns to idle. */
 const LOOPS = new Set(['idle', 'run', 'guard'])
@@ -28,41 +56,53 @@ const LOOPS = new Set(['idle', 'run', 'guard'])
  */
 const CLIP_FOR = {
   idle: 'idle', run: 'run', dash: 'run',
-  attack: 'punch', special: 'vomit', heavy: 'vomit', vomit: 'vomit',
+  attack: 'attack', special: 'special', heavy: 'special',
   hit: 'hurt', stun: 'hurt', stagger: 'hurt',
   parry: 'guard', guard: 'guard', block: 'guard',
   ready: 'idle', prepare: 'idle', appear: 'idle', victory: 'idle', flourish: 'idle',
 }
 
-/** Higher wins: a clip only interrupts one of equal or lower priority. */
-const PRIORITY = {
-  idle: 0, run: 0, guard: 1, hurt: 2, punch: 3, vomit: 3,
-}
+/** Higher wins, keyed by what the move means rather than what it is called. */
+const PRIORITY = { idle: 0, run: 0, guard: 1, hurt: 2, attack: 3, special: 3 }
 
-/** Read a clip or state name of any vintage and say which sheet plays it. */
+/**
+ * Read a clip or state name of any vintage and say what it means.
+ *
+ * Returns a move — attack, special, guard — rather than a sheet, because which
+ * sheet plays a move depends on who is doing it.
+ */
 export function clipFor(name) {
   if (!name) return 'idle'
   const key = String(name).toLowerCase()
   if (CLIP_FOR[key]) return CLIP_FOR[key]
-  // Ronke clip paths look like 'attack/melee/horn-gore' or 'defense/hit-by-…'.
-  // Ranged attacks are the rice; everything else in reach is the fist.
-  if (key.includes('attack')) return key.includes('ranged') || key.includes('cast') ? 'vomit' : 'punch'
+  if (key.includes('attack')) return key.includes('ranged') || key.includes('cast') ? 'special' : 'attack'
   if (key.includes('defense') || key.includes('hit')) return 'hurt'
   if (key.includes('shield') || key.includes('block')) return 'guard'
   if (key.includes('run') || key.includes('move')) return 'run'
   return 'idle'
 }
 
-/** Register every sheet's animation once per scene. */
+/**
+ * The sheet a given fighter plays for a given move.
+ *
+ * Ronke punches, Ronka bites, Horske tramples — one move, three sheets. The
+ * scenes above only ever say "attack".
+ */
+export function sheetFor(who, move) {
+  const f = FIGHTERS[who] ?? FIGHTERS.ronke
+  return f.moves?.[move] ?? move
+}
+
+/** Register every fighter's animations once per scene. */
 export function registerAnimations(scene) {
-  for (const name of SHEETS) {
-    const key = `ronke-${name}`
+  for (const { who, name } of ALL_SHEETS) {
+    const key = `${who}-${name}`
     if (scene.anims.exists(key)) continue
-    const meta = scene.cache.json.get(`sprites-${name}`)
+    const meta = scene.cache.json.get(`sprites-${key}`)
     if (!meta) continue
     scene.anims.create({
       key,
-      frames: scene.anims.generateFrameNumbers(`ronke-${name}`, { start: 0, end: meta.frames - 1 }),
+      frames: scene.anims.generateFrameNumbers(key, { start: 0, end: meta.frames - 1 }),
       frameRate: meta.fps,
       repeat: LOOPS.has(name) ? -1 : 0,
     })
@@ -76,21 +116,28 @@ export default class RonkeSprite {
    * Ronke now and he needs neither, and swallowing them here kept the swap to a
    * change of import at ten call sites instead of a rewrite of all ten.
    */
-  constructor(scene, x, y, { scale = 1 } = {}) {
+  /**
+   * `build` is accepted and ignored — every caller still passes it because
+   * every caller once assembled an Axie from parts, and nobody needs it now.
+   * `cls` is the fighter: which sheets to draw, and which of them answer for
+   * an attack and a special.
+   */
+  constructor(scene, x, y, { cls = 'ronke', scale = 1 } = {}) {
     this.scene = scene
+    this.who = FIGHTERS[cls] ? cls : 'ronke'
     this.facing = 1
     this.action = null
     this.locomotion = null
 
     this.root = scene.add.container(x, y)
     this.shadow = scene.add.ellipse(0, 4, 54, 16, 0x000000, 0.35)
-    this.sprite = scene.add.sprite(0, 0, 'ronke-idle')
+    this.sprite = scene.add.sprite(0, 0, `${this.who}-idle`)
     // Drawn standing on the container's origin rather than centred on it, so a
     // fighter's position is its feet — which is what the simulation means by it.
     // The ground line comes from the sheets: the shared crop box has to hold
     // the rice landing well below him, so the bottom of the frame is not where
     // he stands.
-    this.ground = scene.cache.json.get('sprites-idle')?.originY ?? 1
+    this.ground = scene.cache.json.get(`sprites-${this.who}-idle`)?.originY ?? 1
     this.sprite.setOrigin(0.5, this.ground)
     this.sprite.setScale(scale)
     this.root.add([this.shadow, this.sprite])
@@ -121,12 +168,13 @@ export default class RonkeSprite {
     return this
   }
 
-  /** Straight to a sheet, ignoring the old names. */
-  playSheet(name, { speed = 1 } = {}) {
-    const key = `ronke-${name}`
+  /** Straight to one of this fighter's sheets, ignoring the old names. */
+  playSheet(move, { speed = 1 } = {}) {
+    const name = sheetFor(this.who, move)
+    const key = `${this.who}-${name}`
     if (!this.scene.anims.exists(key)) return false
     this.sprite.play(key, true)
-    const meta = this.scene.cache.json.get(`sprites-${name}`)
+    const meta = this.scene.cache.json.get(`sprites-${key}`)
     if (meta?.originY) this.sprite.setOrigin(0.5, meta.originY)
     if (this.sprite.anims) this.sprite.anims.timeScale = speed
     return true
@@ -142,7 +190,7 @@ export default class RonkeSprite {
     const rank = PRIORITY[name] ?? 0
     if (this.action && rank < (PRIORITY[this.action.name] ?? 0) && !this.actionDone()) return false
 
-    const meta = this.scene.cache.json.get(`sprites-${name}`)
+    const meta = this.scene.cache.json.get(`sprites-${this.who}-${sheetFor(this.who, name)}`)
     const lengthMs = meta ? (meta.frames / meta.fps) * 1000 : 600
     let speed = 1
     if (peakAt) speed = Math.max(minSpeed, (lengthMs * peakFraction) / peakAt)
@@ -193,7 +241,7 @@ export default class RonkeSprite {
    * is what keeps what you see and what hurts you the same event.
    */
   playAttack(onConnect, clip) {
-    const midSwing = this.action?.name === 'punch' && !this.actionDone()
+    const midSwing = this.action?.name === 'attack' && !this.actionDone()
     if (!midSwing) this.play(clip ?? 'attack', { kind: 'attack', peakAt: CONNECT_MS })
     this.scene.time.delayedCall(CONNECT_MS, () => onConnect?.())
   }

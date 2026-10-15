@@ -15,6 +15,9 @@ export const SFX = [
   // Ronke: what he does and what it sounds like when it lands.
   'ronke_punch', 'ronke_punch_hit', 'ronke_lick', 'ronke_lick_hit',
   'ronke_hurt', 'ronke_guard', 'ronke_dash', 'ronke_die',
+  // Ronka bites and throws hearts; Horske stomps and charges.
+  'ronka_bite', 'ronka_bite_hit', 'ronka_heart',
+  'horske_stomp', 'horske_charge', 'horske_hit',
   'poison', 'stunned', 'shield',
   'heal', 'power_awaken', 'bubble', 'damage_boost', 'buff',
   // Menu: hover tick, confirm, back, start, denied.

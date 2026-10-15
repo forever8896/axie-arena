@@ -227,7 +227,10 @@ const SPECIALS = {
       if (alreadyHit.has(t)) return
       alreadyHit.add(t)
       if (t.tryParry(fighter)) return
-      t.takeDamage(spec.damage, fighter, 320)
+      t.takeDamage(spec.damage, fighter, spec.knockback ?? 320)
+      // A charge that only hurts is a worse dash. The stun is what makes
+      // running someone down worth the commitment of not being able to turn.
+      if (spec.stun) t.applyStun(spec.stun)
     }, targets)
   },
 

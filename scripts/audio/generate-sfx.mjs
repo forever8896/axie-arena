@@ -42,6 +42,14 @@ export const SOUNDS = {
   ronke_guard: { s: 0.6, text: 'A punch blocked on crossed forearms. Dull muffled slap with no ring and no metal. Dry, immediate, no music.' },
   ronke_dash: { s: 0.5, text: 'A short sharp whoosh of a heavy body lunging suddenly sideways. Fast, dry, no music.' },
   ronke_die: { s: 1.4, text: 'A big cartoon ape flopping to the ground, deflating with a sad descending wheeze. Dry, no music.' },
+  // Ronka
+  ronka_bite: { s: 0.6, text: 'A fast hard animal chomp, jaws snapping shut once. Dry, close, no music.' },
+  ronka_bite_hit: { s: 0.7, text: 'Teeth sinking into something soft, a wet crunch. Short, gross, dry. No music.' },
+  ronka_heart: { s: 0.9, text: 'A cute cartoon pop with a sparkly shimmer, like a love heart being launched. Playful, bright, dry. No music.' },
+  // Horske
+  horske_stomp: { s: 0.7, text: 'Two heavy hooves slamming down hard onto dirt. Deep, thudding, dry. No music.' },
+  horske_charge: { s: 1.1, text: 'A horse galloping hard towards you, hooves pounding fast on dirt, with a short snort. Dry, urgent, no music.' },
+  horske_hit: { s: 0.7, text: 'A hard hoof connecting with a body, dull heavy impact. Dry, immediate, no music.' },
   poison: { s: 1.0, text: 'Thick green slime bubbling and hissing, sickly. Short, dry, no music.' },
   stunned: { s: 1.0, text: 'Cartoon dizzy stars twinkling after a knock on the head, woozy wobble. Dry, no music.' },
   shield: { s: 0.9, text: 'A bubble shield popping into existence around someone, soft magical whump. Dry, no music.' },
