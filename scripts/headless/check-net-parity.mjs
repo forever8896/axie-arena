@@ -65,7 +65,7 @@ const LOCAL_START = `(() => {
   g.scene.start('GameScene', {
     builds: g.scene.getScene('HomeScene').builds,
     playerClass: 'ronke', mode: 'wilds',
-    room: { id: 'glade', name: 'Dewdrop Glade', stake: 0.1, currency: 'AXS', blurb: '', hunters: [4, 6] },
+    room: { id: 'glade', name: 'Dewdrop Terrace', stake: 0.1, currency: 'AXS', blurb: '', hunters: [4, 6] },
     snapshot: { hunters: 5, topBounty: 0.4 },
   })
   return true

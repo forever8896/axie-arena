@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { CONNECT_MS } from '../sim/constants.js'
+import { CLASS_COLORS } from '../game/palette.js'
 
 /**
  * One Ronke on screen.
@@ -133,6 +134,16 @@ export default class RonkeSprite {
   constructor(scene, x, y, { cls = 'ronke', scale = 1 } = {}) {
     this.scene = scene
     this.who = FIGHTERS[cls] ? cls : 'ronke'
+    /**
+     * This fighter's palette, for everything drawn around it rather than on
+     * it: dash ghosts, the guard arc, the aim line, the HUD dials.
+     *
+     * AxieSprite carried this and RonkeSprite did not, which killed the
+     * networked view outright — RoomView reads sprite.colors for every actor,
+     * so the first HUD draw threw and took NetScene.update() with it every
+     * frame. Single-player never noticed, because its Fighter keeps its own.
+     */
+    this.colors = CLASS_COLORS[this.who] ?? CLASS_COLORS.ronke
     this.facing = 1
     this.action = null
     this.locomotion = null

@@ -106,6 +106,6 @@ const server = createServer((req, res) => {
 const net = attachNet(server)
 
 server.listen(PORT, () => {
-  console.log(`Lunacy is being served from ${ROOT} on :${PORT}`)
+  console.log(`Ronkacy is being served from ${ROOT} on :${PORT}`)
   console.log(`Rooms are live on ws://…:${PORT}/ws — ${net.host.defs.length} in the lobby`)
 })

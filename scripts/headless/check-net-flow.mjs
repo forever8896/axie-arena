@@ -62,6 +62,9 @@ try {
   const hud = await b.waitFor(`(() => {
     const ui = window.__game.scene.getScene('UIScene')
     const s = window.__game.scene.getScene('NetScene')
+    // Gates open and close on a rotation, so the highest count seen so far is
+    // the honest answer to "do they reach the HUD".
+    window.__gatesSeen = Math.max(window.__gatesSeen ?? 0, s.wilds?.gates.length ?? 0)
     return ui.wildsHud && s.player ? JSON.stringify({
       minimap: !!ui.mmRoot,
       portraits: ui.mmIcons ? ui.mmIcons.size : 0,
@@ -84,18 +87,23 @@ try {
       room: ui.wildsHud?.roomText.text,
       leaders: ui.wildsHud ? ui.wildsHud.topRows.map(r => r.text).filter(Boolean).length : 0,
       status: ui.status?.text,
-      icons: Object.keys(s.player?.hudIcons ?? {}).length,
-      gates: s.wilds?.gates.length ?? 0,
+      hudDrawn: s.view?.actors?.get(s.client?.you)?.statusFx?.commandBuffer?.length ?? 0,
+      gatesEver: window.__gatesSeen ?? (s.wilds?.gates.length ?? 0),
       feed: s.wilds?.events.length ?? 0,
     })
   })()`).then(JSON.parse)
 
   check('the game HUD is up, not a stand-in', read.minimap && read.bounty?.length > 0, `bounty "${read.bounty}"`)
   check('the minimap draws the room', read.portraits > 0, `${read.portraits} icons on the map`)
-  check('the room is named as the one you picked', /GLADE/i.test(read.room ?? ''), read.room)
+  check('the room is named as the one you picked', /TERRACE/i.test(read.room ?? ''), read.room)
   check('the leaderboard has hunters on it', read.leaders > 0, `${read.leaders} rows`)
-  check('your ability icons are above Ronke', read.icons >= 3, `${read.icons} icons`)
-  check('the Moon Gates are known to the HUD', read.gates > 0, `${read.gates} gates`)
+  // The ability row is drawn rather than loaded now — a chevron, a shield, a
+  // bowl and a crescent — so there are no icon objects left to count. What
+  // matters is that the row is being painted at all.
+  check('your ability row is drawn above Ronke', read.hudDrawn > 0, `${read.hudDrawn} draw commands`)
+  // The room broadcasts only the gates that are open, and they rotate, so
+  // sampling once can legitimately see none.
+  check('the Moon Gates reach the HUD', read.gatesEver > 0, `${read.gatesEver} gates`)
   check('the room count is shown', (read.status ?? '').length > 0, read.status)
 } catch (err) {
   fail++

@@ -36,25 +36,25 @@ export const WILDS = {
  * miss and the choice of stakes is the point.
  */
 export const LIVE_ROOM = {
-  id: 'glade', name: 'Dewdrop Glade', stake: 0.1, currency: 'AXS',
+  id: 'glade', name: 'Dewdrop Terrace', stake: 0.1, currency: 'AXS',
   blurb: 'One room per region. Everyone who presses play lands here.', hunters: [4, 6],
 }
 
 export const ROOMS = [
   {
-    id: 'meadow', name: 'Moonpetal Meadow', stake: 10, currency: 'PTS', free: true,
+    id: 'meadow', name: 'Moonpetal Paddies', stake: 10, currency: 'PTS', free: true,
     blurb: 'Free. Bounties are season points.', hunters: [5, 7],
   },
   {
-    id: 'glade', name: 'Dewdrop Glade', stake: 0.1, currency: 'AXS',
+    id: 'glade', name: 'Dewdrop Terrace', stake: 0.1, currency: 'AXS',
     blurb: 'Low stakes. Learn the gates.', hunters: [4, 7],
   },
   {
-    id: 'grove', name: 'Silverbark Grove', stake: 1, currency: 'AXS',
+    id: 'grove', name: 'Silverbark Levee', stake: 1, currency: 'AXS',
     blurb: 'The standard table.', hunters: [5, 7],
   },
   {
-    id: 'summit', name: 'Bloodmoon Summit', stake: 5, currency: 'AXS',
+    id: 'summit', name: 'Bloodmoon Spillway', stake: 5, currency: 'AXS',
     blurb: 'High stakes, fewer hunters.', hunters: [3, 5],
   },
 ]

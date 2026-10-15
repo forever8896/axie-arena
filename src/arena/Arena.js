@@ -147,8 +147,10 @@ export default class Arena {
 
       if (roll < 0.62) {
         // Grass tuft: a few blades fanning from one point.
+        // Reed, not grass: the water is nearly the colour of its own shadow,
+        // so a tuft drawn in the ground's palette disappears into it.
         const dark = rng.frac() < 0.45
-        brush.lineStyle(2, dark ? FIELD.grassShadow : FIELD.grassPale, rng.realInRange(0.35, 0.7))
+        brush.lineStyle(2, dark ? FIELD.hedge : FIELD.hedgeLight, rng.realInRange(0.55, 0.9))
         const blades = rng.between(3, 5)
         for (let b = 0; b < blades; b++) {
           const lean = rng.realInRange(-7, 7)
@@ -161,7 +163,7 @@ export default class Arena {
       } else if (roll < 0.82) {
         // Wildflower.
         const c = rng.pick([FIELD.bloomWhite, FIELD.bloomGold, FIELD.bloomPink])
-        brush.lineStyle(1, FIELD.grassShadow, 0.5)
+        brush.lineStyle(1, FIELD.hedge, 0.6)
         brush.lineBetween(20, 20, 20, 14)
         brush.fillStyle(c, 0.9)
         for (let p = 0; p < 5; p++) {
@@ -224,50 +226,72 @@ export default class Arena {
     for (const w of this.walls) {
       const g = this.offList()
 
-      // Cast shadow on the ground.
-      g.fillStyle(0x000000, 0.32)
-      g.fillRoundedRect(w.left + 6, w.top + 10, w.w, w.h, radius)
+      // The bank sits in water, so its shadow spreads and softens rather
+      // than sitting hard under it.
+      g.fillStyle(0x060b1c, 0.4)
+      g.fillRoundedRect(w.left + 4, w.top + 12, w.w + 4, w.h, radius)
+      g.fillStyle(0x060b1c, 0.22)
+      g.fillRoundedRect(w.left - 3, w.top + 6, w.w + 10, w.h + 10, radius + 4)
 
-      // Side face.
+      // Wet stone face, below the waterline.
       g.fillStyle(WALL.side, 1)
       g.fillRoundedRect(w.left, w.top - lift + 6, w.w, w.h + lift, radius)
 
-      // Top face, lifted.
+      // The dry top of the bank, lifted, where you would walk.
       g.fillStyle(WALL.face, 1)
       g.fillRoundedRect(w.left, w.top - lift, w.w, w.h, radius)
 
-      // Light from above-left: bright top edge, bright left edge.
+      // Packed earth along the crown, so the bank reads as built rather than
+      // dropped: the one warm note against all that blue.
+      g.fillStyle(FIELD.dirt, 0.5)
+      g.fillRoundedRect(w.left + 3, w.top - lift + 3, w.w - 6, Math.max(4, w.h * 0.34), radius)
+      g.fillStyle(FIELD.dirtDark, 0.28)
+      g.fillRoundedRect(w.left + 3, w.top - lift + Math.max(5, w.h * 0.3), w.w - 6, 3, 2)
+
+      // Moonlight on the top and leading edges.
       g.fillStyle(WALL.top, 0.9)
       g.fillRoundedRect(w.left, w.top - lift, w.w, 5, radius)
       g.fillStyle(WALL.top, 0.35)
       g.fillRoundedRect(w.left, w.top - lift, 5, w.h, radius)
 
-      // Contact shadow where the block meets the floor.
-      g.fillStyle(0x000000, 0.35)
+      // The waterline itself: a bright band where the bank enters the paddy.
+      g.fillStyle(FIELD.stoneEdge, 0.3)
+      g.fillRoundedRect(w.left + 2, w.bottom - 7, w.w - 4, 3, 2)
+      g.fillStyle(0x060b1c, 0.3)
       g.fillRoundedRect(w.left, w.bottom - 4, w.w, 8, radius)
 
       // Rim so blocks read against the dark floor.
       g.lineStyle(1, WALL.edge, 0.5)
       g.strokeRoundedRect(w.left, w.top - lift, w.w, w.h, radius)
 
-      // A dark outline around the whole block, as Ronkes and foliage have.
-      g.lineStyle(3, 0x3a2a18, 0.9)
+      // A dark outline around the whole bank, as Ronkes and reeds have.
+      g.lineStyle(3, 0x0a1426, 0.9)
       g.strokeRoundedRect(w.left, w.top - lift, w.w, w.h + lift, radius)
 
-      // A clump or two of moss where rain would collect, never evenly spaced.
-      const mossRng = new Phaser.Math.RandomDataGenerator([`moss-${w.left}-${w.top}`])
-      const clumps = mossRng.between(1, 2)
+      // A tuft or two of reed growing out of the bank where silt collects,
+      // never evenly spaced. These were bright meadow moss and were the last
+      // green left in the world.
+      const tuftRng = new Phaser.Math.RandomDataGenerator([`reed-${w.left}-${w.top}`])
+      const clumps = tuftRng.between(1, 2)
       for (let m = 0; m < clumps; m++) {
-        const along = mossRng.realInRange(0.12, 0.88)
-        const mx = w.w >= w.h ? w.left + w.w * along : w.left + mossRng.realInRange(8, w.w - 8)
-        const my = w.w >= w.h ? w.top - lift + mossRng.realInRange(4, w.h * 0.5) : w.top - lift + w.h * along
-        const blobs = [[0, 0, 13], [mossRng.between(-12, -7), mossRng.between(1, 4), 9], [mossRng.between(7, 12), mossRng.between(-2, 3), 8]]
-        g.fillStyle(0x1f3a17, 0.85)
-        for (const [ox, oy, r] of blobs) g.fillEllipse(mx + ox, my + oy, r * 2 + 4, r + 4)
-        g.fillStyle(0x5fb043, 1)
-        for (const [ox, oy, r] of blobs) g.fillEllipse(mx + ox, my + oy, r * 2, r)
-        g.fillStyle(0xb6e878, 0.8)
-        for (const [ox, oy, r] of blobs) g.fillEllipse(mx + ox - r * 0.3, my + oy - r * 0.2, r * 0.7, r * 0.3)
+        const along = tuftRng.realInRange(0.12, 0.88)
+        const mx = w.w >= w.h ? w.left + w.w * along : w.left + tuftRng.realInRange(8, w.w - 8)
+        const my = w.w >= w.h ? w.top - lift + tuftRng.realInRange(4, w.h * 0.5) : w.top - lift + w.h * along
+        const blades = tuftRng.between(4, 6)
+        for (let i = 0; i < blades; i++) {
+          const lean = tuftRng.realInRange(-9, 9)
+          const tall = tuftRng.realInRange(11, 20)
+          g.lineStyle(4.5, 0x0c1a16, 0.9)
+          g.beginPath()
+          g.moveTo(mx + lean * 0.3, my)
+          g.lineTo(mx + lean, my - tall)
+          g.strokePath()
+          g.lineStyle(2.2, FIELD.hedgeLight, 0.95)
+          g.beginPath()
+          g.moveTo(mx + lean * 0.3, my)
+          g.lineTo(mx + lean, my - tall)
+          g.strokePath()
+        }
       }
 
       const pad = 16
@@ -364,11 +388,19 @@ export default class Arena {
  * Elements that cross an edge are drawn again on the opposite side, so the
  * tile repeats without visible seams.
  */
+/**
+ * The paddy floor: standing water over mud, with the moon on it.
+ *
+ * It keeps the name the rest of the game calls it by. What it paints is no
+ * longer grass — mottled depth, the straight banding a flooded terrace gets
+ * from its own ridges, a drift of floating rice, and a few still highlights
+ * where the light sits on the surface.
+ */
 export function makeGrassTexture(scene) {
   if (scene.textures.exists('field-grass')) return
 
   const size = GRASS_TILE
-  const rng = new Phaser.Math.RandomDataGenerator(['lunacia-grass'])
+  const rng = new Phaser.Math.RandomDataGenerator(['moonpetal-paddy'])
   const tex = scene.textures.createCanvas('field-grass', size, size)
   const ctx = tex.getContext()
   const css = (c, a) => `rgba(${(c >> 16) & 255}, ${(c >> 8) & 255}, ${c & 255}, ${a})`
@@ -379,13 +411,13 @@ export function makeGrassTexture(scene) {
   ctx.fillStyle = css(FIELD.grassBase, 1)
   ctx.fillRect(0, 0, size, size)
 
-  // Mottling with soft radial falloff: variation without visible ovals.
-  for (let i = 0; i < 70; i++) {
+  // Depth: broad soft pools of darker and lighter water.
+  for (let i = 0; i < 58; i++) {
     const x = rng.between(0, size)
     const y = rng.between(0, size)
-    const r = rng.between(24, 80)
-    const c = rng.pick([FIELD.grassLight, FIELD.grassDeep, FIELD.grassPale, FIELD.grassShadow])
-    const a = rng.realInRange(0.08, 0.2)
+    const r = rng.between(30, 92)
+    const c = rng.pick([FIELD.grassLight, FIELD.grassDeep, FIELD.grassShadow, FIELD.grassPale])
+    const a = rng.realInRange(0.07, 0.18)
     wrapped((dx, dy) => {
       const grad = ctx.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r)
       grad.addColorStop(0, css(c, a))
@@ -395,19 +427,48 @@ export function makeGrassTexture(scene) {
     })
   }
 
-  // Fine curved blades for texture at close range.
+  // The ridges a terrace is built in: long, almost straight, barely there.
   ctx.lineCap = 'round'
-  for (let i = 0; i < 360; i++) {
+  for (let i = 0; i < 9; i++) {
+    const y = rng.between(0, size)
+    const drift = rng.realInRange(-7, 7)
+    ctx.strokeStyle = css(rng.pick([FIELD.grassPale, FIELD.grassShadow]), rng.realInRange(0.08, 0.16))
+    ctx.lineWidth = rng.realInRange(5, 13)
+    wrapped((dx, dy) => {
+      ctx.beginPath()
+      ctx.moveTo(dx - 10, y + dy)
+      ctx.bezierCurveTo(size * 0.3 + dx, y + dy + drift, size * 0.7 + dx, y + dy - drift, size + 10 + dx, y + dy)
+      ctx.stroke()
+    })
+  }
+
+  // Rice floating on the surface: short pale strokes, lying flat on the water.
+  for (let i = 0; i < 150; i++) {
     const x = rng.between(0, size)
     const y = rng.between(0, size)
-    const h = rng.between(4, 9)
-    const lean = rng.realInRange(-3, 3)
-    ctx.strokeStyle = css(rng.pick([FIELD.grassDeep, FIELD.grassPale, FIELD.grassShadow]), rng.realInRange(0.25, 0.5))
-    ctx.lineWidth = 1.2
+    const len = rng.between(3, 7)
+    const a = rng.realInRange(0, Math.PI)
+    ctx.strokeStyle = css(FIELD.bloomWhite, rng.realInRange(0.1, 0.26))
+    ctx.lineWidth = 1.4
     wrapped((dx, dy) => {
       ctx.beginPath()
       ctx.moveTo(x + dx, y + dy)
-      ctx.quadraticCurveTo(x + dx + lean * 0.2, y + dy - h * 0.6, x + dx + lean, y + dy - h)
+      ctx.lineTo(x + dx + Math.cos(a) * len, y + dy + Math.sin(a) * len * 0.5)
+      ctx.stroke()
+    })
+  }
+
+  // Moonlight sitting still on the water.
+  for (let i = 0; i < 26; i++) {
+    const x = rng.between(0, size)
+    const y = rng.between(0, size)
+    const w = rng.between(10, 30)
+    ctx.strokeStyle = css(FIELD.stoneTop, rng.realInRange(0.05, 0.13))
+    ctx.lineWidth = rng.realInRange(1, 2.4)
+    wrapped((dx, dy) => {
+      ctx.beginPath()
+      ctx.moveTo(x + dx, y + dy)
+      ctx.quadraticCurveTo(x + dx + w / 2, y + dy - 2, x + dx + w, y + dy)
       ctx.stroke()
     })
   }

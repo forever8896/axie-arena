@@ -110,7 +110,7 @@ export default class AboutScene extends Phaser.Scene {
     this.para(
       'Six Ronke classes, each with its own basic attack and special. Parry a blow you saw coming, ' +
       'dash out of one you did not, grab power-ups as they appear, heal in a Moonwell, hide in the ' +
-      'long grass. A Blood Moon gathers everyone every so often, so nobody can sit in a corner.')
+      'the reeds. A Blood Moon gathers everyone every so often, so nobody can sit in a corner.')
 
     this.section('A ROUND, START TO FINISH')
     this.steps([
