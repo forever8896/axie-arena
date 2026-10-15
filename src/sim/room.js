@@ -5,6 +5,7 @@ import { useBasic, useSpecial, resolveSwing, fireLance, SimProjectile, SimZone }
 import { Rng, Vec2, clamp, distance, lerp } from './math.js'
 import { POWERUPS, POWERUP_RULES, MOONWELL, CLOSE } from '../arena/boonConfig.js'
 import { WILDS, hunterName } from '../wilds/config.js'
+import { CLASS_KITS } from '../game/classKits.js'
 
 /**
  * A room of the game, as the authority sees it.
@@ -22,7 +23,10 @@ export default class SimRoom {
     this.room = room
     this.rng = new Rng(seed)
     this.arena = new SimArena()
-    this.classes = classes.length ? classes : ['ronke']
+    // The whole roster, read from the kits: this was left as ['ronke'] when
+    // there was only one fighter, so every stand-in in every live room was
+    // him even after Ronka and Horske arrived.
+    this.classes = classes.length ? classes : Object.keys(CLASS_KITS)
 
     this.now = 0
     this.tickCount = 0
