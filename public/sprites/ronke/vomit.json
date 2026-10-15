@@ -5,5 +5,6 @@
   "columns": 10,
   "rows": 4,
   "fps": 20,
-  "originY": 0.901
+  "originY": 0.901,
+  "contactFrame": 13
 }

@@ -15,7 +15,7 @@
  *   node scripts/ronke/cut-frames.mjs punch --fps 24 --from 0.4 --to 2.0
  */
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, rmSync, readdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, rmSync, readdirSync, writeFileSync, renameSync } from 'node:fs'
 
 const sh = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8', maxBuffer: 1 << 28 })
 
@@ -33,6 +33,21 @@ const fps = arg('--fps', 20)
 const height = arg('--height', 220)
 const from = arg('--from', null)
 const to = arg('--to', null)
+/**
+ * Several windows, joined end to end, as `a,b;c,d` in seconds.
+ *
+ * A generated clip does the thing and then holds the pose for two seconds. One
+ * window either keeps the hold — a sheet that is mostly a statue — or cuts the
+ * end off and loses the moment the jaws shut. Two windows keep the open and
+ * the snap and drop the wait between them.
+ */
+const windows = (() => {
+  const i = process.argv.indexOf('--windows')
+  if (i < 0) return null
+  return process.argv[i + 1].split(';').map(w => w.split(',').map(Number))
+})()
+/** Which frame of the finished sheet is the moment the blow lands. */
+const contact = arg('--contact', null)
 /**
  * A crop box shared with the other clips, as x0,y0,x1,y1.
  *
@@ -79,10 +94,26 @@ console.log(`  keying ${hex} (sampled, not assumed)`)
 
 // Key it, kill the green fringe the key leaves behind, and thin to the frame
 // rate the game will actually play.
-const trim = [...(from != null ? ['-ss', String(from)] : []), ...(to != null ? ['-to', String(to)] : [])]
-sh('ffmpeg', ['-v', 'error', '-y', ...trim, '-i', src,
-  '-vf', `fps=${fps},colorkey=${hex}:0.26:0.10,despill=type=green:mix=0.6:expand=0.3,format=rgba`,
-  `${work}/f_%04d.png`])
+const VF = `fps=${fps},colorkey=${hex}:0.26:0.10,despill=type=green:mix=0.6:expand=0.3,format=rgba`
+if (windows) {
+  // Each window extracted on its own, then renumbered in order, so the sheet
+  // reads as one continuous move.
+  let n = 0
+  for (const [a, b] of windows) {
+    const part = `${work}/part`
+    rmSync(part, { recursive: true, force: true })
+    mkdirSync(part, { recursive: true })
+    sh('ffmpeg', ['-v', 'error', '-y', '-ss', String(a), '-to', String(b), '-i', src,
+      '-vf', VF, `${part}/p_%04d.png`])
+    for (const f of readdirSync(part).filter(x => /^p_\d+\.png$/.test(x)).sort()) {
+      renameSync(`${part}/${f}`, `${work}/f_${String(++n).padStart(4, '0')}.png`)
+    }
+    rmSync(part, { recursive: true, force: true })
+  }
+} else {
+  const trim = [...(from != null ? ['-ss', String(from)] : []), ...(to != null ? ['-to', String(to)] : [])]
+  sh('ffmpeg', ['-v', 'error', '-y', ...trim, '-i', src, '-vf', VF, `${work}/f_%04d.png`])
+}
 const frames = readdirSync(work).filter(f => /^f_\d+\.png$/.test(f)).sort()
 if (!frames.length) throw new Error('no frames came out')
 
@@ -126,5 +157,9 @@ sh('ffmpeg', ['-v', 'error', '-y', '-framerate', String(fps), '-i', `${work}/f_%
 writeFileSync(`public/sprites/${who}/${name}.json`, JSON.stringify({
   frameWidth: fw, frameHeight: height, frames: frames.length, columns: cols, rows, fps,
   originY: Math.round(originY * 1000) / 1000,
+  // Where the blow lands inside this sheet. The renderer stretches the clip so
+  // this frame falls on the millisecond the simulation says contact happens,
+  // which is the only way what you see and what hurts you stay one event.
+  ...(contact != null ? { contactFrame: Math.min(contact, frames.length - 1) } : {}),
 }, null, 2) + '\n')
 console.log(`  public/sprites/${who}/${name}.png  (${cols}x${rows} grid, ${fps}fps)`)

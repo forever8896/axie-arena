@@ -29,6 +29,14 @@ const EFFECTS = {
     still: `A messy scattered pile of white rice grains with a few pale green sick splashes around it, seen from above, drawn as flat simple shapes. ${LOOK}`,
     video: `The pile of rice splatters outward across the ground and settles, grains scattering and coming to rest, bubbling slightly. The green background never changes. The camera is completely static.`,
   },
+  heart: {
+    still: `A single big flat cartoon love heart, bright pink with a bold black outline, bursting apart into a few smaller hearts and sparkles around it. ${LOOK}`,
+    video: `The heart bursts outward, the small hearts and sparkles flying apart and fading. One single pop. The green background never changes. The camera is completely static.`,
+  },
+  dust: {
+    still: `A low scuffed cloud of brown dirt and dust kicked up off the ground, drawn as flat chunky shapes with a few pebbles flying out. ${LOOK}`,
+    video: `The dust cloud puffs outward along the ground and settles, pebbles flying out and dropping. One single scuff. The green background never changes. The camera is completely static.`,
+  },
   heal: {
     still: `A soft cartoon healing sparkle: a few chunky pale green plus signs and simple four-pointed sparkles in a loose cluster. ${LOOK}`,
     video: `The plus signs and sparkles rise gently upwards and fade away. Calm and soft. The green background never changes. The camera is completely static.`,

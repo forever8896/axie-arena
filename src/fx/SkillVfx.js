@@ -16,10 +16,16 @@ import Phaser from 'phaser'
  * have to care which pipeline drew the picture.
  */
 
-export const FX_SHEETS = ['fx_impact', 'fx_rice', 'fx_heal', 'fx_power']
+export const FX_SHEETS = ['fx_impact', 'fx_rice', 'fx_heart', 'fx_dust', 'fx_heal', 'fx_power']
 
 /** Which sheet answers which name the game already uses. */
 const SHEET_FOR = {
+  // Each fighter's own blow: a fist is a burst, a tongue of rice is rice, a
+  // heart is a heart, and hooves kick up dirt.
+  impact: 'fx_impact',
+  rice: 'fx_rice',
+  heart: 'fx_heart',
+  dust: 'fx_dust',
   heal: 'fx_heal',
   shield: 'fx_power',
   power_gain: 'fx_power',
@@ -101,7 +107,7 @@ export function playPlate(scene, fighter, spec) {
   const reach = Phaser.Math.Clamp(spec?.range ?? spec?.radius ?? spec?.projectileRange ?? 150, 90, 300)
   const aim = fighter.aim ?? 0
   const rice = spec?.kind === 'lob' || spec?.zoneDuration
-  return burst(scene, rice ? 'fx_rice' : 'fx_impact',
+  return burst(scene, spec?.vfx ? sheetFor(spec.vfx) : rice ? 'fx_rice' : 'fx_impact',
     fighter.x + Math.cos(aim) * reach * 0.6,
     fighter.y - 10 + Math.sin(aim) * reach * 0.6,
     { size: rice ? 1.1 : 0.9, flip: Math.cos(aim) < 0 })

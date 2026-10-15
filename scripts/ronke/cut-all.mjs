@@ -22,25 +22,30 @@ const FIGHTERS = {
   ronke: [
     { name: 'idle', fps: 14, from: 1.0, to: 2.8 },
     { name: 'run', fps: 18, from: 1.0, to: 2.2 },
-    // The generated clip stands around for two seconds before it swings; the
-    // window is the swing itself, or the sheet is mostly a man standing still.
-    { name: 'punch', fps: 24, from: 2.35, to: 3.05 },
-    { name: 'vomit', fps: 20, from: 0.25, to: 2.1 },
+    // Stands for 2.4s, then the fist comes up and is fully out by 2.8.
+    { name: 'punch', fps: 24, from: 2.3, to: 2.95, contact: 9 },
+    // Mouth open at 0.3, rice landing by 0.9, pile growing after.
+    { name: 'vomit', fps: 20, from: 0.25, to: 2.1, contact: 13 },
     { name: 'hurt', fps: 22, from: 0.95, to: 1.85 },
     { name: 'guard', fps: 16, from: 0.5, to: 1.9 },
   ],
   ronka: [
     { name: 'idle', fps: 14, from: 1.0, to: 2.8 },
     { name: 'run', fps: 18, from: 1.0, to: 2.2 },
-    { name: 'bite', fps: 24, from: 0.5, to: 1.5 },
-    { name: 'heart', fps: 20, from: 0.5, to: 2.1 },
+    // She opens slowly and holds it for a second before snapping shut, so the
+    // hold is dropped: the end of the open, then the snap.
+    { name: 'bite', fps: 20, windows: [[4.25, 4.5], [5.3, 5.8]], contact: 7 },
+    // Mouth opens at 0.6, the heart is clear of her by 1.2, then it just sits
+    // there for four seconds — none of which is the cast.
+    { name: 'heart', fps: 20, from: 0.45, to: 1.45, contact: 15 },
     { name: 'hurt', fps: 22, from: 0.8, to: 1.8 },
     { name: 'guard', fps: 16, from: 0.6, to: 1.9 },
   ],
   horske: [
     { name: 'idle', fps: 14, from: 1.0, to: 2.8 },
-    { name: 'charge', fps: 22, from: 0.7, to: 2.1 },
-    { name: 'trample', fps: 22, from: 0.6, to: 1.9 },
+    // Rears from 1.8 and the hooves are back down by 2.6.
+    { name: 'trample', fps: 22, from: 1.7, to: 2.8, contact: 16 },
+    { name: 'charge', fps: 22, from: 0.7, to: 2.1, contact: 8 },
     { name: 'hurt', fps: 22, from: 0.6, to: 1.6 },
     { name: 'guard', fps: 16, from: 0.6, to: 1.9 },
   ],
@@ -54,8 +59,12 @@ if (!CLIPS) {
 }
 
 const cut = (c, extra = []) => execFileSync('node', [
-  'scripts/ronke/cut-frames.mjs', who, c.name,
-  '--fps', String(c.fps), '--from', String(c.from), '--to', String(c.to), ...extra,
+  'scripts/ronke/cut-frames.mjs', who, c.name, '--fps', String(c.fps),
+  ...(c.windows
+    ? ['--windows', c.windows.map(w => w.join(',')).join(';')]
+    : ['--from', String(c.from), '--to', String(c.to)]),
+  ...(c.contact != null ? ['--contact', String(c.contact)] : []),
+  ...extra,
 ], { encoding: 'utf8' })
 
 console.log('measuring…')

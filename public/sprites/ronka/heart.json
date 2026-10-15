@@ -1,9 +1,10 @@
 {
-  "frameWidth": 244,
+  "frameWidth": 242,
   "frameHeight": 220,
-  "frames": 33,
+  "frames": 20,
   "columns": 10,
-  "rows": 4,
+  "rows": 2,
   "fps": 20,
-  "originY": 0.977
+  "originY": 0.977,
+  "contactFrame": 15
 }

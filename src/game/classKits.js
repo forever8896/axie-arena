@@ -64,6 +64,7 @@ export const CLASS_KITS = {
       name: 'Haymaker', desc: 'A wide, heavy swing',
       kind: 'cone', range: 104, arc: 120, damage: 325, cooldown: 700, knockback: 250,
       sfx: 'ronke_punch',
+      vfx: 'impact',
       anim: 'attack',
     },
     special: {
@@ -77,6 +78,7 @@ export const CLASS_KITS = {
       kind: 'lob', maxRange: 95, radius: 120,
       zoneDuration: 3600, tickDamage: 155, tickRate: 560,
       sfx: 'ronke_lick',
+      vfx: 'rice',
       anim: 'special',
     },
     ultimate: {
@@ -102,6 +104,7 @@ export const CLASS_KITS = {
       name: 'Chomp', desc: 'A quick snapping bite',
       kind: 'cone', range: 100, arc: 100, damage: 345, cooldown: 580, knockback: 190,
       sfx: 'ronka_bite',
+      vfx: 'impact',
       anim: 'attack',
     },
     special: {
@@ -109,6 +112,7 @@ export const CLASS_KITS = {
       kind: 'spread', count: 1, spread: 0,
       damage: 700, projectileSpeed: 470, projectileRange: 580,
       sfx: 'ronka_heart',
+      vfx: 'heart',
       anim: 'special',
     },
     ultimate: {
@@ -134,6 +138,7 @@ export const CLASS_KITS = {
       name: 'Stomp', desc: 'Front hooves down, hard and close',
       kind: 'cone', range: 106, arc: 115, damage: 330, cooldown: 600, knockback: 240,
       sfx: 'horske_stomp',
+      vfx: 'dust',
       anim: 'attack',
     },
     special: {
@@ -141,6 +146,7 @@ export const CLASS_KITS = {
       kind: 'charge', damage: 520, speed: 860, duration: 360,
       knockback: 380, stun: 650,
       sfx: 'horske_charge',
+      vfx: 'dust',
       anim: 'special',
     },
     ultimate: {

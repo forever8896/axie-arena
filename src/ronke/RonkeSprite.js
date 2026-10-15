@@ -192,8 +192,16 @@ export default class RonkeSprite {
 
     const meta = this.scene.cache.json.get(`sprites-${this.who}-${sheetFor(this.who, name)}`)
     const lengthMs = meta ? (meta.frames / meta.fps) * 1000 : 600
+    // Where the blow lands in this particular sheet. A flat fraction was a
+    // guess that was wrong per move and per fighter: a fist is out a third of
+    // the way through a punch, and jaws shut at the very end of a bite. The
+    // cutter measures it and writes it down, so the stretch below puts the
+    // right frame on the right millisecond.
+    const hit = meta?.contactFrame != null && meta.frames > 1
+      ? meta.contactFrame / (meta.frames - 1)
+      : peakFraction
     let speed = 1
-    if (peakAt) speed = Math.max(minSpeed, (lengthMs * peakFraction) / peakAt)
+    if (peakAt) speed = Math.max(minSpeed, (lengthMs * hit) / peakAt)
     else if (fit) speed = Math.max(minSpeed, lengthMs / fit)
 
     if (!this.playSheet(name, { speed })) return false
