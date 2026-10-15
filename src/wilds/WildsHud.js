@@ -5,7 +5,7 @@ import { bindButton } from '../fx/UiSound.js'
 
 const HEAD = 'Rowdies, ui-sans-serif, system-ui, sans-serif'
 const MONO = 'ui-monospace, monospace'
-const INK = 0x16200f
+const INK = 0x101936
 
 /**
  * The Endless Wilds overlay, drawn by UIScene: what you carry, where to cash
@@ -24,7 +24,7 @@ export default class WildsHud {
       fontFamily: MONO, fontSize: '11px', color: '#c9b8ff',
     }).setOrigin(0.5, 0).setDepth(401)
     this.bountyText = ui.add.text(0, 40, '', {
-      fontFamily: HEAD, fontSize: '28px', color: '#ffd964', stroke: '#16200f', strokeThickness: 5,
+      fontFamily: HEAD, fontSize: '28px', color: '#ffd964', stroke: '#101936', strokeThickness: 5,
     }).setOrigin(0.5, 0).setDepth(401)
     this.hintText = ui.add.text(0, 80, '', {
       fontFamily: MONO, fontSize: '11px', color: '#e8f0d6',
@@ -42,7 +42,7 @@ export default class WildsHud {
     this.sidePlate = ui.add.graphics().setDepth(499)
 
     this.channelBar = ui.add.graphics().setDepth(600)
-    this.channelText = ui.add.text(0, 0, '', { fontFamily: HEAD, fontSize: '16px', color: '#efe8ff', stroke: '#16200f', strokeThickness: 4 })
+    this.channelText = ui.add.text(0, 0, '', { fontFamily: HEAD, fontSize: '16px', color: '#efe8ff', stroke: '#101936', strokeThickness: 4 })
       .setOrigin(0.5).setDepth(601)
 
     this.disclaimer = ui.add.text(0, 0, 'PROTOTYPE  ·  SIMULATED BALANCES, NO REAL VALUE  ·  OTHER HUNTERS ARE AI STAND-INS', {

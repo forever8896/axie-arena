@@ -101,7 +101,7 @@ export function damageNumber(scene, x, y, text, color = '#ffffff', amount = 0) {
     fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif',
     fontSize: `${size}px`,
     color,
-    stroke: '#16200f',
+    stroke: '#101936',
     strokeThickness: 5,
   }).setOrigin(0.5).setDepth(10000)
 

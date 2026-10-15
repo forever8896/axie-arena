@@ -36,7 +36,7 @@ export function drawFighterStatus(scene, g, icons, status, now) {
   const y = status.y - (status.isPlayer ? 88 : 96)
   const frac = clamp01(status.hp / status.maxHp)
 
-  g.fillStyle(0x16200f, 0.85).fillRoundedRect(x - 3, y - 3, w + 6, h + 6, 5)
+  g.fillStyle(0x101936, 0.85).fillRoundedRect(x - 3, y - 3, w + 6, h + 6, 5)
   g.fillStyle(0x3a4a2a, 1).fillRoundedRect(x, y, w, h, 3)
   const color = status.isPlayer ? 0x7ce85a : frac > 0.35 ? 0xffd964 : 0xff6b6b
   g.fillStyle(color, 1).fillRoundedRect(x, y, Math.max(3, w * frac), h, 3)
@@ -49,7 +49,7 @@ export function drawFighterStatus(scene, g, icons, status, now) {
   if (status.stamina != null && status.stamina < 0.999) {
     const sw = w
     const sy = y + h + 3
-    g.fillStyle(0x16200f, 0.85).fillRoundedRect(x - 3, sy - 2, sw + 6, 7, 3)
+    g.fillStyle(0x101936, 0.85).fillRoundedRect(x - 3, sy - 2, sw + 6, 7, 3)
     g.fillStyle(0x2c3a22, 1).fillRoundedRect(x, sy, sw, 4, 2)
     g.fillStyle(status.stamina < 0.2 ? 0xff8098 : 0xffd964, 1)
       .fillRoundedRect(x, sy, Math.max(2, sw * clamp01(status.stamina)), 4, 2)
@@ -57,7 +57,7 @@ export function drawFighterStatus(scene, g, icons, status, now) {
 
   if (status.shield > 0) {
     const sf = Math.min(1, status.shield / status.maxHp)
-    g.fillStyle(0x16200f, 0.85).fillRoundedRect(x - 3, y - 9, w + 6, 6, 3)
+    g.fillStyle(0x101936, 0.85).fillRoundedRect(x - 3, y - 9, w + 6, 6, 3)
     g.fillStyle(0x7ce8ff, 1).fillRoundedRect(x, y - 8, w * sf, 4, 2)
   }
   g.setDepth(HUD_DEPTH)
@@ -65,7 +65,7 @@ export function drawFighterStatus(scene, g, icons, status, now) {
   if (status.isPlayer) drawReadyIcons(scene, g, icons, status, now, y - 24)
   else if (status.specialReady) {
     // A rival with its special up is worth knowing about.
-    g.fillStyle(0x16200f, 0.85).fillCircle(x + w + 9, y + h / 2, 7)
+    g.fillStyle(0x101936, 0.85).fillCircle(x + w + 9, y + h / 2, 7)
     g.fillStyle(0xffd964, 0.6 + Math.sin(now / 160) * 0.35).fillCircle(x + w + 9, y + h / 2, 5)
   }
 }
@@ -111,7 +111,7 @@ function drawReadyIcons(scene, g, icons, status, now, y) {
     const iy = y + bob
     seen.add(slot.key)
 
-    g.fillStyle(0x16200f, slot.ready ? 0.9 : 0.75).fillCircle(x, iy, 14)
+    g.fillStyle(0x101936, slot.ready ? 0.9 : 0.75).fillCircle(x, iy, 14)
     // The sweep: how much of it has come back.
     if (slot.fill < 1 || slot.timed) {
       g.lineStyle(3, slot.timed ? slot.tint : 0x9aa88a, 0.9)

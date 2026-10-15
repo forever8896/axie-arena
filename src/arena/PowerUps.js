@@ -226,7 +226,7 @@ export function findOpenSpot(scene, { clearance, lifetimeMs, avoid = [], avoidRa
 export function floatLabel(scene, x, y, text, color) {
   const label = scene.add.text(x, y, text, {
     fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif',
-    fontSize: '20px', color: `#${color.toString(16).padStart(6, '0')}`, stroke: '#16200f', strokeThickness: 6,
+    fontSize: '20px', color: `#${color.toString(16).padStart(6, '0')}`, stroke: '#101936', strokeThickness: 6,
   }).setOrigin(0.5).setDepth(10001)
   scene.tweens.add({
     targets: label, y: y - 34, alpha: 0, scale: { from: 1.4, to: 1 },

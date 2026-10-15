@@ -68,7 +68,7 @@ export default class RoomView {
     }
     actor.label = this.scene.add.text(f.x, f.y - 78, '', {
       fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif',
-      fontSize: '13px', color: '#e9f4dc', stroke: '#16200f', strokeThickness: 4,
+      fontSize: '13px', color: '#e9f4dc', stroke: '#101936', strokeThickness: 4,
     }).setOrigin(0.5).setDepth(9000)
     sprite.playState('appear')
     this.actors.set(f.id, actor)
@@ -400,7 +400,7 @@ export default class RoomView {
     coin.yOffset = -10
     const text = scene.add.text(c.x, c.y - 34, money(c.amount, this.currency), {
       fontFamily: 'ui-monospace, monospace', fontSize: '12px', color: '#ffe9a8',
-      stroke: '#16200f', strokeThickness: 4,
+      stroke: '#101936', strokeThickness: 4,
     }).setOrigin(0.5).setDepth(c.y + 21)
     text.yOffset = -34
     return [glow, coin, text]
@@ -921,7 +921,7 @@ export default class RoomView {
 
         const label = this.scene.add.text(actor.x, actor.y - 96, 'PARRY', {
           fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif',
-          fontSize: '26px', color: '#ffffff', stroke: '#16200f', strokeThickness: 6,
+          fontSize: '26px', color: '#ffffff', stroke: '#101936', strokeThickness: 6,
         }).setOrigin(0.5).setDepth(10001)
         this.scene.tweens.add({
           targets: label, y: label.y - 36, alpha: 0, scale: { from: 1.5, to: 1 },

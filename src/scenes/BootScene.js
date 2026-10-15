@@ -19,9 +19,10 @@ const TIPS = [
   'Your stake buys a bounty. A kill takes the whole bounty its owner carried.',
   'Nothing is yours until you carry it out through a Moon Gate.',
   'Landing hits charges your special, not waiting around.',
+  'Ronke brings up rice. Ronka spits a heart. Horske just runs you down.',
   'A hit restarts the gate channel. Cash out when nobody can reach you.',
   'Moonwells heal you, but a rival hit stops the healing for a moment.',
-  'Bushes hide you. Rivals lose sight of you unless they are close.',
+  'The reeds hide you. Rivals lose sight of you unless they are close.',
   'The leader glows. So will you, once you are the one carrying.',
 ]
 import { loadSfx, SFX } from '../fx/Sfx.js'
@@ -42,7 +43,7 @@ export default class BootScene extends Phaser.Scene {
 
   async create() {
     createFxTextures(this)
-    this.setPhase('WAKING RONKE', 0)
+    this.setPhase('FLOODING THE TERRACES', 0)
     await this.loadBrand()
     this.brandReady()
 
@@ -210,10 +211,10 @@ export default class BootScene extends Phaser.Scene {
 
     // Darkened toward the edges so the middle reads as lit.
     const wash = this.add.graphics().setDepth(-99)
-    wash.fillStyle(0x16200f, 0.26).fillRect(0, 0, width, height)
+    wash.fillStyle(0x101936, 0.26).fillRect(0, 0, width, height)
     for (let i = 0; i < 26; i++) {
       const t = i / 26
-      wash.fillStyle(0x16200f, 0.42 * t * t)
+      wash.fillStyle(0x101936, 0.42 * t * t)
       wash.fillRect(0, 0, width, (height / 2) * (1 - t) + 2)
       wash.fillRect(0, height - (height / 2) * (1 - t), width, (height / 2) * (1 - t) + 2)
     }
@@ -265,7 +266,7 @@ export default class BootScene extends Phaser.Scene {
     const w = this.tip.width + 44
     const g = this.tipPlate
     g.clear()
-    g.fillStyle(0x16200f, 0.6).fillRoundedRect(this.tip.x - w / 2, this.tip.y - 19, w, 38, 12)
+    g.fillStyle(0x101936, 0.6).fillRoundedRect(this.tip.x - w / 2, this.tip.y - 19, w, 38, 12)
   }
 
   /** Called as each stage starts, so the dots below the moon fill in. */
@@ -276,14 +277,16 @@ export default class BootScene extends Phaser.Scene {
     this.shown = 0
   }
 
-  /** The logo replaces the plain title as soon as it has loaded. */
+  /**
+   * The loading screen says RONKACY and nothing else.
+   *
+   * It used to swap in the wordmark as soon as it loaded — and that wordmark
+   * reads "Lunacy", because it is the old game's logo. The home screen keeps
+   * it on purpose, struck through, as a nod to what this was. A loading screen
+   * has no room for that joke: it just looked like the wrong game.
+   */
   brandReady() {
-    if (!this.textures.exists('brand-logo') || this.logo) return
-    this.title.setVisible(false)
-    this.logo = this.add.image(this.title.x, this.title.y, 'brand-logo').setDepth(10)
-    this.logo.setScale(Math.min(420, this.scale.width * 0.6) / this.logo.width)
-    this.logo.setAlpha(0)
-    this.tweens.add({ targets: this.logo, alpha: 1, duration: 450, ease: 'Sine.easeOut' })
+    this.title?.setVisible(true)
   }
 
   update(time, delta) {
@@ -296,7 +299,7 @@ export default class BootScene extends Phaser.Scene {
     const r = 54
     g.clear()
 
-    g.fillStyle(0x16200f, 0.55).fillCircle(cx, cy, r + 12)
+    g.fillStyle(0x101936, 0.55).fillCircle(cx, cy, r + 12)
     g.lineStyle(9, 0x3a4a2a, 1).strokeCircle(cx, cy, r)
     g.lineStyle(9, 0xffc22e, 1)
     g.beginPath()

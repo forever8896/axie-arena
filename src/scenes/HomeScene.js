@@ -96,23 +96,23 @@ export default class HomeScene extends Phaser.Scene {
     this.strike = this.add.graphics().setDepth(1011)
 
     this.titleShadow = this.add.text(0, 0, 'LUNACY', {
-      fontFamily: HEAD, fontSize: '120px', color: '#23300f',
+      fontFamily: HEAD, fontSize: '120px', color: '#0b1430',
     }).setOrigin(0.5).setAlpha(0.32).setDepth(1009)
 
     this.title = this.add.text(0, 0, 'LUNACY', {
       fontFamily: HEAD, fontSize: '120px', color: '#fff8d8',
     }).setOrigin(0.5).setDepth(1010)
-    this.title.setShadow(0, 6, 'rgba(35,48,15,0.45)', 0, false, true)
+    this.title.setShadow(0, 6, 'rgba(11,20,48,0.45)', 0, false, true)
 
     this.newName = this.add.text(0, 0, 'RONKACY', {
       fontFamily: HEAD, fontSize: '84px', color: '#fff8d8',
     }).setOrigin(0.5).setDepth(1012)
-    this.newName.setShadow(0, 6, 'rgba(35,48,15,0.5)', 0, false, true)
+    this.newName.setShadow(0, 6, 'rgba(11,20,48,0.5)', 0, false, true)
 
     this.tagline = this.add.text(0, 0, 'DROP IN  ·  TAKE BOUNTIES  ·  WALK OUT WITH THEM', {
       fontFamily: MONO, fontSize: '14px', color: '#f2f7e4',
     }).setOrigin(0.5).setDepth(1010)
-    this.tagline.setShadow(0, 2, 'rgba(35,48,15,0.6)', 3, false, true)
+    this.tagline.setShadow(0, 2, 'rgba(11,20,48,0.6)', 3, false, true)
   }
 
   buildPlay() {
@@ -139,7 +139,7 @@ export default class HomeScene extends Phaser.Scene {
     this.tutorialText = this.add.text(0, 0, fresh ? 'NEW HERE?  PLAY THE TUTORIAL  ▸' : 'REPLAY THE TUTORIAL  ▸', {
       fontFamily: HEAD, fontSize: fresh ? '17px' : '14px', color: fresh ? '#ffd964' : '#fff8d8',
     }).setOrigin(0.5).setDepth(1012).setInteractive({ useHandCursor: true })
-    this.tutorialText.setShadow(0, 2, 'rgba(35,48,15,0.8)', 3, false, true)
+    this.tutorialText.setShadow(0, 2, 'rgba(11,20,48,0.8)', 3, false, true)
     bindButton(this, this.tutorialText, () => this.start('tutorial'), { sound: 'start' })
     if (fresh) this.tweens.add({ targets: this.tutorialText, scale: 1.06, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
   }
@@ -189,7 +189,7 @@ export default class HomeScene extends Phaser.Scene {
     this.netToggle = this.add.text(0, 0, 'MULTIPLAYER  ·  EXPERIMENTAL  ▸', {
       fontFamily: HEAD, fontSize: '15px', color: '#c9b8ff',
     }).setOrigin(0.5).setDepth(1012).setInteractive({ useHandCursor: true })
-    this.netToggle.setShadow(0, 2, 'rgba(35,48,15,0.8)', 3, false, true)
+    this.netToggle.setShadow(0, 2, 'rgba(11,20,48,0.8)', 3, false, true)
     bindButton(this, this.netToggle, () => this.playNet(), { sound: 'start' })
     this.input.keyboard.on('keydown-N', () => this.playNet())
 
@@ -258,7 +258,7 @@ export default class HomeScene extends Phaser.Scene {
     this.aboutToggle = this.add.text(0, 0, 'ABOUT  ·  HOW IT WORKS  ▸', {
       fontFamily: MONO, fontSize: '12px', color: '#e8f0d6',
     }).setOrigin(0.5).setDepth(1012).setInteractive({ useHandCursor: true })
-    this.aboutToggle.setShadow(0, 2, 'rgba(35,48,15,0.7)', 3, false, true)
+    this.aboutToggle.setShadow(0, 2, 'rgba(11,20,48,0.7)', 3, false, true)
     bindButton(this, this.aboutToggle, () => this.openAbout())
     this.input.keyboard.on('keydown-A', () => this.openAbout())
   }
@@ -275,7 +275,7 @@ export default class HomeScene extends Phaser.Scene {
       'ENTER  PLAY  ·  T  TUTORIAL  ·  N  MULTIPLAYER  ·  A  ABOUT  ·  M  MUTE  ·  A RONKEVERSE GAME', {
         fontFamily: MONO, fontSize: '11px', color: '#e8f0d6',
       }).setOrigin(0.5).setDepth(1012).setAlpha(0.85)
-    this.footer.setShadow(0, 2, 'rgba(35,48,15,0.6)', 3, false, true)
+    this.footer.setShadow(0, 2, 'rgba(11,20,48,0.6)', 3, false, true)
   }
 
   layout() {
@@ -293,7 +293,7 @@ export default class HomeScene extends Phaser.Scene {
     const bands = 30
     for (let i = 0; i < bands; i++) {
       const t = i / bands
-      this.wash.fillStyle(0x16200f, 0.3 * (1 - t) * (1 - t))
+      this.wash.fillStyle(0x101936, 0.3 * (1 - t) * (1 - t))
       this.wash.fillRect(0, (bandH / bands) * i, width, bandH / bands + 1)
     }
 
@@ -373,7 +373,7 @@ export default class HomeScene extends Phaser.Scene {
     if (!g) return
     g.clear()
     const half = w / 2 + 14
-    g.lineStyle(7, 0x23300f, 0.55)
+    g.lineStyle(7, 0x0b1430, 0.55)
     g.beginPath(); g.moveTo(cx - half, y + 10); g.lineTo(cx + half, y - 8); g.strokePath()
     g.lineStyle(5, 0xff6a8a, 0.92)
     g.beginPath()

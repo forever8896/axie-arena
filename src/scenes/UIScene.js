@@ -67,7 +67,7 @@ export default class UIScene extends Phaser.Scene {
   layoutHintPlate() {
     if (!this.hintPlate || !this.hint) return
     this.hintPlate.clear()
-    this.hintPlate.fillStyle(0x16200f, 0.6)
+    this.hintPlate.fillStyle(0x101936, 0.6)
     this.hintPlate.fillRoundedRect(18, this.hint.y - 10, this.hint.width + 32, 32, 10)
   }
 
@@ -87,7 +87,7 @@ export default class UIScene extends Phaser.Scene {
     this.mmRoot = this.add.container(0, 0).setDepth(500)
 
     const frame = this.add.graphics()
-    frame.fillStyle(0x16200f, 0.92)
+    frame.fillStyle(0x101936, 0.92)
     frame.fillRoundedRect(-5, -5, this.mmW + 10, this.mmH + 10, 12)
 
     // One snapshot of the ground, plus the canopies and blocks over it.
@@ -229,7 +229,7 @@ export default class UIScene extends Phaser.Scene {
     // Everyone on the field, as themselves.
     for (const f of game.fighters ?? []) {
       if (!f.alive || (f.hidden && !f.isPlayer)) continue
-      this.mmDots.fillStyle(0x16200f, 0.85)
+      this.mmDots.fillStyle(0x101936, 0.85)
       this.mmDots.fillCircle(f.x * s, f.y * s, f.isPlayer ? 11 : 9.5)
       this.mmDots.fillStyle(f.isPlayer ? 0xfff8d8 : f.colors.body, f.isPlayer ? 1 : 0.9)
       this.mmDots.fillCircle(f.x * s, f.y * s, f.isPlayer ? 9.5 : 8)
@@ -254,7 +254,7 @@ export default class UIScene extends Phaser.Scene {
     if (!this.announceText) {
       this.announceText = this.add.text(this.scale.width / 2, 60, '', {
         fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif', fontSize: '16px', color: '#ffffff',
-        stroke: '#16200f', strokeThickness: 5,
+        stroke: '#101936', strokeThickness: 5,
       }).setOrigin(0.5).setDepth(600)
     }
     if (!a || now > a.until) {

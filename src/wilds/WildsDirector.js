@@ -261,7 +261,7 @@ export default class WildsDirector {
       .setScale(1.4).setDepth(y + 19)
     const text = scene.add.text(x, y - 46, money(amount, this.currency), {
       fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif', fontSize: '14px', color: '#ffd964',
-      stroke: '#16200f', strokeThickness: 4,
+      stroke: '#101936', strokeThickness: 4,
     }).setOrigin(0.5).setDepth(y + 21)
     this.caches.push({ x, y, amount, parts: [coin, glow, text], bornAt: this.now })
   }
@@ -462,7 +462,7 @@ export default class WildsDirector {
       }
       if (f.channel) {
         const a0 = -Math.PI / 2
-        c.lineStyle(7, 0x16200f, 0.6)
+        c.lineStyle(7, 0x101936, 0.6)
         c.strokeCircle(f.x, f.y - 26, f.bodyRadius + 26)
         c.lineStyle(5, 0xefe8ff, 1)
         c.beginPath()
@@ -482,7 +482,7 @@ export default class WildsDirector {
       if (!f.nameplate) {
         f.nameplate = this.scene.add.text(0, 0, '', {
           fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif', fontSize: '13px', color: '#fff8d8',
-          stroke: '#16200f', strokeThickness: 4, align: 'center',
+          stroke: '#101936', strokeThickness: 4, align: 'center',
         }).setOrigin(0.5, 1)
       }
       const label = `${f.name} · AI\n${money(f.wilds.bounty, this.currency)}`

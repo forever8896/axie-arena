@@ -295,7 +295,7 @@ export default class GameScene extends Phaser.Scene {
 
     const label = this.add.text(defender.x, defender.y - 96, 'PARRY', {
       fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif',
-      fontSize: '26px', color: '#ffffff', stroke: '#16200f', strokeThickness: 6,
+      fontSize: '26px', color: '#ffffff', stroke: '#101936', strokeThickness: 6,
     }).setOrigin(0.5).setDepth(10001)
     this.tweens.add({
       targets: label, y: label.y - 36, alpha: 0, scale: { from: 1.5, to: 1 },

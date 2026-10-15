@@ -193,7 +193,7 @@ export default class TouchControls {
     if (!this.enabled) return
 
     for (const b of this.buttons) {
-      g.fillStyle(0x16200f, b.held ? 0.85 : 0.5).fillCircle(b.x, b.y, b.r)
+      g.fillStyle(0x101936, b.held ? 0.85 : 0.5).fillCircle(b.x, b.y, b.r)
       g.lineStyle(2, b.tint, b.held ? 1 : 0.7).strokeCircle(b.x, b.y, b.r)
     }
     for (const side of ['move', 'aim']) {

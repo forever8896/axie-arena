@@ -34,7 +34,7 @@ export default class AboutScene extends Phaser.Scene {
     const { width, height } = this.scale
     makeGrassTexture(this)
     this.add.tileSprite(0, 0, width, height, 'field-grass').setOrigin(0).setDepth(-100)
-    this.add.rectangle(0, 0, width, height, 0x16200f, 0.62).setOrigin(0).setDepth(-99)
+    this.add.rectangle(0, 0, width, height, 0x101936, 0.62).setOrigin(0).setDepth(-99)
     ambientMotes(this, { left: 0, top: 0, right: width, bottom: height })
 
     this.colW = Math.min(760, width - 80)
@@ -43,7 +43,7 @@ export default class AboutScene extends Phaser.Scene {
 
     // Header sits above the page and never scrolls.
     const bar = this.add.graphics().setDepth(50)
-    bar.fillStyle(0x16200f, 1).fillRect(0, 0, width, 64)
+    bar.fillStyle(0x101936, 1).fillRect(0, 0, width, 64)
     bar.lineStyle(2, 0x5f9330, 0.5).lineBetween(0, 64, width, 64)
     this.add.text(width / 2 - this.colW / 2, 20, 'ABOUT RONKACY', {
       fontFamily: HEAD, fontSize: '22px', color: CREAM,
@@ -91,7 +91,7 @@ export default class AboutScene extends Phaser.Scene {
     const trackH = height - this.top - 30
     const barH = Math.max(40, trackH * (trackH / this.pageHeight))
     const x = width / 2 + this.colW / 2 + 22
-    g.fillStyle(0x16200f, 0.5).fillRoundedRect(x, this.top, 5, trackH, 3)
+    g.fillStyle(0x101936, 0.5).fillRoundedRect(x, this.top, 5, trackH, 3)
     g.fillStyle(0xffc22e, 0.9).fillRoundedRect(x, this.top + (trackH - barH) * (this.scroll / this.maxScroll), 5, barH, 3)
   }
 

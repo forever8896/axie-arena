@@ -70,7 +70,7 @@ const read = `(() => {
     me: v?.me ? { x: Math.round(v.me.x), y: Math.round(v.me.y), hp: v.me.hp, bounty: v.me.bounty } : null,
     actors: s.view.actors.size,
     sprites: [...s.view.actors.values()].filter(a => a.sprite.root.active).length,
-    clip: [...s.view.actors.values()].map(a => a.sprite.rig.playing).filter(Boolean).length,
+    clip: [...s.view.actors.values()].map(a => a.sprite.sprite.anims?.currentAnim?.key).filter(Boolean).length,
     cam: { x: Math.round(s.cameras.main.scrollX), y: Math.round(s.cameras.main.scrollY) },
     gates: v ? v.gates.length : 0,
   }

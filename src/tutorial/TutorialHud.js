@@ -3,7 +3,7 @@ import { bindButton } from '../fx/UiSound.js'
 
 const HEAD = 'Rowdies, ui-sans-serif, system-ui, sans-serif'
 const MONO = 'ui-monospace, monospace'
-const INK = 0x16200f
+const INK = 0x101936
 
 /**
  * The tutorial overlay, drawn by UIScene: a coach card with the current step,

@@ -82,6 +82,10 @@ try {
     // A dash trail is containers of images, not particles or sprites.
     const realContainer = scene.add.container.bind(scene.add)
     scene.add.container = (...a) => { made.ghosts++; return realContainer(...a) }
+    // A dash afterimage used to be a container of twenty body parts. One sheet
+    // means one image per ghost, so that is what gets counted now.
+    const realImage = scene.add.image.bind(scene.add)
+    scene.add.image = (...a) => { made.ghosts++; return realImage(...a) }
     // Telegraphs and rings are drawn shapes, which a count of sprites misses —
     // the same blind spot that let an undrawn event look fine.
     const realGraphics = scene.add.graphics.bind(scene.add)
@@ -102,7 +106,9 @@ try {
       const before = { ...made }
       const soundsBefore = sounds
       scene.view.play(event, view)
-      await new Promise(r => setTimeout(r, 200))
+      // Long enough for the whole effect: a dash trail lays its afterimages on
+      // 34ms delays, so a 200ms window caught the dash and none of its ghosts.
+      await new Promise(r => setTimeout(r, 420))
       tally[label] = {
         particles: made.particles - before.particles,
         sprites: made.sprites - before.sprites,

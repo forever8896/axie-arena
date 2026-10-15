@@ -11,7 +11,7 @@ import { available, remembered, remember, measureAll, suggestion, roomsUrl, FAR_
 
 const HEAD = 'Rowdies, ui-sans-serif, system-ui, sans-serif'
 const MONO = 'ui-monospace, monospace'
-const INK = 0x16200f
+const INK = 0x101936
 const CREAM = '#fff8d8'
 
 /**

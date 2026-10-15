@@ -21,7 +21,7 @@ async function start() {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    backgroundColor: '#12121a',
+    backgroundColor: '#101936',
     scale: {
       mode: Phaser.Scale.RESIZE,
       // No centring with RESIZE: the canvas is already exactly the parent's

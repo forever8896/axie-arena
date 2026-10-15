@@ -38,7 +38,7 @@ export function makeMiniPortraits(scene, builds) {
 
 /** A round chip with the portrait inside, used by the minimap. */
 export function drawPortraitChip(g, x, y, r, color, { ring = 2, alpha = 1 } = {}) {
-  g.fillStyle(0x16200f, 0.85 * alpha)
+  g.fillStyle(0x101936, 0.85 * alpha)
   g.fillCircle(x, y, r + ring)
   g.fillStyle(color, alpha)
   g.fillCircle(x, y, r)

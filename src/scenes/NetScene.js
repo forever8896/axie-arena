@@ -204,7 +204,7 @@ export default class NetScene extends Phaser.Scene {
     this.hud = {
       banner: this.add.text(16, 74, '', {
         fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif',
-        fontSize: '16px', color: '#ff9db1', stroke: '#16200f', strokeThickness: 4,
+        fontSize: '16px', color: '#ff9db1', stroke: '#101936', strokeThickness: 4,
       }).setScrollFactor(0).setDepth(20000),
       // Top left: the only corner the Wilds HUD leaves empty, and clear of the
       // controls strip along the bottom.

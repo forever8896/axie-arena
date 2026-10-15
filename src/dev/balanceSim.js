@@ -28,7 +28,7 @@ export async function runBalanceSim(game, builds, matches) {
   const results = []
   const status = document.createElement('pre')
   status.style.cssText =
-    'position:fixed;inset:0;margin:0;padding:24px;background:#16200f;color:#e8f0d6;' +
+    'position:fixed;inset:0;margin:0;padding:24px;background:#101936;color:#e8f0d6;' +
     'font:13px ui-monospace,monospace;overflow:auto;z-index:10;white-space:pre'
   document.body.appendChild(status)
 

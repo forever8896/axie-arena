@@ -405,7 +405,7 @@ export default class TutorialDirector {
   label(f, text) {
     f.nameplate = this.scene.add.text(f.x, f.y - 104, text, {
       fontFamily: 'Rowdies, ui-sans-serif, system-ui, sans-serif', fontSize: '13px', color: '#fff8d8',
-      stroke: '#16200f', strokeThickness: 4,
+      stroke: '#101936', strokeThickness: 4,
     }).setOrigin(0.5, 1)
   }
 
