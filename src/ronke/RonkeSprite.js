@@ -28,15 +28,23 @@ export const FIGHTERS = {
   ronke: {
     sheets: ['idle', 'run', 'punch', 'vomit', 'hurt', 'guard'],
     moves: { attack: 'punch', special: 'vomit' },
+    // The baseline everyone else is measured against: 177px of gorilla.
+    scale: 1,
   },
   ronka: {
     sheets: ['idle', 'run', 'bite', 'heart', 'hurt', 'guard'],
     moves: { attack: 'bite', special: 'heart' },
+    // She was cut 210px tall and looked a head taller than Ronke, which she is
+    // not — same species, same height.
+    scale: 0.81,
   },
   horske: {
     // Its run is the gallop cycle from the racing game, used as it ships.
     sheets: ['idle', 'run', 'trample', 'charge', 'hurt', 'guard'],
     moves: { attack: 'trample', special: 'charge' },
+    // A rider sits taller than a gorilla, and a horse is longer. Scaled so the
+    // rider's head clears Ronke's by a little rather than by half a body.
+    scale: 0.92,
   },
 }
 
@@ -139,7 +147,10 @@ export default class RonkeSprite {
     // he stands.
     this.ground = scene.cache.json.get(`sprites-${this.who}-idle`)?.originY ?? 1
     this.sprite.setOrigin(0.5, this.ground)
-    this.sprite.setScale(scale)
+    // Each fighter is cut to its own frame size, so one shared scale makes one
+    // of them a giant: Ronka came out a head taller than Ronke, who is the same
+    // species. FIGHTERS carries the correction.
+    this.sprite.setScale(scale * (FIGHTERS[this.who]?.scale ?? 1))
     this.root.add([this.shadow, this.sprite])
 
     registerAnimations(scene)

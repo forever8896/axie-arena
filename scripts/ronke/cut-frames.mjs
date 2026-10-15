@@ -94,7 +94,16 @@ console.log(`  keying ${hex} (sampled, not assumed)`)
 
 // Key it, kill the green fringe the key leaves behind, and thin to the frame
 // rate the game will actually play.
-const VF = `fps=${fps},colorkey=${hex}:0.26:0.10,despill=type=green:mix=0.6:expand=0.3,format=rgba`
+/*
+ * colorkey alone, deliberately.
+ *
+ * despill was here to clean the green fringe an edge leaves behind, and it
+ * does — by pulling green out of every pixel, including the ones that are
+ * meant to be green. Ronke's belly is #1CAFF9; with despill at 0.6 it came out
+ * #264FEB, which is why he looked darker and less blue than his own art. The
+ * key's own blend softens the edges well enough, and the colours survive.
+ */
+const VF = `fps=${fps},colorkey=${hex}:0.26:0.10,format=rgba`
 if (windows) {
   // Each window extracted on its own, then renumbered in order, so the sheet
   // reads as one continuous move.
